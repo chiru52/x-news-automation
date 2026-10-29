@@ -1,0 +1,15 @@
+name = "x-news-editorial-inbox"
+main = "worker/hosted.mjs"
+compatibility_date = "2026-10-29"
+workers_dev = true
+
+# This Worker fails closed until Cloudflare Access and the following Worker
+# secrets are configured in the dashboard (never in git):
+# PUBLIC_ORIGIN       e.g. https://x-news-editorial-inbox.<account>.workers.dev
+# ACCESS_AUD          the Access application audience tag
+# EDITOR_EMAIL        the single permitted editor's verified email
+# GITHUB_EDITOR_TOKEN fine-grained GitHub token: only this PRIVATE repository,
+#                     with Issues read/write and Metadata read
+# Access must protect the ENTIRE Worker, not only a hostname.
+[vars]
+REPO_FULL_NAME = "varadachiru/x-news-automation"
