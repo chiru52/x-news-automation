@@ -66,10 +66,18 @@ def save_private_review(repo: str, run_id: str, body_file: Path) -> str:
 
     run_link = f"https://github.com/{repo}/actions/runs/{run_id}"
     clean = suggested_clean_draft(body)
-    # The proposed copy is prefilled for convenient editing, but remains
-    # unverified and does not confer any posting authorization.
-    editor_start = ("<pre>" + html.escape(clean, quote=True) + "</pre>" if clean else
-                    "> [No usable draft — editor must write and verify]")
+    # Do not prefill a risky draft in the manual editor. Review remains visible
+    # above, but suspicious citation/quantity gaps or format failures require
+    # the human to actively resolve them before copying any text.
+    evidence_warning = "**Automated evidence precheck:** Needs manual attention:" in body
+    format_warning = "**Automated format check:** Needs corrections:" in body
+    needs_attention = evidence_warning or format_warning
+    if needs_attention:
+        editor_start = ("> [Resolve the flagged evidence/format gaps against the "
+                        "original publisher and independent sources before writing an X post]")
+    else:
+        editor_start = ("<pre>" + html.escape(clean, quote=True) + "</pre>" if clean else
+                        "> [No usable draft — editor must write and verify]")
     with body_file.open("a", encoding="utf-8") as out:
         out.write("\n\n---\n**Original GitHub Actions run:** " + run_link +
                   "\n\n- [ ] Read article and corroborate material claims\n"

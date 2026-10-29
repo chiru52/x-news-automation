@@ -306,3 +306,19 @@ Both modes still skip previously drafted stories, articles older than 36 hours a
 **Safety:** No additional model calls, automatic X posts, schedules or paid providers. Manual Copilot workflow_dispatch requires its existing default-off credit-use checkbox; maximum one Copilot CLI call per approved run with a 30-credit soft session limit (not a guaranteed billing cap). AI Drafts remain private and editable, without publication approval. All PR tests operate offline with zero Copilot credits.
 
 The new editorial ranking and cleaned URLs have passed offline regression tests. Actual article selection and model writing quality still require a future manually approved, potentially billable live run if desired.
+
+
+## Stage 27 — Claim-to-paragraph prechecks (no automatic fact-check claims)
+
+[Step 26's Microsoft AI Draft #25](https://github.com/varadachiru/x-news-automation/issues/25) exposed a review gap: a model can cite an existing paragraph ID even when the specific number it claims (for example, **60,000 eligible employees**) does not actually appear in that limited paragraph excerpt. Earlier checks only verified the ID existed. A cropped first-190-character preview could also miss relevant text farther into that paragraph.
+
+For **new, manually approved** drafts, the editorial review now:
+
+1. **Checks numeric details against cited paragraphs sentence by sentence** in Copilot's EVIDENCE and WHY_IT_MATTERS fields. It compares literal figures in model claims and the particular referenced publisher excerpt(s), with basic equivalence such as 60K = 60,000 and $30 million = 30M. It also checks whether the public DRAFT's numeric details occur in any publisher paragraph cited by the analysis. Missing citations, unavailable IDs, and numeric gaps are flagged as potential editorial problems.
+2. **Shows the most claim-relevant part of each cited publisher paragraph**, selected by overlapping numbers and words, rather than always cutting off the paragraph's opening 190 characters. Excerpts remain short, HTML-escaped and bounded, with no full-page or new URL retrieval.
+3. **Adds an "Automated claim-to-evidence precheck" section** to the private AI Draft. If a problem is detected, the issue still displays the draft and supporting text for review, but its separate "My edited X post" section is **NOT prefilled**. Instead it asks a human editor to investigate and write approved copy. This is also true for pre-existing format warnings.
+4. **Strengthens the one-shot Copilot prompt**: require paragraph references at the end of each factual sentence; do not copy numerical details unless the referenced publisher excerpt actually contains them; do not conflate employees *eligible for buyouts* with actual layoffs.
+
+**Important limitations:** These checks compare only **short, automatically extracted, unverified publisher snippets** (at most eight paragraphs, each truncated to 550 characters). A number omitted by truncation may cause a *false warning*. A matching number does **not** prove accurate attribution, the denominator or scope, semantic meaning, truth, or independent corroboration. An unflagged post is **NOT fact-checked or approved** and still requires a human to read the original and independently verify material claims. Other unsupported nonnumeric assertions may not be detected. There is no extra AI model call or spend for these checks.
+
+Offline tests cover both matching and mismatched numeric citations, short excerpt focus, escaped HTML, partial source limitations, withheld output and no-prefill behavior; tests never use AI credits. Existing private Issues (#19, #21, #23, #25) remain unchanged. The Copilot workflow is still manual-only with explicit default-off credit approval, at most one model call per approved run (30-credit soft limit, not a billing hard cap) and **no automatic X publishing**.
