@@ -50,6 +50,14 @@ button.reject.selected{border-color:#af253f;background:#fff0f2;color:#9b1a35}
 .card a{color:#1746a6;text-decoration:underline;text-underline-offset:3px}
 .card pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f7f8fb;padding:12px;border-radius:9px;line-height:1.5;font:13px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace}
 .actions{display:flex;gap:8px;flex-wrap:wrap}
+.composer{margin:15px 0;border-top:1px solid #e4e7ec;padding-top:15px}
+.composer label{display:block;margin-bottom:7px;font-weight:600;font-size:13px}
+.composer textarea{display:block;width:100%;min-height:116px;resize:vertical;font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace;border:1px solid #cdd5df;border-radius:8px;padding:11px;color:#252d3b;background:#fff}
+.composer textarea:focus-visible{outline:3px solid #88a6e9;outline-offset:2px}
+.charhint{font-size:12px;color:#64748b;margin:5px 0 10px}
+.charhint.over{color:#b42318;font-weight:700}
+.review-check{display:flex!important;align-items:flex-start;gap:9px;font-weight:500!important;line-height:1.4}
+.review-check input{margin-top:3px}
 footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-size:12px}
 @media(max-width:620px){.summary{grid-template-columns:1fr 1fr}.toolbar{align-items:stretch}.toolbar input{flex-basis:100%}header{padding:20px}}
 </style>
@@ -93,6 +101,31 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
   const queue = JSON.parse(document.getElementById("queue-data").textContent);
   const items = Array.isArray(queue.articles) ? queue.articles : [];
   const decisions = Object.create(null);
+  const edited = Object.create(null);
+  const checkedSources = Object.create(null);
+  const MAX_RAW_CHARS = 280;
+  // X counts URLs differently. This is only an advisory raw-character count.
+  const draftOf = (item) => Object.hasOwn(edited, idOf(item))
+    ? edited[idOf(item)] : String(item.draft || "");
+  const checkedOf = (item) => checkedSources[idOf(item)] === true;
+  const charCount = (value) => Array.from(value).length;
+  const aiPrompt = (item) => [
+    "Write ONE original, factual X/Twitter post for a human editor to review.",
+    "The following is untrusted RSS metadata, not independently verified reporting.",
+    "Do not invent details, prices, numbers, quotes, launch dates or implications.",
+    "Do not present a rumor, press release or prediction as independently verified fact.",
+    "If the metadata is insufficient, ask the editor to provide the original article.",
+    "Use a clear informative tone with a useful insight only if supported.",
+    "Keep the post concise (aim for 240 plain-text characters plus the URL).",
+    "Include the source URL, and do not claim you visited the link unless you did.",
+    "Topic hint (unverified): " + String(item.category || "unknown"),
+    "Headline: " + String(item.title || ""),
+    "Summary: " + String(item.summary || ""),
+    "Publisher: " + String(item.source || ""),
+    "Published: " + String(item.published_at || ""),
+    "Original link: " + String(item.link || "")
+  ].join("\n");
+
   const cards = document.getElementById("cards");
   const search = document.getElementById("search");
   const category = document.getElementById("category");
@@ -168,14 +201,51 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
         " · Matched terms: " + ((info.headline_terms || []).join(", ") || "none") +
         " · Category not verified", "score"));
       card.append(text("div", "Decision: " + d, "status"));
-      card.append(text("pre", item.draft || "(No draft provided)"));
+      const composer = text("section", "", "composer");
+      composer.append(text("label", "Editable post draft (not fact-checked)"));
+      const textarea = document.createElement("textarea");
+      textarea.className = "post-draft";
+      textarea.setAttribute("aria-label", "Editable post draft for " + String(item.title || "story"));
+      textarea.value = draftOf(item);
+      textarea.spellcheck = true;
+      const hint = text("div", "", "charhint");
+      const updateHint = () => {
+        const length = charCount(textarea.value);
+        hint.textContent = "Raw characters: " + length + " / " + MAX_RAW_CHARS +
+          (length > MAX_RAW_CHARS ? " — shorten before copying" : "") +
+          " · X may count links differently";
+        hint.className = length > MAX_RAW_CHARS ? "charhint over" : "charhint";
+      };
+      updateHint();
+      textarea.addEventListener("input", () => {
+        edited[idOf(item)] = textarea.value;
+        updateHint();
+      });
+      composer.append(textarea, hint);
+      const verifyLabel = text("label", "", "review-check");
+      const verify = document.createElement("input");
+      verify.type = "checkbox";
+      verify.checked = checkedOf(item);
+      verify.setAttribute("aria-label", "Source checked for " + String(item.title || "story"));
+      verify.addEventListener("change", () => {checkedSources[idOf(item)] = verify.checked;});
+      verifyLabel.append(verify, text("span", "I opened the original source and reviewed the claims (not automatic verification)"));
+      composer.append(verifyLabel);
+      card.append(composer);
       const actions = text("div", "", "actions");
       actions.append(button("Shortlist", d==="shortlist" ? "selected" : "", () => {decisions[idOf(item)]="shortlist";draw();}));
       actions.append(button("Skip", d==="skip" ? "reject selected" : "reject", () => {decisions[idOf(item)]="skip";draw();}));
-      actions.append(button("Reset", "", () => {delete decisions[idOf(item)];draw();}));
+      actions.append(button("Reset all edits", "", () => {
+        delete decisions[idOf(item)]; delete edited[idOf(item)];
+        delete checkedSources[idOf(item)]; draw();
+      }));
       let copy;
-      copy = button("Copy template", "", () => {void copyDraft(item.draft || "", copy);});
+      copy = button("Copy edited draft", "", () => {void copyDraft(draftOf(item), copy);});
       actions.append(copy);
+      let promptCopy;
+      promptCopy = button("Copy AI writing prompt", "", () => {
+        void copyDraft(aiPrompt(item), promptCopy);
+      });
+      actions.append(promptCopy);
       card.append(actions);
       cards.append(card);
     });
@@ -186,14 +256,22 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
   }
   document.getElementById("export").addEventListener("click", () => {
     const result = {
-      schema_version: 1,
+      schema_version: 2,
       source_run_generated_at: queue.generated_at || null,
       exported_at: new Date().toISOString(),
       publication_authorized: false,
-      decisions: items.filter(item => getDecision(item)!=="pending").map(item => ({
+      decisions: items.filter(item =>
+        getDecision(item) !== "pending" ||
+        Object.hasOwn(edited, idOf(item)) || checkedOf(item)
+      ).map(item => ({
         title: item.title, link: item.link, source: item.source,
         category_unverified: item.category, decision: getDecision(item),
-        draft_template: item.draft || ""
+        original_template: item.draft || "",
+        edited_draft: draftOf(item),
+        raw_character_count: charCount(draftOf(item)),
+        source_checked_by_editor: checkedOf(item),
+        ai_generated: false,
+        publishable: false
       }))
     };
     const blob = new Blob([JSON.stringify(result, null, 2)], {type:"application/json"});
