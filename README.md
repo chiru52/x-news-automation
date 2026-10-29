@@ -287,3 +287,22 @@ The built-in temporary GitHub token gains **`issues: read` permission in the Cop
 **No automatic X publishing, scheduling, or posting is added.** GitHub Copilot still runs at most once per manually triggered workflow after a separately checked explicit credit-approval checkbox (30-credit *soft* session limit, not a guaranteed spend cap). Tests run entirely offline and do not request Copilot credits.
 
 **Next after merge:** Only if you want to use another potentially billable Copilot request, run the manual workflow on `main` and inspect the source-access table. It should skip Hyperbolic if it reappears in the shortlist and select a different supported article when available. The resulting new review will be saved under [private AI Draft Issues](https://github.com/varadachiru/x-news-automation/issues?q=is%3Aissue%20label%3Aai-draft-review). No new Issue is created if all candidates are excluded.
+
+
+## Stage 25 — Better tech-news priority and cleaner X source links
+
+Stage 24 succeeded at avoiding the repeated Hyperbolic story, but [AI Draft #23](https://github.com/varadachiru/x-news-automation/issues/23) picked a relatively routine Pinnacle earnings update, used an ambiguous company name and retained a Yahoo Finance RSS tracking parameter.
+
+**Editorial selection:** The manually initiated Copilot workflow now offers two modes:
+- **quality_first (default):** prioritizes eligible AI, technology, developer tools, security, cloud and SaaS launch articles over routine market-price/earnings stories. The ranking uses the RSS category, unverified headline, existing relevance score and recency, not an AI call or independent verification.
+- **preferred_first:** retains the previous behavior, where the manually chosen article index is tried first if unused and fresh.
+
+Both modes still skip previously drafted stories, articles older than 36 hours and sources that fail safe publisher-text extraction. If none remain, Copilot is skipped without spending model credits. The Actions Summary identifies the strategy and selection result.
+
+**Writing improvements:** The prompt asks Copilot to name the company or product unambiguously (full company name when supported by publisher text) and to offer a source-supported reason the development matters to an AI/technology/SaaS reader. It should withhold an X draft if relevant details or company identity cannot be substantiated. Prompts are guidance, not proof of truth or a guarantee of quality; every post still requires human fact-checking.
+
+**Clean sharing links:** The raw original Source URL remains intact in the private GitHub Issue for audit and deduplication. A separate Shareable source URL strips a conservative set of tracking parameters (including .tsrc, utm_*, fbclid) and the URL fragment without changing the domain or removing meaningful query fields. Copilot is instructed to use this share link. If it reproduces the exact tracking URL, clean proposed X copy automatically substitutes the cleaned link without inventing or following a new URL. Editors should still verify that the link opens.
+
+**Safety:** No additional model calls, automatic X posts, schedules or paid providers. Manual Copilot workflow_dispatch requires its existing default-off credit-use checkbox; maximum one Copilot CLI call per approved run with a 30-credit soft session limit (not a guaranteed billing cap). AI Drafts remain private and editable, without publication approval. All PR tests operate offline with zero Copilot credits.
+
+The new editorial ranking and cleaned URLs have passed offline regression tests. Actual article selection and model writing quality still require a future manually approved, potentially billable live run if desired.
