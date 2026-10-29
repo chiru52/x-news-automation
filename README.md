@@ -116,3 +116,13 @@ python -m newsbot --demo --preview --state .state/demo.json --output output/demo
 ```
 
 The demo uses clearly synthetic articles. The HTML page renders RSS fields safely as text. The relevance score is a keyword heuristic, not verified reporting or a factual guarantee.
+
+## Stage 7: editable post composer and copyable AI prompt (no API needed)
+
+The offline `review_dashboard.html` now includes a **local-only post editor** for each candidate. You can change the RSS template manually, view an advisory **280 raw-character counter**, tick a self-reported **original source checked** checkbox, and copy your edited text. X uses different counting for links, so the counter is not an official validation of publishability.
+
+Use **Copy AI writing prompt** to paste a clearly source-labeled prompt into the AI assistant of your choosing (Grok in the X interface, ChatGPT, etc.). This is a **manual clipboard workflow**: no keys or AI calls are made. The prompt asks the model to avoid inventing facts and seek the full source before unsupported claims. Paste and verify the AI's output before putting it into the editable post.
+
+The **Export decisions JSON** file now includes editor revisions, verification checkbox state and raw character count for changed/shortlisted/skipped candidates, while explicitly setting `publication_authorized=false`, `publishable=false`, and `ai_generated=false` (the system does not know whether you manually pasted AI text). It never authorizes or causes automatic posting.
+
+Like all previous dashboard state, edits and checkbox decisions are held **only in memory** in the current browser tab until exported, and will be lost on reload. Export is not a backup to a server. No X/Buffer integrations or account credentials exist in this version.

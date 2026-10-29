@@ -325,5 +325,41 @@ class CoreTests(unittest.TestCase):
 
 
 
+    def test_editorial_composer_controls_and_safe_export(self):
+        from newsbot.review import create_review_page
+        page = create_review_page({"articles": [{"title": "Example SaaS",
+            "link": "https://example.com/news", "draft": "Review template",
+            "source": "Example", "category": "saas"}]})
+        self.assertIn('Editable post draft', page)
+        self.assertIn('Copy AI writing prompt', page)
+        self.assertIn('Copy edited draft', page)
+        self.assertIn('source_checked_by_editor: checkedOf(item)', page)
+        self.assertIn('edited_draft: draftOf(item)', page)
+        self.assertIn('raw_character_count: charCount(draftOf(item))', page)
+        self.assertIn('schema_version: 2', page)
+        self.assertIn('publication_authorized: false', page)
+        self.assertIn('publishable: false', page)
+        self.assertNotIn('fetch(', page)
+        self.assertNotIn('XMLHttpRequest', page)
+        self.assertNotIn('https://cdn.', page)
+
+    def test_editorial_changes_survive_card_redraw_by_state(self):
+        from newsbot.review import create_review_page
+        page = create_review_page({"articles": []})
+        self.assertIn('edited[idOf(item)] = textarea.value', page)
+        self.assertIn('checkedSources[idOf(item)] = verify.checked', page)
+        self.assertIn('textarea.value = draftOf(item)', page)
+        self.assertIn('verify.checked = checkedOf(item)', page)
+        self.assertIn('delete edited[idOf(item)]', page)
+
+    def test_ai_prompt_explicitly_unverified_and_requires_original_source(self):
+        from newsbot.review import create_review_page
+        page = create_review_page({"articles": []})
+        self.assertIn('untrusted RSS metadata, not independently verified', page)
+        self.assertIn('If the metadata is insufficient, ask the editor', page)
+        self.assertIn('do not claim you visited the link', page)
+
+
+
 if __name__ == "__main__":
     unittest.main()
