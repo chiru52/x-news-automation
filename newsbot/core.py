@@ -214,12 +214,14 @@ def draft_template(article: Article) -> str:
     return f"{title}\n\n{note}\n\n{link}"
 
 
-def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors: list[str]) -> None:
+def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors: list[str],
+                   source_diagnostics: list[dict] | None = None) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     queue = [{**asdict(item), "draft": draft_template(item), "status": "NEEDS_HUMAN_REVIEW",
-              "publishable": False} for item in articles]
+              "publishable": False, "category_verified": False} for item in articles]
     payload = {"generated_at": now.isoformat(), "draft_count": len(queue),
-               "publishing_enabled": False, "articles": queue, "feed_errors": errors}
+               "publishing_enabled": False, "articles": queue, "feed_errors": errors,
+               "source_diagnostics": source_diagnostics or []}
     (outdir / "review_queue.json").write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
     lines = ["# News review queue", "", "> No posts were published or sent to Buffer/X.",
@@ -228,9 +230,18 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
     if not queue:
         lines += ["No eligible stories found. Check feed availability and logs.", ""]
     for index, item in enumerate(queue, 1):
-        lines += [f"## {index}. {item['title']}", "", f"- Category: {item['category']}", f"- Source: {item['source']}",
+        lines += [f"## {index}. {item['title']}", "", f"- Source-assigned category (unverified): {item['category']}", f"- Source: {item['source']}",
                   f"- Published: {item['published_at']}", f"- Article: {item['link']}",
                   "- Status: NEEDS_HUMAN_REVIEW", "", "```text", item["draft"], "```", ""]
     if errors:
         lines += ["## Feed errors", "", *[f"- {error}" for error in errors], ""]
+    if source_diagnostics:
+        lines += ["## Source health", "",
+                  "Counts reflect parsed RSS entries and fresh entries within the lookback window.",
+                  "They do not confirm that a story belongs in the source's category.", ""]
+        for stat in source_diagnostics:
+            lines.append(f"- {stat['source']} [{stat['category']}]: "
+                         f"{stat['parsed_articles']} parsed / {stat['recent_articles']} recent"
+                         f" — {stat['status']}")
+        lines.append("")
     (outdir / "review_queue.md").write_text("\n".join(lines), encoding="utf-8")

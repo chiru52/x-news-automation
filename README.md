@@ -72,3 +72,11 @@ These feeds are independently fetched and may return a network error or unsuppor
 Buffer Free supports up to **10 scheduled posts in the X queue at the same time**, not just 10 per day/month. Queue slots reopen once posts publish. Buffer Free API limits also apply (currently 1,000 requests/30 days for one connected channel, plus rolling shorter windows). The present repository has **no Buffer integration** and therefore consumes zero Buffer API requests. Nine drafts a day is an editorial starting point, not a platform maximum.
 
 If you ran earlier versions today, existing local-day history counts towards nine; the new collector may only produce the unused balance, not nine additional drafts. We prioritize verified, original, useful posts, and stop before publishing anything automatically. X disallows duplicate/spam and certain kinds of automated trend posting. Respect publishers' feed and redistribution terms and cite/link original articles.
+
+## Source diagnostics and editorial classification checks (Stage 1D)
+
+The review artifact now records each feed's **parsed article count, recent article count, and status** in `review_queue.json` and `review_queue.md`. A feed that returns zero fresh items is highlighted separately from a network error; a successful fetch does not mean its topic labels are accurate.
+
+The TechCrunch source used for SaaS/startup coverage is narrowed from the general TechCrunch news RSS to the TechCrunch **Startups** RSS. That feed can still include venture funding or hardware-startup articles; every item's category remains a **source-assigned, unverified label**, and every draft is **not publishable** without editorial review.
+
+Do not conclude from a successful workflow that all fourteen feeds provide recent relevant stories; review the diagnostics and click through to original sources. No source articles are reproduced in full. The AI and publishing integrations remain disabled.

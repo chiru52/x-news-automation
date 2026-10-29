@@ -176,5 +176,27 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(all(row["category"] in settings["category_order"] for row in sources))
 
 
+    def test_review_output_includes_feed_health_and_unverified_category(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "out"
+            stats = [{"source": "Example RSS", "category": "saas", "parsed_articles": 13,
+                      "recent_articles": 6, "status": "ok"}]
+            render_outputs([article(1)], out, NOW, [], stats)
+            data = json.loads((out / "review_queue.json").read_text(encoding="utf-8"))
+            self.assertEqual(data["source_diagnostics"], stats)
+            self.assertFalse(data["articles"][0]["category_verified"])
+            text = (out / "review_queue.md").read_text(encoding="utf-8")
+            self.assertIn("Source health", text)
+            self.assertIn("13 parsed / 6 recent", text)
+            self.assertIn("Source-assigned category (unverified)", text)
+
+    def test_startup_feed_is_topic_specific(self):
+        sources = json.loads(Path("config/sources.json").read_text(encoding="utf-8"))
+        source = next(item for item in sources if item["name"] == "TechCrunch - Startups")
+        self.assertEqual(source["category"], "saas")
+        self.assertEqual(source["url"], "https://techcrunch.com/category/startups/feed/")
+
+
+
 if __name__ == "__main__":
     unittest.main()
