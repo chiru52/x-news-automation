@@ -8,8 +8,16 @@ on:
         type: boolean
         required: true
         default: false
+      selection_strategy:
+        description: 'Quality-first prioritizes AI/technology/SaaS; preferred-first honors your article choice'
+        type: choice
+        required: true
+        default: quality_first
+        options:
+          - quality_first
+          - preferred_first
       article_index:
-        description: 'Preferred candidate (1 through 9); if unavailable, try other shortlisted articles'
+        description: 'Preferred candidate (1-9); used first only in preferred-first mode'
         type: choice
         required: true
         default: '1'
@@ -71,6 +79,8 @@ jobs:
             --output "$RUNNER_TEMP/copilot-story-history.json"
       - name: Check unused, fresh shortlisted articles for publisher evidence (no AI call)
         id: source
+        env:
+          SELECTION_STRATEGY: ${{ inputs.selection_strategy }}
         shell: bash
         run: |
           python -m newsbot.copilot_review research \
@@ -78,6 +88,7 @@ jobs:
             --index "$STORY_INDEX" \
             --output "$RUNNER_TEMP/copilot-evidence.json" \
             --history "$RUNNER_TEMP/copilot-story-history.json" \
+            --strategy "$SELECTION_STRATEGY" \
             --summary "$GITHUB_STEP_SUMMARY"
           selected="$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["selected_index"]))' "$RUNNER_TEMP/copilot-evidence.json")"
           echo "selected_index=$selected" >> "$GITHUB_OUTPUT"

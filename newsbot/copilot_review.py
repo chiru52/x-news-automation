@@ -13,7 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .source_research import fetch_evidence
-from .story_history import choose_story_order, story_duplicate
+from .story_history import choose_story_order, story_duplicate, normalize_url
 from .writing import approximate_x_length
 
 
@@ -64,13 +64,16 @@ def make_prompt(queue: dict, index: int, evidence: dict | None = None) -> str:
     """Prompt from untrusted RSS fields. Explicitly prohibits invented facts."""
     item = _review_item(queue, index)
     evidence = check_evidence(item, evidence)
+    public_url = normalize_url(str(item["link"])) or str(item["link"])
     metadata = {
         "rss_headline_unverified": str(item.get("title") or "")[:400],
         "rss_summary_unverified": str(item.get("summary") or "")[:600],
         "linked_article_url": str(item["link"])[:1500],
+        "shareable_source_url": public_url[:1500],
         "rss_feed_name_not_necessarily_author": str(item.get("source") or "")[:120],
         "rss_publication_date_unverified": str(item.get("published_at") or "")[:80],
         "topic_hint_unverified": str(item.get("category") or "")[:40],
+        "rss_company_or_subject_hint_unverified": str(item.get("title") or "")[:160],
         "publisher_article_access_status": evidence["status"],
         "publisher_article_access_reason": evidence.get("reason"),
         "publisher_paragraphs_unverified": evidence["paragraphs"],
@@ -92,16 +95,27 @@ def make_prompt(queue: dict, index: int, evidence: dict | None = None) -> str:
         "evidence cited by [P1], [P2] etc ONLY in the EVIDENCE and "
         "WHY_IT_MATTERS lines; never place [P#] markers in DRAFT. "
         "Paraphrase, never copy long source passages or invent significance.\n"
+        "Name the actual company/product unambiguously in DRAFT, preferably its "
+        "full company name from the publisher text. Avoid vague company references "
+        "such as 'Pinnacle' when the evidence establishes a fuller name. "
+        "Never guess a legal company name; WITHHOLD if the identity is ambiguous.\n"
+        "Explain a concrete, publisher-supported consequence or tradeoff relevant "
+        "to AI, technology users, founders, or businesses rather than merely "
+        "restating two financial metrics. If useful significance is unavailable, "
+        "output DRAFT: WITHHELD.\n"
         "Avoid financial advice, guaranteed returns, promotional pitches and "
         "clickbait. Preserve rumors and uncertainty in the wording.\n"
-        "Use the original article URL for a source link. Aim for <= 250 "
+        "Use shareable_source_url (tracking parameters removed) as the exact "
+        "URL in DRAFT and SOURCE. Do not add new hosts, domains, or facts. "
+        "The original linked_article_url is ONLY for publisher evidence. "
+        "Aim for <= 250 "
         "approximate X characters including URL; official X counting may differ.\n"
         "Return only these fields as plain text (no JSON, no Markdown fences):\n"
         "VERIFICATION: NOT VERIFIED (one publisher source, if any)\n"
         "EVIDENCE: <1-3 claims cited to [P#], or NONE>\n"
         "WHY_IT_MATTERS: <only source-supported context, or WITHHELD>\n"
         "DRAFT: <one supported original post with source URL, or WITHHELD>\n"
-        "SOURCE: <original linked article URL>\n"
+        "SOURCE: <shareable_source_url, unchanged>\n"
         "REVIEW_CHECKS: <short list of specific facts the editor must verify>\n"
         "Do not submit, schedule, send, or post anything. Do not use tools.\n\n"
         "UNTRUSTED_RSS_JSON_START\n"
@@ -128,14 +142,15 @@ def evaluate_review(item: dict, model_output: str, evidence: dict) -> dict:
     citation markers; no missing source links or facts are invented or added.
     """
     fields = {name: _model_field(model_output, name) for name in FIELD_NAMES}
-    source_url = str(item["link"])
+    original_url = str(item["link"])
+    source_url = normalize_url(original_url) or original_url
     issues: list[str] = []
     for name in ("VERIFICATION", "DRAFT", "SOURCE", "REVIEW_CHECKS"):
         if not fields[name]:
             issues.append("missing " + name + " field")
     if not fields["VERIFICATION"].upper().startswith("NOT VERIFIED"):
         issues.append("response must explicitly say NOT VERIFIED")
-    if fields["SOURCE"] != source_url:
+    if fields["SOURCE"] not in (source_url, original_url):
         issues.append("SOURCE field does not match original article URL")
 
     if evidence["status"] == "extracted_unverified":
@@ -159,6 +174,10 @@ def evaluate_review(item: dict, model_output: str, evidence: dict) -> dict:
 
     withheld = fields["DRAFT"].upper() == "WITHHELD"
     clean = "" if withheld else REFERENCE_IN_DRAFT.sub(" ", fields["DRAFT"])
+    # Only remove known tracking parameters from the EXACT original RSS URL.
+    # Do not guess a better host, follow a redirect, or append a missing URL.
+    if clean and source_url != original_url:
+        clean = clean.replace(original_url, source_url)
     clean = re.sub(r"[ \t]{2,}", " ", clean).strip()
     if not withheld:
         if not clean:
@@ -201,6 +220,7 @@ def render_summary(queue: dict, index: int, model_output: str,
     raw = html.escape(model_output, quote=True)
     heading = html.escape(str(item.get("title") or "Untitled"), quote=True)
     source = html.escape(str(item["link"]), quote=True)
+    shareable = normalize_url(str(item["link"])) or str(item["link"])
     source_note = (
         "Extracted " + str(len(evidence["paragraphs"])) +
         " short unverified paragraphs (one site, not independently checked)"
@@ -215,6 +235,7 @@ def render_summary(queue: dict, index: int, model_output: str,
         "",
         f"**Candidate {index}:** {heading}",
         f"**Source URL:** {source}",
+        "**Shareable source URL:** " + html.escape(shareable, quote=True),
         "**Publisher article extraction:** " + html.escape(source_note, quote=True),
         "",
         "## Clean proposed X post (manual editing required)",
@@ -273,7 +294,8 @@ def render_summary(queue: dict, index: int, model_output: str,
 
 def select_research_evidence(queue: dict, preferred_index: int,
                              fetcher=fetch_evidence,
-                             history: dict | None = None) -> dict:
+                             history: dict | None = None,
+                             strategy: str = "preferred_first") -> dict:
     """Find one unused, recent, relevant article without paying for duplicates.
 
     When history is supplied (as in the GitHub workflow), verify it before
@@ -286,7 +308,7 @@ def select_research_evidence(queue: dict, preferred_index: int,
         order = [preferred_index] + [i for i in candidates if i != preferred_index]
         skipped = []
     else:
-        order = choose_story_order(queue, preferred_index, history)
+        order = choose_story_order(queue, preferred_index, history, strategy=strategy)
         skipped = [{
             "index": i, "status": "skipped",
             "reason": ("already_reviewed" if story_duplicate(
@@ -319,6 +341,7 @@ def select_research_evidence(queue: dict, preferred_index: int,
     chosen["attempts"] = attempts
     chosen["history_count"] = history.get("count", len(history["stories"])) if history else None
     chosen["eligible_count"] = len(order)
+    chosen["selection_strategy"] = strategy
     return chosen
 
 
@@ -342,7 +365,10 @@ def write_source_summary(evidence: dict, path: str) -> None:
         status = a["status"] if a["status"] in {
             "unavailable", "extracted_unverified", "skipped"} else "invalid"
         lines.append(f"| {int(a['index'])} | {status} | {reason} |")
-    lines += ["", "**Previously reviewed AI Drafts:** " +
+    lines += ["", "**Editorial selection strategy:** " +
+              ("Quality-first (AI/tech/SaaS)" if evidence.get("selection_strategy") == "quality_first"
+               else "Preferred article first"),
+              "**Previously reviewed AI Drafts:** " +
               str(evidence.get("history_count", "not checked")),
               "**Unused, fresh shortlist candidates:** " +
               str(evidence.get("eligible_count", "unknown")),
@@ -365,11 +391,14 @@ def main() -> int:
     p.add_argument("--evidence")
     p.add_argument("--summary")
     p.add_argument("--history")
+    p.add_argument("--strategy", choices=("preferred_first", "quality_first"),
+                   default="preferred_first")
     args = p.parse_args()
     queue = json.loads(Path(args.queue).read_text(encoding="utf-8"))
     if args.command == "research":
         history = json.loads(Path(args.history).read_text(encoding="utf-8")) if args.history else None
-        fetched = select_research_evidence(queue, args.index, history=history)
+        fetched = select_research_evidence(queue, args.index, history=history,
+                                           strategy=args.strategy)
         target = Path(args.output)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(fetched, ensure_ascii=False), encoding="utf-8")
