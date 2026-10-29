@@ -218,10 +218,28 @@ export async function handleRequest(request, env, ctx, transport=fetch) {
   if (request.method==='GET' && pathname==='/dashboard.css') return response(STYLE,200,'text/css; charset=utf-8');
   if (request.method==='GET' && pathname==='/dashboard.js') return response(SCRIPT,200,'application/javascript; charset=utf-8');
   if (request.method==='GET' && pathname==='/api/inbox') {
+    let stage='repository';
     try {
       await assertPrivate(env,transport);
+      stage='drafts';
       return response({issues:await readInbox(env,transport),publication_authorized:false});
-    } catch (_) { return fail(503,'Cannot safely read private GitHub AI Drafts'); }
+    } catch (error) {
+      // Authenticated-editor diagnostics: fixed categories only; never echo
+      // exception text, token, repository content, URLs, or response bodies.
+      const status=/^GitHub API error ([45][0-9]{2})$/.exec(String(error?.message || ''));
+      const reason=status ? 'github_http_error' :
+        error?.message==='Repository must be private' ? 'private_repository_check' :
+        ['Invalid private AI Issue','Invalid publisher URL','Unsafe publisher URL']
+          .includes(error?.message) ? 'draft_format_error' :
+        error?.message==='Private AI history exceeds review limit' ? 'draft_limit' :
+        error?.message==='Malformed GitHub list' ? 'unexpected_github_response' :
+        'read_error';
+      return response({
+        error:'Cannot safely read private GitHub AI Drafts',
+        diagnostic:{stage,reason,...(status?{github_status:Number(status[1])}:{})},
+        publication_authorized:false
+      },503);
+    }
   }
   if (request.method==='POST' && pathname==='/api/review') {
     const origin = request.headers.get('Origin');
