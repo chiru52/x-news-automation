@@ -40,7 +40,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      PREVIEW_DIR: ${{ runner.temp }}/copilot-preview
+      PREVIEW_DIR: output/copilot-preview
       STORY_INDEX: ${{ inputs.article_index }}
       PUBLISH_ENABLED: 'false'
     steps:
