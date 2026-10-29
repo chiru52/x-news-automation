@@ -55,8 +55,8 @@
     "category": "markets"
   },
   {
-    "name": "TechCrunch - Startups and Apps",
-    "url": "https://techcrunch.com/feed/",
+    "name": "TechCrunch - Startups",
+    "url": "https://techcrunch.com/category/startups/feed/",
     "category": "saas"
   },
   {
