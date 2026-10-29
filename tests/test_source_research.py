@@ -7,7 +7,8 @@ from unittest.mock import patch
 from newsbot.source_research import (
     MAX_HTML_BYTES, fetch_evidence, extract_paragraphs, public_article_host
 )
-from newsbot.copilot_review import make_prompt, render_summary, check_evidence
+from newsbot.copilot_review import (make_prompt, render_summary, check_evidence,
+                                     select_research_evidence, write_source_summary)
 
 
 URL = "https://finance.yahoo.com/news/test-ai-market-story-2026"
@@ -189,6 +190,61 @@ class SourceRetrievalTests(unittest.TestCase):
         self.assertIn("inputs.approve_credit_use == true", text)
         self.assertNotIn("\n  schedule:", text)
         self.assertNotIn("api.x.com", text)
+
+
+    def test_fallback_selects_one_usable_source_and_halts(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["articles"] = [
+            dict(data["articles"][0], link=URL.replace("test-ai-market-story-2026", f"story-{i}"))
+            for i in range(1, 5)
+        ]
+        visited = []
+        def fetch(url):
+            visited.append(url)
+            if url.endswith("story-3"):
+                return {"status": "extracted_unverified", "reason": None,
+                        "source_url": url, "paragraphs": [
+                            {"id": "P1", "text": PARA1}, {"id": "P2", "text": PARA2}]}
+            return {"status": "unavailable", "reason": "redirect_blocked",
+                    "source_url": url, "paragraphs": []}
+        result = select_research_evidence(data, 1, fetcher=fetch)
+        self.assertEqual(result["selected_index"], 3)
+        self.assertEqual(len(result["attempts"]), 3)
+        self.assertEqual(len(visited), 3)
+        self.assertEqual(result["status"], "extracted_unverified")
+        prompt = make_prompt(data, result["selected_index"], result)
+        self.assertIn('"id": "P1"', prompt)
+
+    def test_if_all_sources_unavailable_result_skips_copilot(self):
+        data = json.loads(json.dumps(SAMPLE))
+        data["articles"].append(dict(data["articles"][0],
+                                     link="https://techcrunch.com/startup/123"))
+        def blocked(url):
+            return {"status": "unavailable", "reason": "no_reliable_article_text",
+                    "source_url": url, "paragraphs": []}
+        result = select_research_evidence(data, 2, fetcher=blocked)
+        self.assertEqual(result["selected_index"], 2)
+        self.assertEqual(result["status"], "unavailable")
+        self.assertEqual([x["index"] for x in result["attempts"]], [2, 1])
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as folder:
+            out = Path(folder) / "summary.md"
+            write_source_summary(result, str(out))
+            summary = out.read_text()
+            self.assertIn("no_reliable_article_text", summary)
+            self.assertIn("Copilot step will be skipped", summary)
+
+    def test_fallback_still_never_schedules_more_than_one_ai_call(self):
+        from pathlib import Path
+        workflow = Path(".github/workflows/copilot-one-draft.yml").read_text()
+        self.assertEqual(workflow.count("copilot -p "), 1)
+        self.assertIn('echo "selected_index=$selected" >> "$GITHUB_OUTPUT"', workflow)
+        self.assertEqual(workflow.count('steps.source.outputs.selected_index'), 2)
+        self.assertIn("--summary", workflow)
+        self.assertIn("inputs.approve_credit_use == true", workflow)
+        self.assertNotIn("\n  schedule:", workflow)
+
 
 
 if __name__ == "__main__":

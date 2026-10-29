@@ -9,7 +9,7 @@ on:
         required: true
         default: false
       article_index:
-        description: 'Which candidate from fresh preview? (1 through 9)'
+        description: 'Preferred candidate (1 through 9); if unavailable, try other shortlisted articles'
         type: choice
         required: true
         default: '1'
@@ -56,21 +56,24 @@ jobs:
         shell: bash
         run: |
           python -m newsbot --preview --output "$PREVIEW_DIR"
-      - name: Retrieve one bounded publisher article (no Copilot request yet)
+      - name: Check up to nine bounded publisher articles, select one (no AI call yet)
         id: source
         shell: bash
         run: |
           python -m newsbot.copilot_review research \
             --queue "$PREVIEW_DIR/review_queue.json" \
             --index "$STORY_INDEX" \
-            --output "$RUNNER_TEMP/copilot-evidence.json"
+            --output "$RUNNER_TEMP/copilot-evidence.json" \
+            --summary "$GITHUB_STEP_SUMMARY"
+          selected="$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["selected_index"]))' "$RUNNER_TEMP/copilot-evidence.json")"
+          echo "selected_index=$selected" >> "$GITHUB_OUTPUT"
           if python -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["status"] == "extracted_unverified" else 1)' "$RUNNER_TEMP/copilot-evidence.json"; then
             echo 'usable=true' >> "$GITHUB_OUTPUT"
           else
             echo 'usable=false' >> "$GITHUB_OUTPUT"
             echo '## No usable publisher article text — Copilot request skipped' >> "$GITHUB_STEP_SUMMARY"
-            echo 'The article was inaccessible, unsupported, blocked, or did not provide enough reliable paragraphs.' >> "$GITHUB_STEP_SUMMARY"
-            echo 'No draft was generated and no AI credits were spent by this workflow step. Choose another candidate on a new run.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'All shortlisted articles were inaccessible, unsupported, blocked, or did not provide enough reliable paragraphs.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No draft was generated and no AI credits were spent by this workflow step. Do not retry blindly; read the diagnostics table above first.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Prepare exactly one grounded candidate prompt
         if: ${{ steps.source.outputs.usable == 'true' }}
@@ -78,7 +81,7 @@ jobs:
         run: |
           python -m newsbot.copilot_review prepare \
             --queue "$PREVIEW_DIR/review_queue.json" \
-            --index "$STORY_INDEX" \
+            --index "${{ steps.source.outputs.selected_index }}" \
             --evidence "$RUNNER_TEMP/copilot-evidence.json" \
             --output "$RUNNER_TEMP/copilot-prompt.txt"
       - uses: actions/setup-node@v4
@@ -115,7 +118,7 @@ jobs:
         run: |
           python -m newsbot.copilot_review finalize \
             --queue "$PREVIEW_DIR/review_queue.json" \
-            --index "$STORY_INDEX" \
+            --index "${{ steps.source.outputs.selected_index }}" \
             --model-output "$RUNNER_TEMP/copilot-response.txt" \
             --evidence "$RUNNER_TEMP/copilot-evidence.json" \
             --output "$RUNNER_TEMP/copilot-review.md"
