@@ -56,19 +56,40 @@ jobs:
         shell: bash
         run: |
           python -m newsbot --preview --output "$PREVIEW_DIR"
-      - name: Prepare exactly one candidate prompt
+      - name: Retrieve one bounded publisher article (no Copilot request yet)
+        id: source
+        shell: bash
+        run: |
+          python -m newsbot.copilot_review research \
+            --queue "$PREVIEW_DIR/review_queue.json" \
+            --index "$STORY_INDEX" \
+            --output "$RUNNER_TEMP/copilot-evidence.json"
+          if python -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["status"] == "extracted_unverified" else 1)' "$RUNNER_TEMP/copilot-evidence.json"; then
+            echo 'usable=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'usable=false' >> "$GITHUB_OUTPUT"
+            echo '## No usable publisher article text — Copilot request skipped' >> "$GITHUB_STEP_SUMMARY"
+            echo 'The article was inaccessible, unsupported, blocked, or did not provide enough reliable paragraphs.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No draft was generated and no AI credits were spent by this workflow step. Choose another candidate on a new run.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Prepare exactly one grounded candidate prompt
+        if: ${{ steps.source.outputs.usable == 'true' }}
         shell: bash
         run: |
           python -m newsbot.copilot_review prepare \
             --queue "$PREVIEW_DIR/review_queue.json" \
             --index "$STORY_INDEX" \
+            --evidence "$RUNNER_TEMP/copilot-evidence.json" \
             --output "$RUNNER_TEMP/copilot-prompt.txt"
       - uses: actions/setup-node@v4
+        if: ${{ steps.source.outputs.usable == 'true' }}
         with:
           node-version: '22'
       - name: Install GitHub Copilot CLI
+        if: ${{ steps.source.outputs.usable == 'true' }}
         run: npm install -g @github/copilot
       - name: Make ONE Copilot request (30 AI credit soft session limit)
+        if: ${{ steps.source.outputs.usable == 'true' }}
         shell: bash
         timeout-minutes: 5
         env:
@@ -89,15 +110,18 @@ jobs:
             --silent > "$RUNNER_TEMP/copilot-response.txt"
           test -s "$RUNNER_TEMP/copilot-response.txt"
       - name: Show unverified candidate in GitHub Actions Summary
+        if: ${{ steps.source.outputs.usable == 'true' }}
         shell: bash
         run: |
           python -m newsbot.copilot_review finalize \
             --queue "$PREVIEW_DIR/review_queue.json" \
             --index "$STORY_INDEX" \
             --model-output "$RUNNER_TEMP/copilot-response.txt" \
+            --evidence "$RUNNER_TEMP/copilot-evidence.json" \
             --output "$RUNNER_TEMP/copilot-review.md"
           cat "$RUNNER_TEMP/copilot-review.md" >> "$GITHUB_STEP_SUMMARY"
       - name: Upload editorial result only (no source tokens)
+        if: ${{ steps.source.outputs.usable == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: copilot-editorial-preview-${{ github.run_id }}
