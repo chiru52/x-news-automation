@@ -198,3 +198,13 @@ The workflow requires `workflow_dispatch`, checks the explicit credit-use checkb
 The output is displayed only as HTML-escaped text, marked **NOT VERIFIED** and **NOT APPROVED**, with publisher link, and without any automated posting. The model is **not asked to browse external articles**, because this first test disables web tools for security and predictability. It can only draft from unverified RSS metadata. High-quality independent research and source verification require a later separately reviewed step.
 
 **Do not confuse Stage 14 (manual ChatGPT PR #13, not merged) with this alternative:** this PR implements a separate GitHub Copilot path and does not depend on that PR.
+
+## Copilot authentication update: no personal token required
+
+The initial manually triggered Copilot preview failed with **missing token**, then **Copilot CLI authentication failed** for the fine-grained user token. GitHub's latest documentation now supports using the **built-in GitHub Actions `GITHUB_TOKEN`** for Copilot CLI in personally owned repositories, with usage billed to the repository owner's Copilot seat: https://docs.github.com/en/copilot/concepts/agent-capabilities/agent-powered-workflows-and-operations/copilot-cli-in-github-actions .
+
+This workflow now grants `copilot-requests: write` alongside `contents: read`, and injects only the short-lived `GITHUB_TOKEN: ${{ github.token }}` into the Copilot CLI step. There is no PAT, secret check, organization, repository transfer, or additional AI API needed. **The previously configured `COPILOT_PERSONAL_TOKEN` is no longer read**; the user may revoke the old personal PAT and remove the unused GitHub Actions secret after confirming this workflow is active.
+
+The task remains `workflow_dispatch` ONLY, with `approve_credit_use` unchecked by default, `--preview` quota protection, ONE model invocation maximum, `--max-ai-credits=30` session soft limit, restricted Copilot tool use, no X/Buffer publishing, and an editorial-only Actions Summary. **Merging this PR does not call Copilot or spend AI credits.** The user must check billing/spending settings and opt in for each manual test; model requests may still be billed to the user's allowance.
+
+If the user later chooses an organization-owned repository, `GITHUB_TOKEN` usage is instead billed directly to that organization, provided its **Allow use of Copilot CLI billed to the organization** policy is enabled. Do not transfer this repository just to solve the old PAT issue.
