@@ -7,6 +7,7 @@ or automatically fact-checked X post.
 from __future__ import annotations
 
 import re
+from urllib.parse import urlsplit
 
 URL = re.compile(r"https?://[^\s]+", re.I)
 SPACE = re.compile(r"\s+")
@@ -53,18 +54,22 @@ def suggest_post(article) -> dict:
         raise ValueError("Cannot draft without an RSS headline")
     source = _one_line(article.source, 60)
     url = _one_line(article.link, 3000)
-    if not URL.fullmatch(url):
+    parts = urlsplit(url)
+    if not URL.fullmatch(url) or parts.scheme not in ("https", "http") or not parts.hostname:
         raise ValueError("Cannot draft without an HTTP(S) source URL")
     if not source:
         source = "RSS feed"
-    # Explicit attribution reduces the risk of presenting newswire/rumor
-    # headlines as claims independently verified by this bot.
-    suffix = f"\n\nVia {source}: {url}"
+    # The RSS feed may syndicate external publishers. Attribution therefore
+    # identifies the ACTUAL linked website rather than claiming the feed owns it.
+    linked_site = parts.hostname.lower().removeprefix("www.")
+    suffix = f"\n\nRead at {linked_site}: {url}"
     budget = HEADROOM - approximate_x_length(suffix)
     headline, shortened = _shorten_headline(title, budget)
     draft = headline + suffix
     assert approximate_x_length(draft) <= HEADROOM
-    warnings = ["Read the original source; RSS headline has not been fact-checked."]
+    warnings = ["Read the linked article; RSS headline has not been fact-checked."]
+    if linked_site not in source.lower().replace(" ", ""):
+        warnings.append("The RSS feed may syndicate another publisher; verify the linked site's attribution.")
     if article.category == "markets":
         warnings.append("Market-sensitive claims: confirm figures, timing and source.")
     if article.category == "saas":
@@ -77,7 +82,9 @@ def suggest_post(article) -> dict:
         warnings.append("Headline shortened: verify omitted context and qualifiers.")
     return {
         "text": draft,
-        "method": "rule_based_attributed_rss_headline",
+        "method": "rule_based_link_attributed_rss_headline",
+        "rss_feed_name": source,
+        "linked_article_site": linked_site,
         "approx_x_length": approximate_x_length(draft),
         "limit_approximate": True,
         "headline_shortened": shortened,
