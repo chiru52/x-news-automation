@@ -43,6 +43,7 @@ def normalize_url(url: str) -> str:
         (k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True)
         if not k.lower().startswith("utm_") and k.lower() not in {
             "fbclid", "gclid", "mc_cid", "mc_eid", "ref", "source", "guccounter",
+            ".tsrc", "tsrc", "cmpid", "guce_referrer",
         }
     ]
     return urlunsplit((parsed.scheme.lower(), host,
@@ -110,8 +111,36 @@ def read_history(repo: str, runner=subprocess.run) -> dict:
     return history_from_issues(data)
 
 
-def choose_story_order(queue: dict, preferred_index: int, history: dict) -> list[int]:
-    """Honor the preferred article if eligible; rank remaining by score/date.
+# Selection is an editorial heuristic, never a statement of article quality
+# or factual correctness. Prefer new products, technology and useful SaaS.
+QUALITY_HINTS = re.compile(
+    r"\b(?:artificial intelligence|ai|llm|model|machine learning|"
+    r"cybersecurity|security|developer|robotics|cloud|semiconductor|"
+    r"software|saas|automation|open source|open-source|gpu)\b", re.I
+)
+LAUNCH_HINTS = re.compile(r"\b(?:launch(?:es|ed)?|unveil(?:s|ed)?|releas(?:es|ed)?|"
+                          r"introduc(?:es|ed)?|ships?|built|builds?|open.source)\b", re.I)
+ROUTINE_MARKET_HINTS = re.compile(
+    r"\b(?:stock flat|share price|stock price|q[1-4] earnings|quarterly earnings|"
+    r"futures|pre.market|market open|market close)\b", re.I
+)
+FUNDING_HINTS = re.compile(r"\b(?:raises? \$|series [a-f]|funding round)\b", re.I)
+
+
+def editorial_priority(item: dict) -> int:
+    """Bounded story preference, based only on unverified RSS metadata."""
+    category = str(item.get("category", "")).lower()
+    headline = str(item.get("title", ""))[:400]
+    base = {"technology": 45, "saas": 38, "markets": 3}.get(category, 0)
+    return (base + (13 if QUALITY_HINTS.search(headline) else 0) +
+            (15 if LAUNCH_HINTS.search(headline) else 0) -
+            (14 if FUNDING_HINTS.search(headline) else 0) -
+            (28 if ROUTINE_MARKET_HINTS.search(headline) else 0))
+
+
+def choose_story_order(queue: dict, preferred_index: int, history: dict,
+                       strategy: str = "preferred_first") -> list[int]:
+    """Order unused fresh stories; optionally prioritize technology/SaaS first.
 
     Use the *existing* RSS topical/relevance filter. Fail closed on malformed
     history. Already-selected news is at most 36h old, by design.
@@ -119,6 +148,8 @@ def choose_story_order(queue: dict, preferred_index: int, history: dict) -> list
     if (not isinstance(history, dict) or history.get("review_only") is not True
             or not isinstance(history.get("stories"), list)):
         raise ValueError("Safe GitHub AI draft history is required")
+    if strategy not in ("preferred_first", "quality_first"):
+        raise ValueError("Unknown editorial selection strategy")
     articles = queue["articles"]
     if not isinstance(articles, list) or not 1 <= preferred_index <= len(articles) <= 9:
         raise ValueError("Invalid preview article index")
@@ -140,9 +171,13 @@ def choose_story_order(queue: dict, preferred_index: int, history: dict) -> list
         # Only use numerical scores; reject NaN, infinite or absurd values.
         if type(raw_score) not in (int, float) or not -10000 <= raw_score <= 10000:
             raw_score = 0
-        choices.append((idx, float(raw_score), published.timestamp()))
+        choices.append((idx, float(raw_score), published.timestamp(), editorial_priority(item)))
+    if strategy == "quality_first":
+        # Keep source relevance secondary to the tech/SaaS preference.
+        ranked = sorted(choices, key=lambda v: (-v[3], -v[1], -v[2], v[0]))
+        return [idx for idx, *_ in ranked]
     ranked = sorted(choices, key=lambda v: (-v[1], -v[2], v[0]))
-    order = [idx for idx, _, _ in ranked]
+    order = [idx for idx, *_ in ranked]
     if preferred_index in order:
         order.remove(preferred_index)
         return [preferred_index] + order
