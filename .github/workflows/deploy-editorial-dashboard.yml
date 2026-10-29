@@ -1,0 +1,47 @@
+name: Deploy private editorial dashboard (manual approval only)
+
+on:
+  workflow_dispatch:
+    inputs:
+      approve_deployment:
+        description: 'I approve a Cloudflare deployment of the private editorial dashboard'
+        required: true
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: ${{ inputs.approve_deployment == true }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run hosted dashboard offline tests
+        run: node --test tests/hosted-worker.test.mjs
+      - name: Check configured Cloudflare deployment secrets
+        shell: bash
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [[ "$HAS_TOKEN" != "true" || "$HAS_ACCOUNT" != "true" ]]; then
+            echo 'Cloudflare deployment credentials are not configured.'
+            exit 1
+          fi
+      - name: Deploy Worker (never deploy on merge, PR or schedule)
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.toml
+      - name: Reminder — Access and Worker secrets required
+        run: |
+          echo 'Deployment is NOT readiness for public traffic.'
+          echo 'Configure Worker-level Cloudflare Access and secret bindings before use.'
+          echo 'The app rejects requests until verified Access, editor email, audience, origin, and GitHub token match.'
