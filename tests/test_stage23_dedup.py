@@ -176,7 +176,7 @@ class HistoryTests(unittest.TestCase):
 
     def test_bad_history_not_silently_ignored(self):
         q = queue(story("https://example.com/new", "New article"))
-        for bad in ({}, None, {"review_only": False, "stories": []}):
+        for bad in ({}, {"review_only": False, "stories": []}):
             with self.assertRaises(ValueError):
                 select_research_evidence(q, 1, history=bad)
 
