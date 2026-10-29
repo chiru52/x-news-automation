@@ -88,7 +88,8 @@ def make_prompt(queue: dict, index: int, evidence: dict | None = None) -> str:
         "no specific article paragraph supports useful insight, output DRAFT: WITHHELD. "
         "Never fill the gap by only rewriting the RSS headline.\n"
         "If paragraphs are available, make an original observation with concrete "
-        "evidence cited by [P1], [P2] etc in the EVIDENCE line. "
+        "evidence cited by [P1], [P2] etc ONLY in the EVIDENCE and "
+        "WHY_IT_MATTERS lines; never place [P#] markers in DRAFT. "
         "Paraphrase, never copy long source passages or invent significance.\n"
         "Avoid financial advice, guaranteed returns, promotional pitches and "
         "clickbait. Preserve rumors and uncertainty in the wording.\n"
@@ -108,40 +109,104 @@ def make_prompt(queue: dict, index: int, evidence: dict | None = None) -> str:
     )
 
 
-def render_summary(queue: dict, index: int, model_output: str, evidence: dict | None = None) -> str:
-    """Escape AI text; never convert it to approved, publishable content."""
+FIELD_NAMES = ("VERIFICATION", "EVIDENCE", "WHY_IT_MATTERS", "DRAFT", "SOURCE", "REVIEW_CHECKS")
+PARAGRAPH_REFERENCE = re.compile(r"\[(P\d+)\]")
+REFERENCE_IN_DRAFT = re.compile(r"[ \t]*(?:\[(?:P\d+)\][ \t]*)+")
+
+
+def _model_field(output: str, name: str) -> str:
+    """Return a single-line field from the untrusted AI response."""
+    match = re.search(r"(?im)^" + re.escape(name) + r":[ \t]*(.*)$", output)
+    return match.group(1).strip() if match else ""
+
+
+def evaluate_review(item: dict, model_output: str, evidence: dict) -> dict:
+    """Check formatting and draft usability, NOT factual truth or approval.
+
+    All clean-up is limited to stripping the model's research-only [P#]
+    citation markers; no missing source links or facts are invented or added.
+    """
+    fields = {name: _model_field(model_output, name) for name in FIELD_NAMES}
+    source_url = str(item["link"])
+    issues: list[str] = []
+    for name in ("VERIFICATION", "DRAFT", "SOURCE", "REVIEW_CHECKS"):
+        if not fields[name]:
+            issues.append("missing " + name + " field")
+    if not fields["VERIFICATION"].upper().startswith("NOT VERIFIED"):
+        issues.append("response must explicitly say NOT VERIFIED")
+    if fields["SOURCE"] != source_url:
+        issues.append("SOURCE field does not match original article URL")
+
+    if evidence["status"] == "extracted_unverified":
+        for name in ("EVIDENCE", "WHY_IT_MATTERS"):
+            if not fields[name]:
+                issues.append("missing " + name + " field")
+        source_ids = {p["id"] for p in evidence["paragraphs"]}
+        cited = set(PARAGRAPH_REFERENCE.findall(
+            fields["EVIDENCE"] + " " + fields["WHY_IT_MATTERS"] +
+            " " + fields["DRAFT"]))
+        if cited - source_ids:
+            issues.append("unknown source paragraph citation")
+        if not (set(PARAGRAPH_REFERENCE.findall(fields["EVIDENCE"])) & source_ids):
+            issues.append("evidence claims lack publisher paragraph references")
+        if fields["WHY_IT_MATTERS"].upper() == "WITHHELD" and fields["DRAFT"].upper() != "WITHHELD":
+            issues.append("model provided post without supported significance")
+    else:
+        cited = set()
+        if evidence.get("reason") != "not_collected" and fields["DRAFT"].upper() != "WITHHELD":
+            issues.append("no extracted source: draft must be WITHHELD")
+
+    withheld = fields["DRAFT"].upper() == "WITHHELD"
+    clean = "" if withheld else REFERENCE_IN_DRAFT.sub(" ", fields["DRAFT"])
+    clean = re.sub(r"[ \t]{2,}", " ", clean).strip()
+    if not withheld:
+        if not clean:
+            issues.append("draft is missing or empty")
+        if PARAGRAPH_REFERENCE.search(clean):
+            issues.append("unremoved paragraph marker in X draft")
+        if source_url not in clean:
+            issues.append("X draft missing original article URL")
+        # This is an advisory t.co-weighted count, not X's official validator.
+        if approximate_x_length(clean) > 280:
+            issues.append("X length exceeds approximate limit")
+    # Treat all results as unverified editorial drafts regardless of checks.
+    return {
+        "clean_draft": clean,
+        "withheld": withheld,
+        "issues": list(dict.fromkeys(issues)),
+        "cited_ids": sorted(cited, key=lambda name: int(name[1:])),
+        "approximate_x_length": approximate_x_length(clean) if clean else 0,
+    }
+
+
+def _brief_source_excerpt(value: str, max_chars: int = 190) -> str:
+    """A short excerpt to locate a claim, not a republished article."""
+    excerpt = re.sub(r"\s+", " ", value).strip()
+    if len(excerpt) <= max_chars:
+        return excerpt
+    return excerpt[:max_chars].rsplit(" ", 1)[0].rstrip(" .,;:") + "…"
+
+
+def render_summary(queue: dict, index: int, model_output: str,
+                   evidence: dict | None = None) -> str:
+    """Render safe, readable editorial output; NEVER mark it publishable."""
     item = _review_item(queue, index)
     evidence = check_evidence(item, evidence)
     if not model_output.strip():
         raise ValueError("Copilot response is empty")
     if len(model_output.encode("utf-8")) > 16_000:
         raise ValueError("Copilot response unexpectedly large")
-    # These checks make errors visible; not an automated factual validator.
-    required = ("VERIFICATION:", "DRAFT:", "SOURCE:", "REVIEW_CHECKS:")
-    issues = [name for name in required if name not in model_output]
-    if not re.search(r"VERIFICATION:\s*NOT VERIFIED", model_output, re.I):
-        issues.append("response must explicitly say NOT VERIFIED")
-    if str(item["link"]) not in model_output:
-        issues.append("original article link not found")
-    if evidence["status"] == "extracted_unverified":
-        if "EVIDENCE:" not in model_output or "WHY_IT_MATTERS:" not in model_output:
-            issues.append("evidence/insight sections missing")
-        source_ids = {row["id"] for row in evidence["paragraphs"]}
-        if set(re.findall(r"\[(P\d+)\]", model_output)) - source_ids:
-            issues.append("unknown source paragraph citation")
-    elif evidence.get("reason") != "not_collected":
-        draft = re.search(r"^DRAFT:\s*(.*)$", model_output, re.M | re.I)
-        if not draft or draft.group(1).strip().upper() != "WITHHELD":
-            issues.append("no extracted source: draft must be WITHHELD")
-    draft = re.search(r"^DRAFT:\s*(.*)$", model_output, re.M | re.I)
-    if draft and draft.group(1).strip().upper() != "WITHHELD":
-        if approximate_x_length(draft.group(1)) > 280:
-            issues.append("X length exceeds approximate limit")
-        if str(item["link"]) not in draft.group(1):
-            issues.append("X draft missing original article URL")
+    review = evaluate_review(item, model_output, evidence)
     raw = html.escape(model_output, quote=True)
     heading = html.escape(str(item.get("title") or "Untitled"), quote=True)
     source = html.escape(str(item["link"]), quote=True)
+    source_note = (
+        "Extracted " + str(len(evidence["paragraphs"])) +
+        " short unverified paragraphs (one site, not independently checked)"
+        if evidence["status"] == "extracted_unverified"
+        else "Unavailable: " + str(evidence.get("reason", "unknown"))
+    )
+    issues = review["issues"]
     lines = [
         "# Copilot single-story editorial preview",
         "",
@@ -149,24 +214,58 @@ def render_summary(queue: dict, index: int, model_output: str, evidence: dict | 
         "",
         f"**Candidate {index}:** {heading}",
         f"**Source URL:** {source}",
-        "**Publisher article extraction:** " + html.escape(
-            ("Extracted " + str(len(evidence["paragraphs"])) +
-             " short unverified paragraphs (one site, not independently checked)")
-            if evidence["status"] == "extracted_unverified"
-            else "Unavailable: " + str(evidence.get("reason", "unknown")), quote=True),
+        "**Publisher article extraction:** " + html.escape(source_note, quote=True),
         "",
-        "**Model output (untrusted, not rendered as Markdown):**",
+        "## Clean proposed X post (manual editing required)",
+        "",
+    ]
+    if review["clean_draft"]:
+        lines.extend([
+            "<pre>" + html.escape(review["clean_draft"], quote=True) + "</pre>",
+            "",
+            f"**Approximate X length:** {review['approximate_x_length']}/280 "
+            "(advisory; X may count differently).",
+        ])
+    else:
+        lines.append("**WITHHELD — no supported draft available.**")
+    lines.extend([
+        "",
+        "**Editorial status:** HUMAN FACT-CHECK REQUIRED — this is NOT publication approval.",
+        "",
+        "**Automated format check:** " +
+        ("Needs corrections: " + ", ".join(issues) if issues else
+         "Basic fields found; factual accuracy NOT assessed"),
+        "",
+        "## Supporting publisher excerpts (NOT independently corroborated)",
+        "",
+        "Short quotations from the linked publisher page; compare each to its original "
+        "context before using any claim. Excerpts are not independent fact-checks.",
+        "",
+    ])
+    if evidence["status"] == "extracted_unverified":
+        rows = {row["id"]: row["text"] for row in evidence["paragraphs"]}
+        chosen = [key for key in review["cited_ids"] if key in rows][:4]
+        if not chosen:
+            chosen = list(rows)[:2]
+        for key in chosen:
+            snippet = html.escape(_brief_source_excerpt(rows[key]), quote=True)
+            lines.extend([f"**{key} — publisher excerpt:**", "", "<pre>" + snippet + "</pre>", ""])
+        lines.append("Reference IDs are for editorial evidence only; they are removed "
+                     "from the clean proposed X post.")
+    else:
+        lines.append("No publisher article paragraphs were available.")
+    lines.extend([
+        "",
+        "## Copilot's full analysis (untrusted, reference only)",
         "",
         "<pre>" + raw + "</pre>",
-        "",
-        "**Automated format check:** " + ("Needs corrections: " + ", ".join(issues) if issues else "Basic fields found; factual accuracy NOT assessed"),
         "",
         "**Next:** read the original article, independently corroborate significant claims, "
         "verify details and dates, then manually edit in a private GitHub Issue. "
         "No checkbox or draft authorizes publishing.",
         "",
         "<!-- publication_authorized=false, publishable=false, auto_sent=false -->",
-    ]
+    ])
     return "\n".join(lines) + "\n"
 
 
