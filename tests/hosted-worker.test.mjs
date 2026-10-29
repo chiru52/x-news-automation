@@ -1,6 +1,7 @@
 /* Offline Node tests: no network, Cloudflare, GitHub, AI, or X requests. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { PAGE, STYLE, SCRIPT } from '../worker/ui.mjs';
 import worker, { accessIdentity, handleRequest, parseIssue, readInbox,
   replaceEditor, persistReview, revisionOf, safeEnvironment } from '../worker/hosted.mjs';
 
@@ -226,4 +227,18 @@ test('Legacy Issue without review metadata is rejected',async()=>{
   await assert.rejects(()=>parseIssue({...issue(),body:'unrelated'}));
   assert.equal(await revisionOf(issue()),await revisionOf(issue()));
   assert.notEqual(await revisionOf(issue()),await revisionOf({...issue(),body:issueBody+'a'}));
+});
+
+
+test('Hosted dashboard JS parses and includes no secrets or publishing flow',()=>{
+  assert.doesNotThrow(()=>new Function(SCRIPT));
+  assert.ok(PAGE.includes('Editorial Inbox'));
+  assert.ok(STYLE.includes('.workspace'));
+  assert.ok(SCRIPT.includes("'X-Editorial-Action':'save-review'"));
+  assert.ok(!SCRIPT.includes('X-CSRF-Token'));
+  assert.ok(!SCRIPT.includes('innerHTML'));
+  assert.ok(!SCRIPT.includes('localStorage'));
+  assert.ok(!SCRIPT.includes('api.x.com'));
+  assert.ok(!SCRIPT.includes('api.twitter.com'));
+  assert.ok(!PAGE.includes('127.0.0.1'));
 });
