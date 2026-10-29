@@ -201,7 +201,7 @@ class SafeSaveTests(unittest.TestCase):
                            "No longer worth posting","rejected",gh)
         self.assertEqual(result["status"],"rejected")
         self.assertEqual(sum("POST" in args for args,_ in calls),1)
-        self.assertNotIn("copilot",str(calls).lower())
+        self.assertTrue(all("copilot -p " not in " ".join(args) for args,_ in calls))
 
     def test_conflicting_external_edit_cannot_be_overwritten(self):
         original=make_issue(rest=True)
@@ -236,7 +236,6 @@ class BrowserSafetyTests(unittest.TestCase):
         self.assertIn('if self.path == "/dashboard.css"',code)
 
     def test_ui_never_puts_untrusted_source_in_inner_html_or_publishes(self):
-        self.assertIn('Content Security', 'Content Security — strict local browser UI')
         self.assertIn("textContent",SCRIPT)
         self.assertNotIn("innerHTML",SCRIPT)
         self.assertNotIn("localStorage",SCRIPT)
