@@ -1,0 +1,9 @@
+{
+  "timezone": "Europe/Stockholm",
+  "daily_draft_limit": 5,
+  "lookback_hours": 36,
+  "maximum_feed_bytes": 1500000,
+  "request_timeout_seconds": 12,
+  "ai_provider": "none",
+  "publishing_enabled": false
+}
