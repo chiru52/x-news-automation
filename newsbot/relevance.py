@@ -79,3 +79,28 @@ def is_saas_funding_headline(title: str) -> bool:
         title, flags=re.I
     ))
 
+
+
+PROMOTIONAL_OFFER = re.compile(
+    r"\b(?:save (?:up to )?(?:[$€£₹¥]\s?\d+|\d+%)|"
+    r"early[- ]bird(?: pricing| tickets?)?|"
+    r"tickets? (?:on sale|available)|"
+    r"register (?:now|today)|"
+    r"buy (?:your )?tickets?|"
+    r"promo code|discount(?:ed)? (?:tickets?|passes?)|"
+    r"passes? (?:before|on sale))\b",
+    flags=re.I,
+)
+
+US_FUTURES = re.compile(r"\bfutures\b", flags=re.I)
+US_INDEX = re.compile(r"\b(?:nasdaq|dow|s&p\s*500|s\s*&\s*p\s*500)\b", flags=re.I)
+
+
+def is_promotional_headline(title: str) -> bool:
+    """Clear ticket, sale, or registration pitches, not all conference reporting."""
+    return bool(PROMOTIONAL_OFFER.search(title))
+
+
+def is_us_index_futures_headline(title: str, category: str = "markets") -> bool:
+    """Conservatively group multiple index-futures market snapshots for review."""
+    return category == "markets" and bool(US_FUTURES.search(title) and US_INDEX.search(title))

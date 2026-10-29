@@ -13,5 +13,7 @@
   ],
   "relevance_filter_enabled": true,
   "max_drafts_per_source_per_day": 2,
-  "max_saas_funding_drafts_per_day": 1
+  "max_saas_funding_drafts_per_day": 1,
+  "exclude_promotional_headlines": true,
+  "max_us_index_futures_drafts_per_day": 1
 }

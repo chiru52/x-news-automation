@@ -162,3 +162,13 @@ To improve editorial variety without guessing at reporting:
 - Both new limits are respected across multiple non-preview runs within a Stockholm day and are reset only in the in-memory preview state. Prior day's history is unaffected.
 
 All suggestions remain `publishable=false`, `fact_checked=false`, and `editor_approved=false`. Even a valid linked site does not prove the underlying facts. Old GitHub Issues are never overwritten. No AI API, Buffer, X posting, or billing has been added.
+
+## Stage 11: promotion and futures noise reduction (no X or paid API)
+
+After the live Stage 10 review preview, the rules correctly selected 9 stories across 7 RSS feeds and reduced SaaS funding headlines from 3 to 1. But a TechCrunch conference ticket discount appeared as SaaS news, while two updates described the same US stock-index futures theme. Every source also received an unnecessary syndication warning because comparing a hostname with a descriptive feed name was incorrect.
+
+**Improvements:** when `exclude_promotional_headlines=true`, drop obvious ticket, registration, early-bird or discount promotion headlines; do not broadly block conference reporting. When `max_us_index_futures_drafts_per_day=1`, accept no more than one NASDAQ/Dow/S&P 500 **futures snapshot** across all market feeds in a day, to leave room for other market topics. This tracks usage across daily runs; a preview resets only its temporary counts. No filler stories are invented if relevant sources are exhausted.
+
+**Attribution:** use a small explicit list of known feed domains; warn about cross-site links only when a known feed links outside its expected domain (e.g. a Yahoo Finance RSS result linking to Stocktwits). The linked domain is still not a guarantee about authorship or accuracy; human verification remains necessary. Unknown feeds don't trigger spurious mismatch claims.
+
+No change to the nine-draft maximum, per-source and SaaS funding limits, review-only permissions, or publication safeguards.
