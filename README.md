@@ -80,3 +80,15 @@ The review artifact now records each feed's **parsed article count, recent artic
 The TechCrunch source used for SaaS/startup coverage is narrowed from the general TechCrunch news RSS to the TechCrunch **Startups** RSS. That feed can still include venture funding or hardware-startup articles; every item's category remains a **source-assigned, unverified label**, and every draft is **not publishable** without editorial review.
 
 Do not conclude from a successful workflow that all fourteen feeds provide recent relevant stories; review the diagnostics and click through to original sources. No source articles are reproduced in full. The AI and publishing integrations remain disabled.
+
+## Explainable headline relevance (Stage 1E)
+
+Before consuming the daily nine-draft budget, **live CLI runs now enable a conservative, offline, keyword-based relevance filter and ranking**. No AI model or billing is involved. Each RSS article must have a category-specific term in its *headline* to qualify; summary matches cannot qualify on their own. Higher-scoring stories are chosen ahead of generic or less impactful ones within each category, and the three-category balancing remains active.
+
+The metadata in `review_queue.json` now includes `relevance.score`, `headline_terms`, `summary_terms`, and `impact_terms`. The Markdown queue shows headline terms and score. Scores are editorial heuristics, not a correctness measure or fact check, and source categories are **not verified**. Headline keyword matching can miss genuinely important stories or include some irrelevant ones; those limitations are intentional until we have a reviewed AI classifier.
+
+For example, a general hardware product rumor in a feed labeled SaaS and an unrelated property lawsuit in a technology feed will not qualify. Relevant earnings, market shifts, startup launches and AI/developer tool releases can qualify. If there aren't nine relevant articles, the system generates fewer. This is better than publishing low-quality filler.
+
+This can be turned off locally for comparison by setting `relevance_filter_enabled` to `false` in `config/settings.json`. **Do not enable publishing:** `publishing_enabled=false` and `ai_provider=none` are still mandatory safety checks.
+
+The 9-draft cap is per Stockholm calendar day; today's existing review history remains intact. GitHub Actions caches can expire and are not a durable posting ledger. Do not use this collector for unattended X publishing until source verification, durable idempotency and manual approval are implemented.
