@@ -17,6 +17,7 @@ from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
 from .relevance import assess_story
+from .writing import suggest_post
 
 ATOM = "{http://www.w3.org/2005/Atom}"
 HTML_TAGS = re.compile(r"<[^>]*>")
@@ -255,7 +256,9 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
     for item in articles:
         published = datetime.fromisoformat(item.published_at)
         assessment = assess_story(item.title, item.summary, item.category, published, now)
+        suggestion = suggest_post(item)
         queue.append({**asdict(item), "draft": draft_template(item),
+                      "suggested_post": suggestion["text"], "writing": suggestion,
                       "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
                       "category_verified": False, "relevance": assessment})
     payload = {"generated_at": now.isoformat(), "draft_count": len(queue),
@@ -273,7 +276,13 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
                   f"- Published: {item['published_at']}", f"- Article: {item['link']}",
                   f"- Relevance score (heuristic): {item['relevance']['score']}",
                   f"- Matched headline terms: {', '.join(item['relevance']['headline_terms']) or 'none'}",
-                  "- Status: NEEDS_HUMAN_REVIEW", "", "```text", item["draft"], "```", ""]
+                  "- Draft basis: attributed RSS headline ONLY; NOT fact-checked",
+                  "- X length: approximate URL-weighted count",
+                  "- Status: NEEDS_HUMAN_REVIEW", "", "```text",
+                  item["suggested_post"], "```", "",
+                  "- Verification required: " + "; ".join(item["writing"]["verification_warnings"]),
+                  "", "**Old fill-in template (optional):**", "",
+                  "```text", item["draft"], "```", ""]
     if errors:
         lines += ["## Feed errors", "", *[f"- {error}" for error in errors], ""]
     if source_diagnostics:
