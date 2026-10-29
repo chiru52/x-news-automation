@@ -126,3 +126,17 @@ Use **Copy AI writing prompt** to paste a clearly source-labeled prompt into the
 The **Export decisions JSON** file now includes editor revisions, verification checkbox state and raw character count for changed/shortlisted/skipped candidates, while explicitly setting `publication_authorized=false`, `publishable=false`, and `ai_generated=false` (the system does not know whether you manually pasted AI text). It never authorizes or causes automatic posting.
 
 Like all previous dashboard state, edits and checkbox decisions are held **only in memory** in the current browser tab until exported, and will be lost on reload. Export is not a backup to a server. No X/Buffer integrations or account credentials exist in this version.
+
+## Stage 8: GitHub-native news review (no downloads required)
+
+The repository stays **private**. After each collection, the GitHub Actions **Summary** page shows the selected headlines, original article links, source category, relevance scores, and checklists. Open Actions > Collect news (review drafts only) > latest run > Summary. No ZIP download is required.
+
+Each successful scheduled run with fresh candidates also creates one private GitHub Issue named **News editorial review — YYYY-MM-DD**. Manual runs create/reuse it when the new **Create or reuse private daily review Issue** checkbox is enabled (default true). Find it in the repository's **Issues** tab. Use Edit to rewrite the markdown draft sections, tick source-review boxes, or leave comments. GitHub Issues is an editable Markdown worksheet, not the same fully interactive interface as the optional offline HTML file.
+
+The automation intentionally NEVER overwrites an existing Issue for the same Stockholm calendar day. This protects manual edits and comments. When a second run discovers different stories on the same day, they still appear in that run's GitHub Actions Summary, but the existing Issue is not replaced. A no-candidate run does not create a new Issue.
+
+The workflow requires built-in GitHub Actions GITHUB_TOKEN with issues:write **only to create a private editorial Issue**. This is not an X API permission, and does not connect Buffer, Grok, or OpenAI. All articles remain publishable=false, and publication_authorized=false; even selecting all checkboxes or writing comments can NEVER send a post to X.
+
+To test: merge this PR, open Actions > Collect news, select Run workflow on main, leave Preview and Create or reuse private daily review Issue checked, then open the completed run's Summary or the Issues tab.
+
+GitHub Pages for private repositories typically requires GitHub Pro or another eligible plan, and a GitHub Pages site may be publicly accessible; we deliberately do not use Pages for the private editorial workflow.
