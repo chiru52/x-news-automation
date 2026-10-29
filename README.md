@@ -208,3 +208,20 @@ This workflow now grants `copilot-requests: write` alongside `contents: read`, a
 The task remains `workflow_dispatch` ONLY, with `approve_credit_use` unchecked by default, `--preview` quota protection, ONE model invocation maximum, `--max-ai-credits=30` session soft limit, restricted Copilot tool use, no X/Buffer publishing, and an editorial-only Actions Summary. **Merging this PR does not call Copilot or spend AI credits.** The user must check billing/spending settings and opt in for each manual test; model requests may still be billed to the user's allowance.
 
 If the user later chooses an organization-owned repository, `GITHUB_TOKEN` usage is instead billed directly to that organization, provided its **Allow use of Copilot CLI billed to the organization** policy is enabled. Do not transfer this repository just to solve the old PAT issue.
+
+## Stage 16 — Source-grounded Copilot editorial writing (one story, opt-in)
+
+The previously successful [Copilot preview run #40912673131](https://github.com/varadachiru/x-news-automation/actions/runs/40912673131) proves that GitHub's **built-in `GITHUB_TOKEN`** can authenticate Copilot CLI without creating an organization or personal PAT. However, that draft only paraphrased an unverified RSS headline.
+
+This upgrade adds a **single bounded publisher article retrieval** *before* Copilot is invoked:
+
+1. The separate manually dispatched Copilot workflow collects normal RSS candidates in `--preview` mode; it never consumes the persisted daily quota.
+2. `newsbot.source_research` tries to retrieve **exactly one public HTTPS article** for the chosen index. Domains are restricted to a reviewed list of news publishers; redirects, private/local hosts, unusual ports, non-HTML content and oversized pages are rejected. DNS is screened for non-public addresses. The fetch has an 8-second timeout and 400 KB response cap.
+3. A standard-library HTML parser extracts at most **8 visible article paragraphs and 3,200 source characters**. Raw HTML and full articles are not uploaded as artifacts. These paragraphs are publisher statements, **not independent verification or corroboration**.
+4. If no useful article evidence is available (paywall, redirect, JavaScript-heavy site, unsupported domain, insufficient paragraphs), the workflow writes an explanatory Actions Summary and **skips the paid AI request**. You can select another candidate on a later explicitly approved run.
+5. When article text is usable, Copilot is given numbered paragraphs `[P1]`, `[P2]`, etc. and instructed to distinguish publisher claims from fact, cite which paragraphs support proposed insights, avoid copying source passages, and **WITHHOLD** the draft unless the article evidence supports a meaningful original post. The GitHub Actions Summary displays the source extraction status, AI draft, excerpt citation format checks and a manual-review warning.
+6. The response is **not fact-checked** by a second publisher. There is no reliable automated verification of every claim, article quality or true X length. A human editor must still read the source and corroborate meaningful statements.
+
+**Safety invariants remain unchanged:** the Copilot workflow is `workflow_dispatch` ONLY; it requires a default-unchecked explicit credit-use approval; only one selected article and one model invocation maximum; GitHub `GITHUB_TOKEN` permissions remain limited to `contents: read` and `copilot-requests: write`; the 30-AI-credit session soft limit and five-minute model timeout remain; no X/Buffer integration, scheduling, sending, or GitHub Issue changes. The original scheduled RSS collector is unchanged. **Opening/merging the PR consumes no model credits.**
+
+This is **article-grounded drafting**, not independent fact-checking. Sites can block retrieval, and retrieval uses a public-site allowlist and no redirects. The user must not expect every chosen article to generate a draft. Ineligible sources deliberately yield `WITHHELD` and no billable model call.
