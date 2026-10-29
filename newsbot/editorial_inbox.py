@@ -281,6 +281,8 @@ def handler_factory(repo: str, csrf: str, gh=gh_json):
                 return self.send_data(200, STYLE, content_type="text/css; charset=utf-8")
             if self.path == "/api/inbox":
                 try:
+                    if not repo_is_private(repo, gh):
+                        raise IssueValidationError("Repository is not private")
                     data = list_inbox(repo, gh)
                     return self.send_data(200, {"issues": data, "csrf": csrf,
                                                 "publication_authorized": False})
@@ -309,6 +311,8 @@ def handler_factory(repo: str, csrf: str, gh=gh_json):
             if not 0 < length <= MAX_REQUEST_BYTES:
                 return self.reject(413, "Review request too large")
             try:
+                if not repo_is_private(repo, gh):
+                    return self.reject(403, "Repository must remain private")
                 request = json.loads(self.rfile.read(length).decode("utf-8"))
                 if not isinstance(request, dict):
                     raise IssueValidationError("Invalid review object")
