@@ -131,48 +131,74 @@ def title_key(title: str) -> str:
 
 def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                     daily_limit: int = 5, lookback_hours: int = 36,
-                    timezone_name: str = "Europe/Stockholm") -> list[Article]:
-    """Choose up to daily_limit unique, recently published items per local calendar day."""
+                    timezone_name: str = "Europe/Stockholm",
+                    category_order: tuple[str, ...] = ("technology", "markets", "saas")) -> list[Article]:
+    """Select fresh, unique stories fairly across categories and runs in a local day.
+
+    The daily counter is authoritative: newly configured categories cannot override
+    the remaining daily limit. Categories with no eligible articles are skipped.
+    """
     if now.tzinfo is None:
-        raise ValueError("now must have a timezone")
+        raise ValueError("now must contain a timezone")
     now = now.astimezone(timezone.utc)
-    day = now.astimezone(ZoneInfo(timezone_name)).date().isoformat()
+    local_day = now.astimezone(ZoneInfo(timezone_name)).date()
+    day = local_day.isoformat()
     count = int(state["daily_drafts"].get(day, 0))
     remaining = max(0, daily_limit - count)
-    minimum = now - timedelta(hours=lookback_hours)
+    min_date = now - timedelta(hours=lookback_hours)
     state.setdefault("seen_titles", {})
-    results = []
-    seen_in_run, titles_in_run = set(), set()
-    for article in sorted(articles, key=lambda a: a.published_at, reverse=True):
-        published = datetime.fromisoformat(article.published_at)
-        if published.tzinfo is None:
+    state.setdefault("daily_categories", {})
+    category_counts = state["daily_categories"].setdefault(day, {})
+    # Rotate the first category so that the extra two of five slots are shared.
+    ordered = list(dict.fromkeys(category_order))
+    if not ordered:
+        raise ValueError("category_order must not be empty")
+    rotation = local_day.toordinal() % len(ordered)
+    ordered = ordered[rotation:] + ordered[:rotation]
+    by_category: dict[str, list[Article]] = {}
+    for item in sorted(articles, key=lambda a: a.published_at, reverse=True):
+        published = datetime.fromisoformat(item.published_at)
+        if published.tzinfo is None or not min_date <= published.astimezone(timezone.utc) <= now + timedelta(minutes=10):
             continue
-        published = published.astimezone(timezone.utc)
-        if not minimum <= published <= now + timedelta(minutes=10):
+        if item.identity in state["seen"] or title_key(item.title) in state["seen_titles"]:
             continue
-        key = article.identity
-        title = title_key(article.title)
-        if (key in state["seen"] or title in state["seen_titles"]
-                or key in seen_in_run or title in titles_in_run):
-            continue
-        if len(results) >= remaining:
+        by_category.setdefault(item.category, []).append(item)
+    # Handle any additional categories deterministically after configured ones.
+    ordered.extend(sorted(set(by_category) - set(ordered)))
+    selected: list[Article] = []
+    run_ids: set[str] = set()
+    run_titles: set[str] = set()
+    while len(selected) < remaining:
+        available = []
+        for category in ordered:
+            bucket = by_category.get(category, [])
+            while bucket and (bucket[0].identity in run_ids or title_key(bucket[0].title) in run_titles):
+                bucket.pop(0)
+            if bucket:
+                available.append(category)
+        if not available:
             break
-        seen_in_run.add(key)
-        titles_in_run.add(title)
-        results.append(article)
-    for article in results:
-        state["seen"][article.identity] = now.isoformat()
-        state["seen_titles"][title_key(article.title)] = now.isoformat()
-    state["daily_drafts"][day] = count + len(results)
+        # Pick the category with the fewest drafts so far today, tie by rotation.
+        chosen = min(available, key=lambda cat: (category_counts.get(cat, 0), ordered.index(cat)))
+        item = by_category[chosen].pop(0)
+        selected.append(item)
+        run_ids.add(item.identity)
+        run_titles.add(title_key(item.title))
+        category_counts[chosen] = category_counts.get(chosen, 0) + 1
+    for item in selected:
+        state["seen"][item.identity] = now.isoformat()
+        state["seen_titles"][title_key(item.title)] = now.isoformat()
+    state["daily_drafts"][day] = count + len(selected)
     cutoff = now - timedelta(days=45)
-    state["seen"] = {key: when for key, when in state["seen"].items()
-                     if (parse_date(when) or now) >= cutoff}
-    state["seen_titles"] = {key: when for key, when in state["seen_titles"].items()
-                            if (parse_date(when) or now) >= cutoff}
-    state["daily_drafts"] = {key: count for key, count in state["daily_drafts"].items()
+    state["seen"] = {key: timestamp for key, timestamp in state["seen"].items()
+                     if (parse_date(timestamp) or now) >= cutoff}
+    state["seen_titles"] = {key: timestamp for key, timestamp in state["seen_titles"].items()
+                            if (parse_date(timestamp) or now) >= cutoff}
+    state["daily_drafts"] = {key: total for key, total in state["daily_drafts"].items()
                              if key >= cutoff.date().isoformat()}
-    return results
-
+    state["daily_categories"] = {key: totals for key, totals in state["daily_categories"].items()
+                                 if key >= cutoff.date().isoformat()}
+    return selected
 
 def draft_template(article: Article) -> str:
     """Provide an editorial placeholder; never claim AI has verified the article."""
@@ -202,7 +228,7 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
     if not queue:
         lines += ["No eligible stories found. Check feed availability and logs.", ""]
     for index, item in enumerate(queue, 1):
-        lines += [f"## {index}. {item['title']}", "", f"- Source: {item['source']}",
+        lines += [f"## {index}. {item['title']}", "", f"- Category: {item['category']}", f"- Source: {item['source']}",
                   f"- Published: {item['published_at']}", f"- Article: {item['link']}",
                   "- Status: NEEDS_HUMAN_REVIEW", "", "```text", item["draft"], "```", ""]
     if errors:

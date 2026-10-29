@@ -97,5 +97,50 @@ class CoreTests(unittest.TestCase):
         self.assertLessEqual(len(draft_template(article(1, title="A very long title " * 40))), 280)
 
 
+    def test_balances_three_categories(self):
+        state = {"seen": {}, "daily_drafts": {}}
+        items = [Article(title=f"{category} {i}", link=f"https://example.com/{category}/{i}",
+                         source="Test feed", published_at=NOW.isoformat(), category=category)
+                 for category in ("technology", "markets", "saas") for i in range(5)]
+        selected = select_articles(items, state, NOW)
+        distribution = [sum(a.category == category for a in selected)
+                        for category in ("technology", "markets", "saas")]
+        self.assertEqual(sorted(distribution), [1, 2, 2])
+        self.assertEqual(sum(state["daily_categories"]["2026-10-29"].values()), 5)
+
+    def test_balancing_persists_across_runs(self):
+        state = {"seen": {}, "daily_drafts": {}}
+        items = [Article(title=f"{category} {i}", link=f"https://example.com/{category}/{i}",
+                         source="Test feed", published_at=NOW.isoformat(), category=category)
+                 for category in ("technology", "markets", "saas") for i in range(5)]
+        first = select_articles(items, state, NOW, daily_limit=2)
+        second = select_articles(items, state, NOW + timedelta(minutes=1), daily_limit=5)
+        self.assertEqual(len(first) + len(second), 5)
+        self.assertEqual(sorted([sum(a.category == category for a in first + second)
+                         for category in ("technology", "markets", "saas")]), [1, 2, 2])
+        self.assertEqual(select_articles(items, state, NOW + timedelta(minutes=2)), [])
+
+    def test_category_fallback(self):
+        state = {"seen": {}, "daily_drafts": {}}
+        items = [Article(title=f"markets {i}", link=f"https://example.com/markets/{i}",
+                         source="Test", published_at=NOW.isoformat(), category="markets") for i in range(7)]
+        self.assertEqual(len(select_articles(items, state, NOW)), 5)
+
+    def test_category_rotation_over_three_days(self):
+        totals = {category: 0 for category in ("technology", "markets", "saas")}
+        for day in range(3):
+            now = NOW + timedelta(days=day)
+            state = {"seen": {}, "daily_drafts": {}}
+            items = [Article(title=f"{category} {i} on {day}",
+                             link=f"https://example.com/{day}/{category}/{i}", source="Test",
+                             published_at=now.isoformat(), category=category)
+                     for category in totals for i in range(6)]
+            selected = select_articles(items, state, now)
+            for item in selected:
+                totals[item.category] += 1
+        self.assertEqual(totals, {"technology": 5, "markets": 5, "saas": 5})
+
+
+
 if __name__ == "__main__":
     unittest.main()
