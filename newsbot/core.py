@@ -16,6 +16,8 @@ from urllib.request import Request, urlopen
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
+from .relevance import assess_story
+
 ATOM = "{http://www.w3.org/2005/Atom}"
 HTML_TAGS = re.compile(r"<[^>]*>")
 SPACES = re.compile(r"\s+")
@@ -132,7 +134,8 @@ def title_key(title: str) -> str:
 def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                     daily_limit: int = 5, lookback_hours: int = 36,
                     timezone_name: str = "Europe/Stockholm",
-                    category_order: tuple[str, ...] = ("technology", "markets", "saas")) -> list[Article]:
+                    category_order: tuple[str, ...] = ("technology", "markets", "saas"),
+                    rank_by_relevance: bool = False) -> list[Article]:
     """Select fresh, unique stories fairly across categories and runs in a local day.
 
     The daily counter is authoritative: newly configured categories cannot override
@@ -156,12 +159,26 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
     rotation = local_day.toordinal() % len(ordered)
     ordered = ordered[rotation:] + ordered[:rotation]
     by_category: dict[str, list[Article]] = {}
-    for item in sorted(articles, key=lambda a: a.published_at, reverse=True):
+    candidates = []
+    for item in articles:
         published = datetime.fromisoformat(item.published_at)
         if published.tzinfo is None or not min_date <= published.astimezone(timezone.utc) <= now + timedelta(minutes=10):
             continue
         if item.identity in state["seen"] or title_key(item.title) in state["seen_titles"]:
             continue
+        assessment = assess_story(item.title, item.summary, item.category, published, now)
+        # Conservative filtering is enabled by the CLI, but stays opt-in for
+        # compatibility with the library's existing selection API and tests.
+        if rank_by_relevance and not assessment["topic_match"]:
+            continue
+        candidates.append((item, assessment["score"]))
+    if rank_by_relevance:
+        candidates.sort(key=lambda entry: (
+            -entry[1], -datetime.fromisoformat(entry[0].published_at).timestamp(),
+            entry[0].title.casefold(), entry[0].link))
+    else:
+        candidates.sort(key=lambda entry: entry[0].published_at, reverse=True)
+    for item, _score in candidates:
         by_category.setdefault(item.category, []).append(item)
     # Handle any additional categories deterministically after configured ones.
     ordered.extend(sorted(set(by_category) - set(ordered)))
@@ -217,8 +234,13 @@ def draft_template(article: Article) -> str:
 def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors: list[str],
                    source_diagnostics: list[dict] | None = None) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
-    queue = [{**asdict(item), "draft": draft_template(item), "status": "NEEDS_HUMAN_REVIEW",
-              "publishable": False, "category_verified": False} for item in articles]
+    queue = []
+    for item in articles:
+        published = datetime.fromisoformat(item.published_at)
+        assessment = assess_story(item.title, item.summary, item.category, published, now)
+        queue.append({**asdict(item), "draft": draft_template(item),
+                      "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
+                      "category_verified": False, "relevance": assessment})
     payload = {"generated_at": now.isoformat(), "draft_count": len(queue),
                "publishing_enabled": False, "articles": queue, "feed_errors": errors,
                "source_diagnostics": source_diagnostics or []}
@@ -232,6 +254,8 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
     for index, item in enumerate(queue, 1):
         lines += [f"## {index}. {item['title']}", "", f"- Source-assigned category (unverified): {item['category']}", f"- Source: {item['source']}",
                   f"- Published: {item['published_at']}", f"- Article: {item['link']}",
+                  f"- Relevance score (heuristic): {item['relevance']['score']}",
+                  f"- Matched headline terms: {', '.join(item['relevance']['headline_terms']) or 'none'}",
                   "- Status: NEEDS_HUMAN_REVIEW", "", "```text", item["draft"], "```", ""]
     if errors:
         lines += ["## Feed errors", "", *[f"- {error}" for error in errors], ""]

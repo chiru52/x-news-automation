@@ -4,6 +4,8 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from newsbot.relevance import assess_story
+
 from newsbot.core import (Article, canonical_url, clean_text, draft_template, load_state,
                           parse_feed, render_outputs, save_state, select_articles)
 
@@ -195,6 +197,82 @@ class CoreTests(unittest.TestCase):
         source = next(item for item in sources if item["name"] == "TechCrunch - Startups")
         self.assertEqual(source["category"], "saas")
         self.assertEqual(source["url"], "https://techcrunch.com/category/startups/feed/")
+
+
+
+    def test_relevance_filters_non_saas_hardware_news(self):
+        news = Article(title="Apple touchscreen MacBook Pro rumored for next year",
+                       link="https://example.org/mac", source="General tech RSS",
+                       published_at=NOW.isoformat(), category="saas")
+        assessment = assess_story(news.title, "", news.category, NOW, NOW)
+        self.assertFalse(assessment["topic_match"])
+        state = {"seen": {}, "daily_drafts": {}}
+        self.assertEqual(select_articles([news], state, NOW, rank_by_relevance=True), [])
+
+    def test_relevance_filters_offtopic_lawsuit_from_technology(self):
+        news = Article(title="Zillow reaches settlement over property dispute",
+                       link="https://example.org/settlement", source="Hacker News",
+                       published_at=NOW.isoformat(), category="technology")
+        self.assertFalse(assess_story(news.title, "", news.category, NOW, NOW)["topic_match"])
+        state = {"seen": {}, "daily_drafts": {}}
+        self.assertEqual(select_articles([news], state, NOW, rank_by_relevance=True), [])
+
+    def test_relevance_boosts_major_developments_over_newer_minor_item(self):
+        old_news = Article(title="Federal Reserve cuts interest rates after inflation report",
+                           link="https://example.org/fed", source="Market feed",
+                           published_at=(NOW - timedelta(hours=3)).isoformat(),
+                           category="markets")
+        fresh_news = Article(title="Stocks update for the day",
+                             link="https://example.org/stocks", source="Market feed",
+                             published_at=NOW.isoformat(), category="markets")
+        state = {"seen": {}, "daily_drafts": {}}
+        selected = select_articles([fresh_news, old_news], state, NOW,
+                                   daily_limit=1, rank_by_relevance=True)
+        self.assertEqual(selected[0].link, old_news.link)
+
+    def test_relevance_balances_valid_categories_with_nine_items(self):
+        now = NOW
+        items = []
+        headlines = {
+            "technology": "OpenAI launches a new AI developer tool",
+            "markets": "Stocks surge as investors assess earnings",
+            "saas": "SaaS startup raises new funding round",
+        }
+        for category, headline in headlines.items():
+            for i in range(10):
+                items.append(Article(title=f"{headline} - edition {i}",
+                                     link=f"https://example.com/{category}/{i}",
+                                     source="Test", published_at=now.isoformat(),
+                                     category=category))
+        state = {"seen": {}, "daily_drafts": {}}
+        result = select_articles(items, state, now, daily_limit=9, rank_by_relevance=True)
+        self.assertEqual(len(result), 9)
+        self.assertEqual({cat: sum(a.category == cat for a in result)
+                          for cat in headlines}, {cat: 3 for cat in headlines})
+
+    def test_summary_only_keyword_does_not_qualify_irrelevant_headline(self):
+        info = assess_story("Court case reaches settlement", "AI company discussed",
+                            "technology", NOW, NOW)
+        self.assertFalse(info["topic_match"])
+        self.assertEqual(info["score"], 0)
+
+    def test_relevance_is_explainable_and_not_verified(self):
+        article = Article(title="SaaS startup launches workflow automation tool",
+                          link="https://example.com/new", source="SaaS feed",
+                          published_at=NOW.isoformat(), category="saas")
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "queue"
+            render_outputs([article], output, NOW, [])
+            data = json.loads((output / "review_queue.json").read_text(encoding="utf-8"))
+            selected = data["articles"][0]
+            self.assertGreater(selected["relevance"]["score"], 0)
+            self.assertTrue(selected["relevance"]["topic_match"])
+            self.assertFalse(selected["category_verified"])
+            self.assertFalse(selected["publishable"])
+
+    def test_relevance_keywords_match_whole_words(self):
+        match = assess_story("Main said this was good news", "", "technology", NOW, NOW)
+        self.assertEqual(match["score"], 0)
 
 
 

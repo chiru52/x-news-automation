@@ -10,5 +10,6 @@
     "technology",
     "markets",
     "saas"
-  ]
+  ],
+  "relevance_filter_enabled": true
 }

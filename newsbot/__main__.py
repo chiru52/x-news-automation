@@ -53,7 +53,8 @@ def main() -> int:
     selected = select_articles(stories, state, now, daily_limit=int(settings["daily_draft_limit"]),
                                lookback_hours=int(settings["lookback_hours"]),
                                timezone_name=settings["timezone"],
-                              category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))))
+                              category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))),
+                              rank_by_relevance=settings.get("relevance_filter_enabled") is True)
     render_outputs(selected, Path(args.output), now, errors, diagnostics)
     save_state(Path(args.state), state)
     print(f"Collected {len(stories)} articles, drafted {len(selected)}, feed errors {len(errors)}")
