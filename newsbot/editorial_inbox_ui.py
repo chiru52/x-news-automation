@@ -46,6 +46,7 @@ PAGE = r"""<!doctype html>
         <div class="story-meta"><span id="current-status" class="pill">Pending</span>
           <a id="issue-link" href="#" target="_blank" rel="noopener noreferrer">Open original private Issue</a></div>
         <h2 id="headline"></h2>
+        <div class="proposal"><h3>Original AI draft (unverified)</h3><p id="proposed"></p></div>
         <a id="source-link" href="#" target="_blank" rel="noopener noreferrer">Read original publisher story</a>
         <div class="columns">
           <div><h3>Publisher excerpts</h3><p class="muted">Short, unverified snippets. Open the complete article for context.</p>
@@ -109,6 +110,7 @@ textarea{resize:vertical;line-height:1.5}
 .story-meta{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin-bottom:14px}
 a{color:#1b50a2;text-underline-offset:3px;overflow-wrap:anywhere}
 .columns{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin:25px 0}
+.proposal{background:#f3f6fc;border:1px solid #e1e7f1;border-radius:9px;padding:14px;margin:12px 0}.proposal p{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.6;margin:0}
 .excerpt{padding:12px;border:1px solid #e1e7f1;border-radius:8px;margin:9px 0}
 .excerpt strong{font-size:12px;color:#425b82}
 .excerpt p{white-space:pre-wrap;line-height:1.5;font-size:13px;margin:7px 0 0;overflow-wrap:anywhere}
@@ -186,6 +188,7 @@ SCRIPT = r"""'use strict';
     text($('current-status'),label(issue.status));
     $('current-status').className='pill '+issue.status;
     text($('headline'),issue.title);
+    text($('proposed'),issue.proposed_draft||'No supported AI draft was generated.');
     for(const [element,url] of [[$('issue-link'),issue.url],[$('source-link'),issue.source_url]]){
       const safe=safeUrl(url);
       if(safe){element.href=safe;element.hidden=false}else{element.hidden=true;element.removeAttribute('href')}
