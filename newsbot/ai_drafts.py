@@ -53,6 +53,8 @@ def save_private_review(repo: str, run_id: str, body_file: Path) -> str:
                   "\n\n- [ ] Read article and corroborate material claims\n"
                   "- [ ] Edit the proposed text before any manual posting\n"
                   "- [ ] Set aside / reject\n\n"
+                  "### My edited X post (manual only)\n\n"
+                  "> [Replace with your own fact-checked draft]\n\n"
                   "**Publication approval:** NOT GRANTED\n")
     run_gh(["label", "create", LABEL, "--repo", repo, "--color", "8A6FE3",
             "--description", "Private human-review AI news drafts", "--force"])
