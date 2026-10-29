@@ -43,5 +43,30 @@
     "name": "The SaaS News",
     "url": "https://www.thesaasnews.com/news/rss/",
     "category": "saas"
+  },
+  {
+    "name": "Yahoo Finance - Major Tech Stocks",
+    "url": "https://feeds.finance.yahoo.com/rss/2.0/headline?s=NVDA,MSFT,GOOGL,AMZN&region=US&lang=en-US",
+    "category": "markets"
+  },
+  {
+    "name": "Yahoo Finance - Market Indices",
+    "url": "https://feeds.finance.yahoo.com/rss/2.0/headline?s=%5EGSPC,%5EIXIC&region=US&lang=en-US",
+    "category": "markets"
+  },
+  {
+    "name": "TechCrunch - Startups and Apps",
+    "url": "https://techcrunch.com/feed/",
+    "category": "saas"
+  },
+  {
+    "name": "SaaStr - SaaS Business",
+    "url": "https://www.saastr.com/feed/",
+    "category": "saas"
+  },
+  {
+    "name": "Hacker News - Technology",
+    "url": "https://news.ycombinator.com/rss",
+    "category": "technology"
   }
 ]

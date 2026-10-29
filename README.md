@@ -1,6 +1,6 @@
 # X News Automation — Stage 1 (safe, draft-only)
 
-A private Python/GitHub Actions project that collects RSS news, removes repeats and creates at most **five human-review templates per Europe/Stockholm day**.
+A private Python/GitHub Actions project that collects RSS news, removes repeats and creates at most **nine human-review templates per Europe/Stockholm day**.
 
 **Nothing in this version can publish to X or Buffer.** It does not call Grok, OpenAI or any other AI API. Drafts include a visible placeholder: `[Write one verified insight after reading the article.]`.
 
@@ -9,7 +9,7 @@ A private Python/GitHub Actions project that collects RSS news, removes repeats 
 - Reads RSS 2.0 and Atom feeds and extracts titles, original links, timestamps and short descriptions.
 - Excludes undated, stale, future-dated and invalid-link stories. Removes known URL tracking parameters.
 - Removes duplicates by canonicalized URL and normalized headline, including across runs when state is restored.
-- Caps review templates at 5 per Stockholm calendar day.
+- Caps review templates at 9 per Stockholm calendar day.
 - Produces both `output/review_queue.md` and `output/review_queue.json`, including feed errors.
 - Runs automatically via GitHub Actions daily at 06:17 UTC or on demand.
 - Runs network-free unit tests on pull requests and pushes.
@@ -49,8 +49,26 @@ No third-party article text is bundled with the project.
 
 The collector now watches three areas: **Technology/AI**, **financial markets/business**, and **SaaS tools, launches and funding**. Edit `config/sources.json` to add or remove permitted RSS/Atom feeds. The `category_order` array in `config/settings.json` controls the categories to balance.
 
-For a five-draft day with news in all three categories, the collector picks **2 / 2 / 1** and rotates which topic receives the single slot over successive days. It maintains each category's count between runs and falls back to available categories when a feed runs dry. Daily limits, review-only output, and duplicate suppression remain in force.
+The current default is nine drafts per day, with **3 technology, 3 markets and 3 SaaS** when each has enough eligible stories. For other daily limits, the balancing algorithm splits picks as fairly as it can. It maintains each category's count between runs and falls back to available categories when a feed runs dry. Daily limits, review-only output, and duplicate suppression remain in force.
 
 **Financial headlines are not investment advice.** Prices, earnings and market-sensitive claims must be verified from reliable primary sources before posting. Product Hunt's productivity category may include non-SaaS products; approve relevance before publication. We haven't integrated AI or X publishing. A successful job cannot confirm the underlying reporting is correct.
 
 The first day's existing five drafts consume its draft quota. The new mix begins at the next Stockholm calendar-day quota, unless prior history has expired. A workflow run after merging will validate live source availability; individual feeds can sometimes fail.
+
+## Expanded feeds and daily target (Stage 1C)
+
+The default is now **up to nine editorial review templates per Stockholm day**, not nine guaranteed X posts. Three eligible stories per category is the target; if a category has no fresh items, other categories can fill the available slots. No generated draft is published automatically.
+
+Additional configured RSS candidate sources:
+- **Yahoo Finance** stock headline feeds for NVDA, MSFT, GOOGL, AMZN and the S&P 500/Nasdaq indices. These are **company/market-specific news feeds**, not a reliable general Yahoo Finance RSS endpoint.
+- **TechCrunch** for startup and app reporting.
+- **SaaStr** for SaaS business news and analysis.
+- **Hacker News** for noteworthy technology discussions and links.
+
+These feeds are independently fetched and may return a network error or unsupported response. Feeds have **not been live-tested for this change**; check each run's `feed_errors` in `review_queue.json`. The project's source categories are approximate: a TechCrunch or Product Hunt item may not be about SaaS. Human review is mandatory before we later add any actual posting.
+
+### Buffer Free: clarification
+
+Buffer Free supports up to **10 scheduled posts in the X queue at the same time**, not just 10 per day/month. Queue slots reopen once posts publish. Buffer Free API limits also apply (currently 1,000 requests/30 days for one connected channel, plus rolling shorter windows). The present repository has **no Buffer integration** and therefore consumes zero Buffer API requests. Nine drafts a day is an editorial starting point, not a platform maximum.
+
+If you ran earlier versions today, existing local-day history counts towards nine; the new collector may only produce the unused balance, not nine additional drafts. We prioritize verified, original, useful posts, and stop before publishing anything automatically. X disallows duplicate/spam and certain kinds of automated trend posting. Respect publishers' feed and redistribution terms and cite/link original articles.
