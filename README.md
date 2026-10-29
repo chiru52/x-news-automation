@@ -140,3 +140,13 @@ The workflow requires built-in GitHub Actions GITHUB_TOKEN with issues:write **o
 To test: merge this PR, open Actions > Collect news, select Run workflow on main, leave Preview and Create or reuse private daily review Issue checked, then open the completed run's Summary or the Issues tab.
 
 GitHub Pages for private repositories typically requires GitHub Pro or another eligible plan, and a GitHub Pages site may be publicly accessible; we deliberately do not use Pages for the private editorial workflow.
+
+## Stage 9: automatic source-attributed draft suggestions (no paid AI API)
+
+Every eligible story gets a **concise suggested post** created deterministically from the RSS headline and a link back to the original source, with an explicit **Via [feed]** attribution. It uses no AI service or paid API and makes **no additional claims** from an RSS summary (e.g., it does not invent analysis of market moves or AI capabilities).
+
+The new queue fields are `suggested_post` and `writing` (method, approximate X length, source-check flags, headline-shortening flag, and specific verification warnings). The original `draft` fill-in template remains available for compatibility. The GitHub Actions Summary, any **new** GitHub daily editorial Issue, and the offline HTML editor now prioritize the suggested post and flag items that contain financial figures, rumors, unverified funding claims, or shortened headlines.
+
+**These are NOT independently fact-checked posts.** The source headline can itself be wrong, imprecise, or incomplete. Users must open the article, verify all claims and dates, check X's official length handling, and rewrite the final post before use. The calculated character count approximates X's 23-character URL weighting, not the platform's official unicode/link calculation. No post is marked publishable or editor approved.
+
+Existing daily GitHub Issues are not overwritten, specifically to preserve manual edits. To preview these new suggestions on the same day, use the latest **GitHub Actions run Summary**. A new editable Issue is created on the next Stockholm day with eligible stories. The workflow does not call X, Buffer, Grok, or OpenAI.

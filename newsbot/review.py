@@ -68,7 +68,7 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
 <p>Technology & AI · Markets · SaaS & startups</p>
 </header>
 <main>
-<div class="notice"><strong>Review only — publishing is disabled.</strong> These are RSS-based templates, not AI-written or fact-checked posts. “Shortlist” means editorial interest, NOT authorization to publish. Your decisions stay in this browser session until you export them. No X or Buffer API is called.</div>
+<div class="notice"><strong>Review only — publishing is disabled.</strong> Posts are automatically suggested from unverified RSS headlines. They are NOT AI-written, independently fact-checked, or ready to publish. “Shortlist” means editorial interest, NOT authorization to publish. Your decisions stay in this browser session until you export them. No X or Buffer API is called.</div>
 <div class="summary">
 <div class="tile"><strong id="total">0</strong><span>Draft candidates</span></div>
 <div class="tile"><strong id="shortlisted">0</strong><span>Shortlisted</span></div>
@@ -104,9 +104,12 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
   const edited = Object.create(null);
   const checkedSources = Object.create(null);
   const MAX_RAW_CHARS = 280;
+  const approxXLength = (value) => Array.from(
+    String(value).replace(/https?:\/\/\S+/gi, "x".repeat(23))
+  ).length;
   // X counts URLs differently. This is only an advisory raw-character count.
   const draftOf = (item) => Object.hasOwn(edited, idOf(item))
-    ? edited[idOf(item)] : String(item.draft || "");
+    ? edited[idOf(item)] : String(item.suggested_post || item.draft || "");
   const checkedOf = (item) => checkedSources[idOf(item)] === true;
   const charCount = (value) => Array.from(value).length;
   const aiPrompt = (item) => [
@@ -200,6 +203,11 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
       card.append(text("p", "Heuristic score: " + String(info.score ?? "n/a") +
         " · Matched terms: " + ((info.headline_terms || []).join(", ") || "none") +
         " · Category not verified", "score"));
+      const checks = item.writing?.verification_warnings || [];
+      if(checks.length){
+        const notice = text("p", "Verify: " + checks.join(" · "), "score");
+        card.append(notice);
+      }
       card.append(text("div", "Decision: " + d, "status"));
       const composer = text("section", "", "composer");
       composer.append(text("label", "Editable post draft (not fact-checked)"));
@@ -210,11 +218,13 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
       textarea.spellcheck = true;
       const hint = text("div", "", "charhint");
       const updateHint = () => {
-        const length = charCount(textarea.value);
-        hint.textContent = "Raw characters: " + length + " / " + MAX_RAW_CHARS +
-          (length > MAX_RAW_CHARS ? " — shorten before copying" : "") +
-          " · X may count links differently";
-        hint.className = length > MAX_RAW_CHARS ? "charhint over" : "charhint";
+        const raw = charCount(textarea.value);
+        const approx = approxXLength(textarea.value);
+        hint.textContent = "Approx. X length: " + approx + " / " + MAX_RAW_CHARS +
+          " · Raw characters: " + raw +
+          (approx > MAX_RAW_CHARS ? " — shorten before posting" : "") +
+          " · Verify on X before using";
+        hint.className = approx > MAX_RAW_CHARS ? "charhint over" : "charhint";
       };
       updateHint();
       textarea.addEventListener("input", () => {
@@ -266,11 +276,13 @@ footer{max-width:1050px;margin:10px auto;padding:0 20px 25px;color:#697586;font-
       ).map(item => ({
         title: item.title, link: item.link, source: item.source,
         category_unverified: item.category, decision: getDecision(item),
-        original_template: item.draft || "",
+        original_template: item.suggested_post || item.draft || "",
         edited_draft: draftOf(item),
         raw_character_count: charCount(draftOf(item)),
         source_checked_by_editor: checkedOf(item),
         ai_generated: false,
+        source_article_read_by_bot: false,
+        fact_checked_by_bot: false,
         publishable: false
       }))
     };

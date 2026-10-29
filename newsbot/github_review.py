@@ -67,11 +67,19 @@ def render(queue):
             "", "- [ ] Read original article and verified important claims",
             "- [ ] Shortlisted for editorial writing (NOT publication approval)",
             "- [ ] Skipped / rejected", "",
-            "**Unverified starting text — edit before use:**", "",
+            "**Source-attributed suggested post — not verified:**", "",
         ]
-        lines += ["> " + escape(line) for line in str(item.get("draft") or "").splitlines()]
-        lines += ["", "**My reviewed X draft:**", "",
-                  "> [Write your own verified text here]", "", "---", ""]
+        post = str(item.get("suggested_post") or item.get("draft") or "")
+        lines += ["> " + escape(line) if line else ">"
+                  for line in post.splitlines()]
+        details = item.get("writing") or {}
+        checks = details.get("verification_warnings") or []
+        if checks:
+            lines += ["", "**Checks before reuse:**", ""]
+            lines += ["- " + escape(note) for note in checks]
+        lines += ["", "**My reviewed X draft (replace this placeholder):**", "",
+                  "> [Write your own verified text here]", "",
+                  "**Publication approval:** NOT GRANTED", "", "---", ""]
     lines += ["<!-- Editorial only. publication_authorized=false -->", ""]
     return "\n".join(lines)
 
