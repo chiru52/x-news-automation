@@ -127,13 +127,13 @@ def render_summary(queue: dict, index: int, model_output: str, evidence: dict | 
         if "EVIDENCE:" not in model_output or "WHY_IT_MATTERS:" not in model_output:
             issues.append("evidence/insight sections missing")
         source_ids = {row["id"] for row in evidence["paragraphs"]}
-        if set(re.findall(r"\\[(P\\d+)\\]", model_output)) - source_ids:
+        if set(re.findall(r"\[(P\d+)\]", model_output)) - source_ids:
             issues.append("unknown source paragraph citation")
     elif evidence.get("reason") != "not_collected":
-        draft = re.search(r"^DRAFT:\\s*(.*)$", model_output, re.M | re.I)
+        draft = re.search(r"^DRAFT:\s*(.*)$", model_output, re.M | re.I)
         if not draft or draft.group(1).strip().upper() != "WITHHELD":
             issues.append("no extracted source: draft must be WITHHELD")
-    draft = re.search(r"^DRAFT:\\s*(.*)$", model_output, re.M | re.I)
+    draft = re.search(r"^DRAFT:\s*(.*)$", model_output, re.M | re.I)
     if draft and draft.group(1).strip().upper() != "WITHHELD":
         if approximate_x_length(draft.group(1)) > 280:
             issues.append("X length exceeds approximate limit")
