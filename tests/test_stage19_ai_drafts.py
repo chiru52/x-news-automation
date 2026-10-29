@@ -15,8 +15,15 @@ from newsbot.ai_drafts import save_private_review, LABEL
 
 
 URL = "https://finance.yahoo.com/news/ai-example"
-BODY = ("The publisher describes a new research report on technology company "
-        "software revenues, including the conditions behind the change. " * 8)
+BODY = (
+    "The publisher describes a new research report on technology company software revenues, "
+    "including conditions behind the quarterly change. "
+    "The report lists enterprise demand as a driver for higher spending in selected categories. "
+    "It says investment is focused on services and infrastructure rather than consumer advertising. "
+    "Analysts quoted in the report describe uncertainty about future growth as conditions evolve. "
+    "Executives expect customers to evaluate costs before making new long-term software purchases. "
+    "The research highlights how subscription spending is shifting across different enterprise teams. "
+)
 JSONLD = json.dumps({
     "@context": "https://schema.org",
     "@graph": [
