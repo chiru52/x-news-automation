@@ -175,7 +175,7 @@ class PrivateAiDraftsTests(unittest.TestCase):
         self.assertIn("inputs.approve_credit_use == true", text)
         self.assertIn("needs.one-draft.outputs.draft_ready == 'true'", text)
         self.assertIn("      issues: write", text)
-        self.assertIn("      copilot-requests: write", text) if False else self.assertIn("  copilot-requests: write", text)
+        self.assertIn("  copilot-requests: write", text)
         self.assertEqual(text.count("copilot -p "), 1)
         self.assertNotIn("\n  schedule:", text)
 
