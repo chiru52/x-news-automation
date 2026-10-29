@@ -322,3 +322,41 @@ For **new, manually approved** drafts, the editorial review now:
 **Important limitations:** These checks compare only **short, automatically extracted, unverified publisher snippets** (at most eight paragraphs, each truncated to 550 characters). A number omitted by truncation may cause a *false warning*. A matching number does **not** prove accurate attribution, the denominator or scope, semantic meaning, truth, or independent corroboration. An unflagged post is **NOT fact-checked or approved** and still requires a human to read the original and independently verify material claims. Other unsupported nonnumeric assertions may not be detected. There is no extra AI model call or spend for these checks.
 
 Offline tests cover both matching and mismatched numeric citations, short excerpt focus, escaped HTML, partial source limitations, withheld output and no-prefill behavior; tests never use AI credits. Existing private Issues (#19, #21, #23, #25) remain unchanged. The Copilot workflow is still manual-only with explicit default-off credit approval, at most one model call per approved run (30-credit soft limit, not a billing hard cap) and **no automatic X publishing**.
+
+
+## Stage 29 — Private editorial inbox (local browser, persistent GitHub Issues)
+
+A lightweight **localhost-only editorial dashboard** lets you work on the **existing private Copilot AI Draft Issues** without hopping between issue pages. It does **not** require hosting, a paid service, an API token in the browser, or another AI request.
+
+**Prerequisites:** Python 3.11+, GitHub CLI (\`gh\`) installed, and GitHub CLI authenticated with permission to read/edit Issues in the existing **private** repository. On Windows, use the GitHub CLI login instructions at https://cli.github.com/manual/gh_auth_login (login only on your own computer). This dashboard checks that the repository is private before opening and again on every Issue read/write.
+
+**Start on Windows (PowerShell in the repo folder):**
+
+\`\`\`powershell
+gh auth status
+py -3 -m newsbot.editorial_inbox --repo varadachiru/x-news-automation
+\`\`\`
+
+Or double-click **start-editorial-inbox.bat** after checking GitHub CLI authentication.
+
+**Start on macOS or Linux (terminal in the repo folder):**
+
+\`\`\`bash
+gh auth status
+python3 -m newsbot.editorial_inbox --repo varadachiru/x-news-automation
+\`\`\`
+
+On the same computer, open **http://127.0.0.1:8765/** in your browser; Ctrl+C stops the server. Optional \`--port 8766\` changes the local port. **Do not port-forward this server, expose it via a tunnel, run it on a public host, or use it on a shared computer.** This is a convenience interface for one trusted editor, not an internet-facing production SaaS or a phone-accessible hosted dashboard.
+
+**What it does:**
+
+- Loads existing private GitHub Issues labeled \`ai-draft-review\`, including their original source links, cited excerpts, model's analysis, and editorial precheck warnings. The page renders every piece of untrusted article/model text as inert plain text.
+- Search and filter the latest drafts by **Pending**, **Reviewed**, or **Rejected**. This does not fetch new RSS or use Copilot.
+- Review the linked publisher article, edit the proposed X copy, and **Save privately to GitHub**. The save updates only the \`My edited X post\` section and editorial status labels (\`ai-editor-reviewed\` or \`ai-editor-rejected\`), keeping publisher excerpts, original source links, publication-denial marker, and existing unrelated Issue labels.
+- Saving is an **explicit click**. Other tabs or people editing an Issue will cause the editor's revision check to request a refresh. GitHub does not provide an atomic compare-and-swap for the Issue update endpoint, so simultaneous external edits in the tiny gap between read and save are not fully preventable; avoid concurrent editing.
+- An editable post marked **Reviewed** is still **NOT fact-checked or authorized for publication**. The person editing must verify material claims and make any X post manually outside this system. The dashboard has no X/Buffer publish action or social credentials.
+- A local Copy button copies reviewed text to the clipboard without scheduling or publishing.
+
+**Privacy and limitations:** The localhost server uses the GitHub CLI's existing authenticated session; credentials never enter page JavaScript. It allows only loopback hosts, checks the private repo, restricts same-origin write requests with a CSRF token, applies content-security/no-cache headers, and renders untrusted text safely. The dashboard is accessible to other processes running under the same local user; treat your computer's session as trusted and stop the server when finished. The status labels and edited copy are **persistent in GitHub**, while unsaved typing remains only in your browser tab. Existing AI Draft Issues are not changed by installation, reading, searching or filtering; writes occur only when you click Save.
+
+**Development checks:** Offline unit and local HTTP integration tests use mock GitHub results. They do not make network calls, run Copilot, spend credits or publish anything. The existing GitHub Actions Copilot workflow remains manual and separately credit-approved.
