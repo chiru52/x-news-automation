@@ -6,6 +6,7 @@ Runs in a separate GitHub Actions job, without Copilot credentials.
 from __future__ import annotations
 
 import argparse
+import html
 import json
 import os
 import re
@@ -13,6 +14,22 @@ import subprocess
 from pathlib import Path
 
 LABEL = "ai-draft-review"
+
+def suggested_clean_draft(body: str) -> str:
+    """Extract the bounded, escaped clean copy from the trusted review format."""
+    marker = "## Clean proposed X post (manual editing required)"
+    section = body.split(marker, 1)
+    if len(section) != 2:
+        return ""
+    before_next_section = section[1].split("\n## ", 1)[0]
+    match = re.search(r"<pre>(.*?)</pre>", before_next_section, re.S)
+    if not match:
+        return ""
+    draft = html.unescape(match.group(1)).strip()
+    if not draft or len(draft) > 2000:
+        return ""
+    return draft
+
 
 
 def run_gh(args: list[str]) -> str:
@@ -48,13 +65,18 @@ def save_private_review(repo: str, run_id: str, body_file: Path) -> str:
             return str(item["url"])
 
     run_link = f"https://github.com/{repo}/actions/runs/{run_id}"
+    clean = suggested_clean_draft(body)
+    # The proposed copy is prefilled for convenient editing, but remains
+    # unverified and does not confer any posting authorization.
+    editor_start = ("<pre>" + html.escape(clean, quote=True) + "</pre>" if clean else
+                    "> [No usable draft — editor must write and verify]")
     with body_file.open("a", encoding="utf-8") as out:
         out.write("\n\n---\n**Original GitHub Actions run:** " + run_link +
                   "\n\n- [ ] Read article and corroborate material claims\n"
                   "- [ ] Edit the proposed text before any manual posting\n"
                   "- [ ] Set aside / reject\n\n"
                   "### My edited X post (manual only)\n\n"
-                  "> [Replace with your own fact-checked draft]\n\n"
+                  + editor_start + "\n\n"
                   "**Publication approval:** NOT GRANTED\n")
     run_gh(["label", "create", LABEL, "--repo", repo, "--color", "8A6FE3",
             "--description", "Private human-review AI news drafts", "--force"])
