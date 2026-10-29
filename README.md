@@ -269,3 +269,21 @@ New reviews now include, in this order:
 The enhanced format and source checks do **not** guarantee factual validity. A human must verify claims and independently corroborate important claims before manually using the draft. These improvements only affect **new future runs**; existing Issue #19 and other human-edited Issues are not overwritten or backfilled.
 
 All existing protections remain: the Copilot workflow is manually dispatched with a default-unchecked credit approval, capped at one Copilot request per run (30-credit soft session limit, not a billing hard cap); the separate Issue-saving job only has Issues permission; no automatic X or Buffer publishing, no X credentials, no scheduled AI jobs. The PR's tests run offline and consume no Copilot credits.
+
+## Stage 23 — Unique and fresh news before any Copilot credit use
+
+In [AI Draft #19](https://github.com/varadachiru/x-news-automation/issues/19) and [AI Draft #21](https://github.com/varadachiru/x-news-automation/issues/21), two separate credit-using runs wrote about **the same Hyperbolic funding news**. GitHub's RSS `--preview` intentionally doesn't update the daily review queue's persisted history, so without a second **AI-specific** history, repeated runs can draft the same article.
+
+The manually dispatched Copilot workflow now performs an additional **read-only private GitHub Issues lookup before article research or Copilot**. It reads Issues labeled `ai-draft-review`, including the existing #19 and #21, and extracts their original source URL and news headline (never the full body into the Copilot prompt). It then:
+
+1. **Skips previously drafted URLs**, including tracking query variations and fragments.
+2. **Skips highly similar news headlines** even when syndicated to another URL; conservative high-word-overlap matching avoids suppressing unrelated news on the same broad topic. This is heuristic, not semantic AI verification.
+3. **Filters stale items**, requiring the feed publication timestamp to be no more than 36 hours old, consistent with current RSS source collection settings.
+4. **Honors the user's preferred article index** when it is unused and fresh. Otherwise prioritizes eligible alternatives by existing relevance score, then publication recency; source extraction still requires genuine publisher paragraphs and follows the earlier safety restrictions.
+5. **Skips Copilot with no AI credit use** if all candidates were drafted, stale or blocked. The Actions Summary lists each skipped candidate and its reason (`already_reviewed`, `stale_or_ineligible`) alongside publisher extraction diagnostics.
+
+The built-in temporary GitHub token gains **`issues: read` permission in the Copilot preflight job**, while the separate private draft-saving job retains `issues: write`. If private Issues cannot be read or the history is malformed, the workflow fails **before** any model call; it does not silently ignore history and spend credits. The history lookup is limited to 999 existing AI Draft Issues; at the limit, it fails closed instead of assuming the oldest Issue has been seen. Previous Issues are **never overwritten** and the scheduled non-AI RSS collector remains unchanged.
+
+**No automatic X publishing, scheduling, or posting is added.** GitHub Copilot still runs at most once per manually triggered workflow after a separately checked explicit credit-approval checkbox (30-credit *soft* session limit, not a guaranteed spend cap). Tests run entirely offline and do not request Copilot credits.
+
+**Next after merge:** Only if you want to use another potentially billable Copilot request, run the manual workflow on `main` and inspect the source-access table. It should skip Hyperbolic if it reappears in the shortlist and select a different supported article when available. The resulting new review will be saved under [private AI Draft Issues](https://github.com/varadachiru/x-news-automation/issues?q=is%3Aissue%20label%3Aai-draft-review). No new Issue is created if all candidates are excluded.

@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .source_research import fetch_evidence
+from .story_history import choose_story_order, story_duplicate
 from .writing import approximate_x_length
 
 
@@ -271,14 +272,27 @@ def render_summary(queue: dict, index: int, model_output: str,
 
 
 def select_research_evidence(queue: dict, preferred_index: int,
-                             fetcher=fetch_evidence) -> dict:
-    """Attempt the preferred article then fallbacks; select at most one."""
+                             fetcher=fetch_evidence,
+                             history: dict | None = None) -> dict:
+    """Find one unused, recent, relevant article without paying for duplicates.
+
+    When history is supplied (as in the GitHub workflow), verify it before
+    fetching and filter all previously drafted stories. Earlier callers without
+    a history retain the original single-run selection API.
+    """
     _review_item(queue, preferred_index)
-    order = [preferred_index] + [
-        i for i in range(1, min(9, len(queue["articles"])) + 1)
-        if i != preferred_index
-    ]
-    attempts = []
+    candidates = list(range(1, min(9, len(queue["articles"])) + 1))
+    if history is None:
+        order = [preferred_index] + [i for i in candidates if i != preferred_index]
+        skipped = []
+    else:
+        order = choose_story_order(queue, preferred_index, history)
+        skipped = [{
+            "index": i, "status": "skipped",
+            "reason": ("already_reviewed" if story_duplicate(
+                queue["articles"][i - 1], history["stories"]) else "stale_or_ineligible")
+        } for i in candidates if i not in order]
+    attempts = list(skipped)
     chosen = None
     for index in order:
         item = _review_item(queue, index)
@@ -292,10 +306,21 @@ def select_research_evidence(queue: dict, preferred_index: int,
             break
         if chosen is None:
             chosen = dict(result, selected_index=preferred_index)
-    assert chosen is not None
+    if chosen is None:
+        item = _review_item(queue, preferred_index)
+        chosen = {
+            "status": "unavailable",
+            "reason": "no_unused_fresh_candidates",
+            "source_url": str(item["link"]),
+            "paragraphs": [],
+            "selected_index": preferred_index,
+        }
     chosen["preferred_index"] = preferred_index
     chosen["attempts"] = attempts
+    chosen["history_count"] = history.get("count", len(history["stories"])) if history else None
+    chosen["eligible_count"] = len(order)
     return chosen
+
 
 
 def write_source_summary(evidence: dict, path: str) -> None:
@@ -304,7 +329,8 @@ def write_source_summary(evidence: dict, path: str) -> None:
         "domain_not_allowed_or_insecure", "dns_not_public_or_unavailable",
         "redirect_blocked", "http_unavailable", "unsupported_media_type",
         "too_large", "network_or_http_error", "no_reliable_article_text",
-        "none", "not_collected",
+        "none", "not_collected", "already_reviewed",
+        "stale_or_ineligible", "no_unused_fresh_candidates",
     }
     lines = ["### Source access diagnostics (no AI credit used yet)", "",
              "The preferred article is checked first; up to eight other shortlisted "
@@ -313,9 +339,14 @@ def write_source_summary(evidence: dict, path: str) -> None:
              "|---|---|---|"]
     for a in evidence["attempts"]:
         reason = a["reason"] if a["reason"] in valid_reasons else "other_error"
-        status = a["status"] if a["status"] in {"unavailable", "extracted_unverified"} else "invalid"
+        status = a["status"] if a["status"] in {
+            "unavailable", "extracted_unverified", "skipped"} else "invalid"
         lines.append(f"| {int(a['index'])} | {status} | {reason} |")
-    lines += ["", "**Selected article index:** " + str(int(evidence["selected_index"])),
+    lines += ["", "**Previously reviewed AI Drafts:** " +
+              str(evidence.get("history_count", "not checked")),
+              "**Unused, fresh shortlist candidates:** " +
+              str(evidence.get("eligible_count", "unknown")),
+              "**Selected article index:** " + str(int(evidence["selected_index"])),
               "**Publisher evidence available:** " +
               ("yes — not independently verified" if evidence["status"] == "extracted_unverified"
                else "no — Copilot step will be skipped"), ""]
@@ -333,10 +364,12 @@ def main() -> int:
     p.add_argument("--model-output")
     p.add_argument("--evidence")
     p.add_argument("--summary")
+    p.add_argument("--history")
     args = p.parse_args()
     queue = json.loads(Path(args.queue).read_text(encoding="utf-8"))
     if args.command == "research":
-        fetched = select_research_evidence(queue, args.index)
+        history = json.loads(Path(args.history).read_text(encoding="utf-8")) if args.history else None
+        fetched = select_research_evidence(queue, args.index, history=history)
         target = Path(args.output)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(fetched, ensure_ascii=False), encoding="utf-8")
