@@ -29,6 +29,7 @@ on:
 # It cannot push commits, create Issues, or publish to X.
 permissions:
   contents: read
+  issues: read  # Check private previously generated AI Drafts without writing them.
   copilot-requests: write  # GitHub Actions ephemeral token; no personal PAT needed.
 
 concurrency:
@@ -58,7 +59,18 @@ jobs:
         shell: bash
         run: |
           python -m newsbot --preview --output "$PREVIEW_DIR"
-      - name: Check up to nine bounded publisher articles, select one (no AI call yet)
+      - name: Read private AI Draft history (no Copilot request)
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          # Fail closed if private GitHub Issue history is unavailable.
+          python -m newsbot.story_history \
+            --repo "$GH_REPO" \
+            --output "$RUNNER_TEMP/copilot-story-history.json"
+      - name: Check unused, fresh shortlisted articles for publisher evidence (no AI call)
+
         id: source
         shell: bash
         run: |
@@ -66,6 +78,7 @@ jobs:
             --queue "$PREVIEW_DIR/review_queue.json" \
             --index "$STORY_INDEX" \
             --output "$RUNNER_TEMP/copilot-evidence.json" \
+            --history "$RUNNER_TEMP/copilot-story-history.json" \
             --summary "$GITHUB_STEP_SUMMARY"
           selected="$(python -c 'import json,sys; print(int(json.load(open(sys.argv[1]))["selected_index"]))' "$RUNNER_TEMP/copilot-evidence.json")"
           echo "selected_index=$selected" >> "$GITHUB_OUTPUT"
@@ -74,8 +87,8 @@ jobs:
           else
             echo 'usable=false' >> "$GITHUB_OUTPUT"
             echo '## No usable publisher article text — Copilot request skipped' >> "$GITHUB_STEP_SUMMARY"
-            echo 'All shortlisted articles were inaccessible, unsupported, blocked, or did not provide enough reliable paragraphs.' >> "$GITHUB_STEP_SUMMARY"
-            echo 'No draft was generated and no AI credits were spent by this workflow step. Do not retry blindly; read the diagnostics table above first.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'All eligible, unused articles were unavailable, or every shortlisted story was already reviewed or stale.' >> "$GITHUB_STEP_SUMMARY"
+            echo 'No draft was generated; Copilot was skipped without model-credit use. Inspect the private review history and source diagnostics instead of retrying blindly.' >> "$GITHUB_STEP_SUMMARY"
           fi
       - name: Prepare exactly one grounded candidate prompt
         if: ${{ steps.source.outputs.usable == 'true' }}
