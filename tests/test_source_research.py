@@ -25,7 +25,7 @@ SAMPLE = {
         "publishable": False,
     }],
 }
-PARA1 = "The software company reported quarterly revenue growth and announced new cloud infrastructure investments in its quarterly results."
+PARA1 = "The software company reported quarterly revenue growth and announced new cloud infrastructure investments in its quarterly results. The announcement described several enterprise contracts and a regional infrastructure rollout."
 PARA2 = "Management said the enterprise business grew despite continuing customer caution, according to the company's published statement."
 HTML = ("<html><nav><p>Newsletter advertisement not an article</p></nav>"
         "<main><article><p>" + PARA1 + "</p><p>" + PARA2 +
