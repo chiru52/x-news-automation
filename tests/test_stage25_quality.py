@@ -137,7 +137,7 @@ class CleanSourceAndPromptTests(unittest.TestCase):
                "DRAFT: Pinnacle Bankshares reported faster net interest income growth than costs. "+RAW+"\n"
                "SOURCE: "+RAW+"\nREVIEW_CHECKS: Confirm figures.")
         report=render_summary(q,1,model,evidence)
-        self.assertIn("**Source URL:** "+RAW,report)
+        self.assertIn("**Source URL:** "+RAW.replace("&", "&amp;"),report)
         self.assertIn("**Shareable source URL:** "+SHARE,report)
         clean=suggested_clean_draft(report)
         self.assertIn(SHARE,clean)
