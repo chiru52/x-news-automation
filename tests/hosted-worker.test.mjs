@@ -1,6 +1,7 @@
 /* Offline Node tests: no network, Cloudflare, GitHub, AI, or X requests. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { PAGE, STYLE, SCRIPT } from '../worker/ui.mjs';
 import worker, { accessIdentity, handleRequest, parseIssue, readInbox,
   replaceEditor, persistReview, revisionOf, safeEnvironment } from '../worker/hosted.mjs';
@@ -241,4 +242,19 @@ test('Hosted dashboard JS parses and includes no secrets or publishing flow',()=
   assert.ok(!SCRIPT.includes('api.x.com'));
   assert.ok(!SCRIPT.includes('api.twitter.com'));
   assert.ok(!PAGE.includes('127.0.0.1'));
+});
+
+test('Hosted deployment is manual-only and cannot silently trigger billable AI',()=>{
+  const deploy=readFileSync('.github/workflows/deploy-editorial-dashboard.yml','utf8');
+  const tests=readFileSync('.github/workflows/tests.yml','utf8');
+  assert.match(deploy,/workflow_dispatch:/);
+  assert.match(deploy,/default: false/);
+  assert.match(deploy,/inputs\.approve_deployment == true/);
+  assert.ok(!deploy.includes('\n  push:'));
+  assert.ok(!deploy.includes('\n  schedule:'));
+  assert.ok(!deploy.includes('copilot -p'));
+  assert.ok(!deploy.includes('GITHUB_EDITOR_TOKEN'));
+  assert.ok(!deploy.includes('GH_EDITOR_TOKEN'));
+  assert.ok(!deploy.includes('api.x.com'));
+  assert.match(tests,/node --test tests\/hosted-worker\.test\.mjs/);
 });
