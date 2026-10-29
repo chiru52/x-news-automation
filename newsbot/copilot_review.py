@@ -13,6 +13,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .source_research import fetch_evidence
+from .evidence_audit import audit_model_evidence, focused_excerpt
 from .story_history import choose_story_order, story_duplicate, normalize_url
 from .writing import approximate_x_length
 
@@ -95,6 +96,14 @@ def make_prompt(queue: dict, index: int, evidence: dict | None = None) -> str:
         "evidence cited by [P1], [P2] etc ONLY in the EVIDENCE and "
         "WHY_IT_MATTERS lines; never place [P#] markers in DRAFT. "
         "Paraphrase, never copy long source passages or invent significance.\n"
+        "For EACH factual sentence in EVIDENCE and WHY_IT_MATTERS, cite the "
+        "specific matching paragraph IDs at the END of that sentence; never "
+        "attach a citation to an unrelated sentence. All quantities in the claim "
+        "(such as 60,000 people, $30 million, or 11.7%) must appear in its cited "
+        "publisher excerpt. If the evidence excerpt does not show a number, "
+        "do NOT repeat it in the draft; WITHHOLD unsupported specifics. "
+        "Report eligibility/announcements accurately: a proposed buyout to "
+        "60,000 eligible people is NOT the same as 60,000 layoffs.\n"
         "Name the actual company/product unambiguously in DRAFT, preferably its "
         "full company name from the publisher text. Avoid vague company references "
         "such as 'Pinnacle' when the evidence establishes a fuller name. "
@@ -189,12 +198,16 @@ def evaluate_review(item: dict, model_output: str, evidence: dict) -> dict:
         # This is an advisory t.co-weighted count, not X's official validator.
         if approximate_x_length(clean) > 280:
             issues.append("X length exceeds approximate limit")
+    # Heuristic literal-quantity checks are only clues for human review, not
+    # semantic claim verification. Original source may be truncated.
+    evidence_audit = audit_model_evidence(fields, evidence["paragraphs"])
     # Treat all results as unverified editorial drafts regardless of checks.
     return {
         "clean_draft": clean,
         "withheld": withheld,
         "issues": list(dict.fromkeys(issues)),
         "cited_ids": sorted(cited, key=lambda name: int(name[1:])),
+        "evidence_audit": evidence_audit,
         "approximate_x_length": approximate_x_length(clean) if clean else 0,
     }
 
@@ -258,6 +271,24 @@ def render_summary(queue: dict, index: int, model_output: str,
         ("Needs corrections: " + ", ".join(issues) if issues else
          "Basic fields found; factual accuracy NOT assessed"),
         "",
+        "## Automated claim-to-evidence precheck (NOT fact-checking)",
+        "",
+        "**Automated evidence precheck:** " +
+        ("Needs manual attention: " + str(len(review["evidence_audit"]["flags"])) +
+         " possible citation/quantity gap(s)" if review["evidence_audit"]["flags"]
+         else "No obvious literal citation/quantity gaps; factual meaning NOT verified"),
+        "",
+        "This is a limited, deterministic check of short, potentially truncated "
+        "publisher snippets. It cannot validate meaning, eligibility, causality, "
+        "company statements, or independent truth.",
+        "",
+    ])
+    if review["evidence_audit"]["flags"]:
+        lines.extend(["**Review these possible evidence gaps before editing:**", ""])
+        for problem in review["evidence_audit"]["flags"]:
+            lines.append("- " + html.escape(problem, quote=True))
+        lines.append("")
+    lines.extend([
         "## Supporting publisher excerpts (NOT independently corroborated)",
         "",
         "Short quotations from the linked publisher page; compare each to its original "
@@ -270,7 +301,11 @@ def render_summary(queue: dict, index: int, model_output: str,
         if not chosen:
             chosen = list(rows)[:2]
         for key in chosen:
-            snippet = html.escape(_brief_source_excerpt(rows[key]), quote=True)
+            supporting_claims = [
+                claim["text"] for claim in review["evidence_audit"]["claims"]
+                if key in claim["refs"]
+            ]
+            snippet = html.escape(focused_excerpt(rows[key], supporting_claims), quote=True)
             lines.extend([f"**{key} — publisher excerpt:**", "", "<pre>" + snippet + "</pre>", ""])
         lines.append("Reference IDs are for editorial evidence only; they are removed "
                      "from the clean proposed X post.")
