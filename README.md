@@ -44,3 +44,13 @@ python -m newsbot --state .state/seen.json --output output/live
 The state history is cached between GitHub Actions runs, but caches may expire or be evicted. This is suitable for a **non-publishing** review queue only. Before automated posting, add a durable database/ledger, source verification, manual approval controls, strict rate limits, idempotency, and integration tests. Semantic duplicate detection is not yet implemented. Some publishers may block automated RSS requests. Respect their content and licensing terms.
 
 No third-party article text is bundled with the project.
+
+## Three-category news mix (Stage 1B)
+
+The collector now watches three areas: **Technology/AI**, **financial markets/business**, and **SaaS tools, launches and funding**. Edit `config/sources.json` to add or remove permitted RSS/Atom feeds. The `category_order` array in `config/settings.json` controls the categories to balance.
+
+For a five-draft day with news in all three categories, the collector picks **2 / 2 / 1** and rotates which topic receives the single slot over successive days. It maintains each category's count between runs and falls back to available categories when a feed runs dry. Daily limits, review-only output, and duplicate suppression remain in force.
+
+**Financial headlines are not investment advice.** Prices, earnings and market-sensitive claims must be verified from reliable primary sources before posting. Product Hunt's productivity category may include non-SaaS products; approve relevance before publication. We haven't integrated AI or X publishing. A successful job cannot confirm the underlying reporting is correct.
+
+The first day's existing five drafts consume its draft quota. The new mix begins at the next Stockholm calendar-day quota, unless prior history has expired. A workflow run after merging will validate live source availability; individual feeds can sometimes fail.

@@ -1,7 +1,47 @@
 [
-  {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml", "category": "technology"},
-  {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml", "category": "technology"},
-  {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index", "category": "technology"},
-  {"name": "TechCrunch", "url": "https://techcrunch.com/feed/", "category": "technology"},
-  {"name": "MIT Technology Review", "url": "https://www.technologyreview.com/feed/", "category": "technology"}
+  {
+    "name": "BBC Technology",
+    "url": "https://feeds.bbci.co.uk/news/technology/rss.xml",
+    "category": "technology"
+  },
+  {
+    "name": "Ars Technica",
+    "url": "https://feeds.arstechnica.com/arstechnica/index",
+    "category": "technology"
+  },
+  {
+    "name": "The Verge Tech",
+    "url": "https://www.theverge.com/rss/tech/index.xml",
+    "category": "technology"
+  },
+  {
+    "name": "CNBC Markets",
+    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=20409666",
+    "category": "markets"
+  },
+  {
+    "name": "CNBC Investing",
+    "url": "https://www.cnbc.com/id/15839069/device/rss/rss.html",
+    "category": "markets"
+  },
+  {
+    "name": "BBC Business",
+    "url": "https://feeds.bbci.co.uk/news/business/rss.xml",
+    "category": "markets"
+  },
+  {
+    "name": "Product Hunt SaaS",
+    "url": "https://www.producthunt.com/feed?category=saas",
+    "category": "saas"
+  },
+  {
+    "name": "Product Hunt Productivity",
+    "url": "https://www.producthunt.com/feed?category=productivity",
+    "category": "saas"
+  },
+  {
+    "name": "The SaaS News",
+    "url": "https://www.thesaasnews.com/news/rss/",
+    "category": "saas"
+  }
 ]

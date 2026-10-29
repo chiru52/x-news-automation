@@ -40,7 +40,8 @@ def main() -> int:
     state = load_state(Path(args.state))
     selected = select_articles(stories, state, now, daily_limit=int(settings["daily_draft_limit"]),
                                lookback_hours=int(settings["lookback_hours"]),
-                               timezone_name=settings["timezone"])
+                               timezone_name=settings["timezone"],
+                              category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))))
     render_outputs(selected, Path(args.output), now, errors)
     save_state(Path(args.state), state)
     print(f"Collected {len(stories)} articles, drafted {len(selected)}, feed errors {len(errors)}")

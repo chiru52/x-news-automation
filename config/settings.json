@@ -5,5 +5,10 @@
   "maximum_feed_bytes": 1500000,
   "request_timeout_seconds": 12,
   "ai_provider": "none",
-  "publishing_enabled": false
+  "publishing_enabled": false,
+  "category_order": [
+    "technology",
+    "markets",
+    "saas"
+  ]
 }
