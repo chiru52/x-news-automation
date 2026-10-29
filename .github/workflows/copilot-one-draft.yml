@@ -70,7 +70,6 @@ jobs:
             --repo "$GH_REPO" \
             --output "$RUNNER_TEMP/copilot-story-history.json"
       - name: Check unused, fresh shortlisted articles for publisher evidence (no AI call)
-
         id: source
         shell: bash
         run: |
