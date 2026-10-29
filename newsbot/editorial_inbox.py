@@ -204,6 +204,20 @@ def save_review(repo: str, number: int, revision: str, draft: str, status: str,
     if issue_revision(issue) != revision:
         raise IssueConflict("Issue changed in GitHub; refresh before saving")
     new_body = build_updated_body(issue["body"], draft)
+    # Create the requested label only on an explicit user Save. No labels
+    # are created merely by opening/reading the dashboard.
+    if status != "pending":
+        existing = gh(["api", f"repos/{repo}/labels?per_page=100"])
+        if not isinstance(existing, list) or len(existing) >= 100:
+            raise IssueValidationError("Cannot verify existing status labels safely")
+        label = STATUS_LABELS[status]
+        if label not in {x.get("name") for x in existing if isinstance(x, dict)}:
+            gh(["api", "--method", "POST", f"repos/{repo}/labels",
+                "--input", "-"], input_data=json.dumps({
+                    "name": label,
+                    "color": "2F855A" if status == "reviewed" else "C34D63",
+                    "description": "Private editorial decision — never X publication approval",
+                }))
     remaining = sorted((names - set(STATUS_LABELS.values())) |
                        ({STATUS_LABELS[status]} if status != "pending" else set()))
     data = {"body": new_body, "labels": remaining}
