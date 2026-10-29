@@ -253,3 +253,19 @@ The [Step 18 run](https://github.com/varadachiru/x-news-automation/actions/runs/
 3. Read the original source, corroborate claims, and edit the proposed text before manually posting anything. **Issue creation is not publishing approval.**
 4. If there is no new Issue, check the workflow's Source access diagnostics table to learn why the model may have been skipped.
 
+
+## Stage 21 — Cleaner Copilot draft reviews and visible source evidence
+
+A verified successful example is [private AI Draft #19](https://github.com/varadachiru/x-news-automation/issues/19) from [Copilot run #40918543275](https://github.com/varadachiru/x-news-automation/actions/runs/40918543275). Its proposed X post included model-internal citations like `[P3][P4]`, but the private Issue did not show the supporting source snippets. Those citations should be for editorial reasoning, not public X copy.
+
+New reviews now include, in this order:
+
+1. **Clean proposed X post (manual editing required):** Copilot's single-line draft with internal `[P#]` markers removed automatically, the original URL preserved as-is, and the estimated X length displayed. Any overlength or missing-source issues are flagged; the system never invents facts, figures, links or corrections. `WITHHELD` drafts remain withheld.
+2. **Automated format check:** checks source URL equality, required fields, explicit NOT VERIFIED status, cited paragraph identifiers, evidence references and approximate X length. An otherwise complete format check still states that factual accuracy has **not** been assessed.
+3. **Supporting publisher excerpts:** up to four SHORT excerpts of cited publisher paragraphs, identified by `P1`, `P2`, etc. The complete article is NOT republished and no independent verification is implied. Editorial readers should compare context to the original source.
+4. **Full Copilot response:** preserved as safely escaped untrusted text, for inspecting reasoning and warnings.
+5. **Editable private Issue:** after a successful manually approved AI run, the separate Issue-saving job pre-fills the *My edited X post (manual only)* field with the clean, citation-free proposed text. Editors can change it via GitHub's Edit control. **Publication approval remains NOT GRANTED**.
+
+The enhanced format and source checks do **not** guarantee factual validity. A human must verify claims and independently corroborate important claims before manually using the draft. These improvements only affect **new future runs**; existing Issue #19 and other human-edited Issues are not overwritten or backfilled.
+
+All existing protections remain: the Copilot workflow is manually dispatched with a default-unchecked credit approval, capped at one Copilot request per run (30-credit soft session limit, not a billing hard cap); the separate Issue-saving job only has Issues permission; no automatic X or Buffer publishing, no X credentials, no scheduled AI jobs. The PR's tests run offline and consume no Copilot credits.
