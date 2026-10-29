@@ -22,6 +22,40 @@ UNCERTAINTY = re.compile(
 HEADROOM = 270
 URL_WEIGHT = 23
 
+# Known *feed* homes, not necessarily the credited author of syndicated items.
+# Explicit mappings avoid warning about every original BBC/Verge/SaaStr link.
+KNOWN_FEED_DOMAINS = {
+    "BBC Technology": ("bbc.com", "bbc.co.uk"),
+    "BBC Business": ("bbc.com", "bbc.co.uk"),
+    "Ars Technica": ("arstechnica.com",),
+    "The Verge Tech": ("theverge.com",),
+    "CNBC Markets": ("cnbc.com",),
+    "CNBC Investing": ("cnbc.com",),
+    "Product Hunt SaaS": ("producthunt.com",),
+    "Product Hunt Productivity": ("producthunt.com",),
+    "The SaaS News": ("thesaasnews.com",),
+    "Yahoo Finance - Major Tech Stocks": ("finance.yahoo.com", "yahoo.com"),
+    "Yahoo Finance - Market Indices": ("finance.yahoo.com", "yahoo.com"),
+    "TechCrunch - Startups": ("techcrunch.com",),
+    "SaaStr - SaaS Business": ("saastr.com",),
+    "Hacker News - Technology": ("news.ycombinator.com", "ycombinator.com"),
+}
+
+
+def feed_domain_mismatch(feed_name: str, article_hostname: str) -> bool | None:
+    """True: linked host differs; False: linked host matches; None: unknown feed.
+
+    Never infer who wrote the story. Host matches are weak provenance indicators.
+    """
+    allowed = KNOWN_FEED_DOMAINS.get(feed_name)
+    if allowed is None:
+        return None
+    return not any(
+        article_hostname == domain or article_hostname.endswith("." + domain)
+        for domain in allowed
+    )
+
+
 
 def approximate_x_length(text: str) -> int:
     """Approximate X's t.co URL weighting, not an official length validator."""
@@ -68,8 +102,9 @@ def suggest_post(article) -> dict:
     draft = headline + suffix
     assert approximate_x_length(draft) <= HEADROOM
     warnings = ["Read the linked article; RSS headline has not been fact-checked."]
-    if linked_site not in source.lower().replace(" ", ""):
-        warnings.append("The RSS feed may syndicate another publisher; verify the linked site's attribution.")
+    mismatch = feed_domain_mismatch(source, linked_site)
+    if mismatch:
+        warnings.append("Linked site differs from feed publisher; check original authorship and context.")
     if article.category == "markets":
         warnings.append("Market-sensitive claims: confirm figures, timing and source.")
     if article.category == "saas":
@@ -85,6 +120,7 @@ def suggest_post(article) -> dict:
         "method": "rule_based_link_attributed_rss_headline",
         "rss_feed_name": source,
         "linked_article_site": linked_site,
+        "feed_domain_mismatch": mismatch,
         "approx_x_length": approximate_x_length(draft),
         "limit_approximate": True,
         "headline_shortened": shortened,

@@ -16,7 +16,8 @@ from urllib.request import Request, urlopen
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
-from .relevance import assess_story, is_saas_funding_headline
+from .relevance import (assess_story, is_saas_funding_headline,
+                        is_promotional_headline, is_us_index_futures_headline)
 from .writing import suggest_post
 
 ATOM = "{http://www.w3.org/2005/Atom}"
@@ -147,6 +148,7 @@ def make_preview_state(state: dict, now: datetime,
     preview.setdefault("daily_categories", {}).pop(day, None)
     preview.setdefault("daily_sources", {}).pop(day, None)
     preview.setdefault("daily_saas_funding", {}).pop(day, None)
+    preview.setdefault("daily_market_futures", {}).pop(day, None)
     return preview
 
 
@@ -156,7 +158,9 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                     category_order: tuple[str, ...] = ("technology", "markets", "saas"),
                     rank_by_relevance: bool = False,
                     max_per_source_per_day: int | None = None,
-                    max_saas_funding_per_day: int | None = None) -> list[Article]:
+                    max_saas_funding_per_day: int | None = None,
+                    exclude_promotional_headlines: bool = False,
+                    max_us_index_futures_per_day: int | None = None) -> list[Article]:
     """Select fresh, unique stories fairly across categories and runs in a local day.
 
     The daily counter is authoritative: newly configured categories cannot override
@@ -174,10 +178,14 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
         raise ValueError("Source daily cap must be at least one")
     if max_saas_funding_per_day is not None and max_saas_funding_per_day < 0:
         raise ValueError("SaaS funding daily cap cannot be negative")
+    if max_us_index_futures_per_day is not None and max_us_index_futures_per_day < 0:
+        raise ValueError("Index futures daily cap cannot be negative")
     state.setdefault("daily_sources", {})
     state.setdefault("daily_saas_funding", {})
+    state.setdefault("daily_market_futures", {})
     source_counts = state["daily_sources"].setdefault(day, {})
     funding_count = int(state["daily_saas_funding"].get(day, 0))
+    futures_count = int(state["daily_market_futures"].get(day, 0))
     state.setdefault("seen_titles", {})
     state.setdefault("daily_categories", {})
     category_counts = state["daily_categories"].setdefault(day, {})
@@ -194,6 +202,8 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
         if published.tzinfo is None or not min_date <= published.astimezone(timezone.utc) <= now + timedelta(minutes=10):
             continue
         if item.identity in state["seen"] or title_key(item.title) in state["seen_titles"]:
+            continue
+        if exclude_promotional_headlines and is_promotional_headline(item.title):
             continue
         assessment = assess_story(item.title, item.summary, item.category, published, now)
         # Conservative filtering is enabled by the CLI, but stays opt-in for
@@ -228,6 +238,10 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                         and is_saas_funding_headline(item.title)
                         and funding_count >= max_saas_funding_per_day):
                     continue
+                if (max_us_index_futures_per_day is not None
+                        and is_us_index_futures_headline(item.title, item.category)
+                        and futures_count >= max_us_index_futures_per_day):
+                    continue
                 available[category] = (idx, item)
                 break
         if not available:
@@ -243,7 +257,10 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
         source_counts[item.source] = source_counts.get(item.source, 0) + 1
         if item.category == "saas" and is_saas_funding_headline(item.title):
             funding_count += 1
+        if is_us_index_futures_headline(item.title, item.category):
+            futures_count += 1
     state["daily_saas_funding"][day] = funding_count
+    state["daily_market_futures"][day] = futures_count
     for item in selected:
         state["seen"][item.identity] = now.isoformat()
         state["seen_titles"][title_key(item.title)] = now.isoformat()
@@ -261,6 +278,10 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                               if key >= cutoff.date().isoformat()}
     state["daily_saas_funding"] = {
         key: total for key, total in state["daily_saas_funding"].items()
+        if key >= cutoff.date().isoformat()
+    }
+    state["daily_market_futures"] = {
+        key: total for key, total in state["daily_market_futures"].items()
         if key >= cutoff.date().isoformat()
     }
     return selected

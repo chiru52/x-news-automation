@@ -424,5 +424,61 @@ class CoreTests(unittest.TestCase):
 
 
 
+    def test_promotional_ticket_pitch_excluded_without_blocking_real_launches(self):
+        from newsbot.relevance import is_promotional_headline
+        pitch = "7 days until TechCrunch Founder Summit: Save up to $100 on your pass before doors open"
+        product = "New SaaS platform launches workflow automation for small businesses"
+        self.assertTrue(is_promotional_headline(pitch))
+        self.assertFalse(is_promotional_headline(product))
+        entries = [
+            Article(title=pitch, link="https://example.com/promo", source="TechCrunch - Startups",
+                    published_at=NOW.isoformat(), category="saas"),
+            Article(title=product, link="https://example.com/product", source="TechCrunch - Startups",
+                    published_at=NOW.isoformat(), category="saas"),
+        ]
+        state = {"seen": {}, "daily_drafts": {}}
+        chosen = select_articles(entries, state, NOW, daily_limit=2,
+                                 rank_by_relevance=True, exclude_promotional_headlines=True)
+        self.assertEqual([item.title for item in chosen], [product])
+
+    def test_us_index_futures_cap_preserves_distinct_market_news(self):
+        from newsbot.relevance import is_us_index_futures_headline
+        self.assertTrue(is_us_index_futures_headline("Nasdaq futures rise as Fed policy shifts"))
+        self.assertTrue(is_us_index_futures_headline("Dow and S&P 500 futures dip after earnings"))
+        self.assertFalse(is_us_index_futures_headline("Nasdaq shares rise as software firm reports earnings"))
+        headlines = [
+            "Nasdaq futures rise as Fed policy shifts",
+            "Dow and S&P 500 futures dip after earnings",
+            "Microsoft stock gains after earnings",
+            "Inflation cools as Federal Reserve reviews rates",
+        ]
+        items = [Article(title=title, link=f"https://example.com/market/{i}",
+                         source=f"Market Feed {i}", category="markets",
+                         published_at=NOW.isoformat()) for i, title in enumerate(headlines)]
+        state = {"seen": {}, "daily_drafts": {}}
+        chosen = select_articles(items, state, NOW, daily_limit=4,
+                                 rank_by_relevance=True, max_us_index_futures_per_day=1)
+        self.assertEqual(len(chosen), 3)
+        self.assertEqual(sum(is_us_index_futures_headline(x.title) for x in chosen), 1)
+        self.assertEqual(state["daily_market_futures"]["2026-10-29"], 1)
+
+    def test_futures_limit_persists_across_runs_and_is_preview_safe(self):
+        from newsbot.core import make_preview_state
+        state = {"seen": {}, "daily_drafts": {}}
+        items = [Article(title=f"Nasdaq futures update {i} after Fed statement",
+                         link=f"https://example.com/futures/{i}", source=f"Feed {i}",
+                         published_at=NOW.isoformat(), category="markets") for i in range(3)]
+        first = select_articles(items[:1], state, NOW, daily_limit=9,
+                                max_us_index_futures_per_day=1)
+        second = select_articles(items[1:], state, NOW + timedelta(minutes=1),
+                                 daily_limit=9, max_us_index_futures_per_day=1)
+        self.assertEqual(len(first), 1)
+        self.assertEqual(len(second), 0)
+        preview = make_preview_state(state, NOW + timedelta(minutes=2))
+        self.assertNotIn("2026-10-29", preview["daily_market_futures"])
+        self.assertEqual(state["daily_market_futures"]["2026-10-29"], 1)
+
+
+
 if __name__ == "__main__":
     unittest.main()

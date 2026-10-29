@@ -59,7 +59,9 @@ def main() -> int:
                               category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))),
                               rank_by_relevance=settings.get("relevance_filter_enabled") is True,
                               max_per_source_per_day=int(settings.get("max_drafts_per_source_per_day", 2)),
-                              max_saas_funding_per_day=int(settings.get("max_saas_funding_drafts_per_day", 1)))
+                              max_saas_funding_per_day=int(settings.get("max_saas_funding_drafts_per_day", 1)),
+                              exclude_promotional_headlines=settings.get("exclude_promotional_headlines") is True,
+                              max_us_index_futures_per_day=int(settings.get("max_us_index_futures_drafts_per_day", 1)))
     render_outputs(selected, Path(args.output), now, errors, diagnostics,
                    preview_only=args.preview)
     if not args.preview:

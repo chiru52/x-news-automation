@@ -70,7 +70,26 @@ class DraftSuggestionTests(unittest.TestCase):
         self.assertNotIn("Via Yahoo Finance", suggestion["text"])
         self.assertEqual(suggestion["rss_feed_name"], "Yahoo Finance - Market Indices")
         self.assertEqual(suggestion["linked_article_site"], "stocktwits.com")
-        self.assertTrue(any("syndicate" in x for x in suggestion["verification_warnings"]))
+        self.assertTrue(any("Linked site differs" in x for x in suggestion["verification_warnings"]))
+        self.assertIs(suggestion["feed_domain_mismatch"], True)
+
+    def test_known_home_site_has_no_false_syndication_warning(self):
+        a = story("Google launches new cybersecurity technology",
+                  source="The Verge Tech",
+                  link="https://www.theverge.com/tech/123")
+        result = suggest_post(a)
+        self.assertIs(result["feed_domain_mismatch"], False)
+        self.assertFalse(any("Linked site differs" in x
+                             for x in result["verification_warnings"]))
+
+    def test_unknown_feed_domain_does_not_claim_mismatch(self):
+        a = story("Company launches AI productivity platform",
+                  source="Unlisted feed",
+                  link="https://example.org/post")
+        result = suggest_post(a)
+        self.assertIsNone(result["feed_domain_mismatch"])
+        self.assertFalse(any("Linked site differs" in x
+                             for x in result["verification_warnings"]))
 
     def test_fails_closed_for_missing_source(self):
         with self.assertRaises(ValueError):
