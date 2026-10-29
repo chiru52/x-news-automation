@@ -360,3 +360,42 @@ On the same computer, open **http://127.0.0.1:8765/** in your browser; Ctrl+C st
 **Privacy and limitations:** The localhost server uses the GitHub CLI's existing authenticated session; credentials never enter page JavaScript. It allows only loopback hosts, checks the private repo, restricts same-origin write requests with a CSRF token, applies content-security/no-cache headers, and renders untrusted text safely. The dashboard is accessible to other processes running under the same local user; treat your computer's session as trusted and stop the server when finished. The status labels and edited copy are **persistent in GitHub**, while unsaved typing remains only in your browser tab. Existing AI Draft Issues are not changed by installation, reading, searching or filtering; writes occur only when you click Save.
 
 **Development checks:** Offline unit and local HTTP integration tests use mock GitHub results. They do not make network calls, run Copilot, spend credits or publish anything. The existing GitHub Actions Copilot workflow remains manual and separately credit-approved.
+
+
+## Stage 31 — Cloudflare Access-hosted private dashboard (no local clone)
+
+This is a browser-only alternative to the Stage 29 localhost dashboard. It uses the same existing private AI Drafts in GitHub. There is no server to manage locally, no database, no X API, and **no Copilot invocation**. The Cloudflare Worker serves the interface and reads or explicitly updates existing private GitHub Issues.
+
+**Status:** Code and offline tests only until an editor manually deploys the Worker and finishes the Access/security setup. A merged PR does NOT deploy the dashboard. Never share access tokens in chat, commit them to GitHub or place them in browser JavaScript.
+
+### One-time setup through web dashboards
+
+1. In **GitHub → repository Settings → Secrets and variables → Actions**, add two repository Actions secrets: **CLOUDFLARE_API_TOKEN** and **CLOUDFLARE_ACCOUNT_ID**. The Cloudflare token should have only the account permissions required to deploy Workers. These are deployment credentials, not the GitHub Issue editor token.
+2. After merging this PR, use **GitHub → Actions → Deploy private editorial dashboard (manual approval only) → Run workflow**, choose main, explicitly check **approve_deployment**, and trigger the deployment. It runs offline Node tests first. It does not run on push, merge or a schedule.
+3. Go to **Cloudflare → Workers & Pages → x-news-editorial-inbox → Access → Protect this Worker behind Access**. Select **all traffic** (both production and previews), **not** previews only. Apply an allow policy for **your exact verified email**, not an entire email domain, and allow nobody else. Protect the **Worker itself**, not merely the hostname; other routes or previews could otherwise reach it. See the [official Cloudflare Access instructions](https://developers.cloudflare.com/workers/configuration/cloudflare-access/).
+4. In GitHub create a **fine-grained personal access token**, restricted to exactly **varadachiru/x-news-automation**, with repository permission **Issues: Read and write** and **Metadata: Read**; use a short expiration and rotate before expiry. Do not enable Actions, Contents, Workflows or Administration permissions on this editor token.
+5. Under **Cloudflare Worker → Settings → Variables and Secrets**, add these four **encrypted Worker secrets**, not plaintext variables:
+   - **PUBLIC_ORIGIN** — exact deployed Worker HTTPS origin, for example https://x-news-editorial-inbox.YOURSUBDOMAIN.workers.dev, with **no slash at the end**. Use your real Worker URL, never this placeholder.
+   - **ACCESS_AUD** — audience tag of the Cloudflare Access application protecting the Worker, shown in Zero Trust Access application details.
+   - **EDITOR_EMAIL** — the exact verified email of the one permitted editor.
+   - **GITHUB_EDITOR_TOKEN** — the fine-grained GitHub token from step 4.
+6. Open the Worker URL directly in any browser and sign in with Cloudflare Access. View the private Draft #27 before attempting a save. If the Worker is not yet protected or credentials are absent, **it will refuse to serve the dashboard**.
+
+### What the hosted dashboard does
+
+- Reads existing private GitHub Issues labeled **ai-draft-review**, with search/filter for Pending, Reviewed and Rejected, short publisher excerpts, model analysis and existing editorial checks.
+- You can edit the proposed X text. Only an **explicit Save privately to GitHub** writes the editor section and editorial status label on that existing Issue. The original source URL, evidence, model output and **Publication approval: NOT GRANTED** remain unchanged.
+- An editor revision digest detects most stale writes and asks for refresh. GitHub Issue updates are not full atomic compare-and-swap; avoid simultaneous editing of the same Issue.
+- Copy the edited text for separate human-led posting. **No X connection, publishing button, automatic AI, scheduled posting or publication approval exists.**
+
+### Security and limitations
+
+- The Worker rejects all requests unless the four secrets are set, the repo matches the expected private repo and the request matches PUBLIC_ORIGIN. Every request additionally requires an authenticated Cloudflare Worker Access identity **ctx.access**, matching the Access application audience and the permitted email as verified by Cloudflare. **No arbitrary browser JWT is trusted.** Cloudflare added native authenticated Worker context in 2026; refer to the [Cloudflare Access documentation](https://developers.cloudflare.com/workers/configuration/cloudflare-access/). Do not configure a bypass policy.
+- Before each Issues read or edit, the Worker checks that the repository is still private. The GitHub editor token is used only in server-side API requests. The browser never sees it. Writes require same-origin Origin and Sec-Fetch-Site checks plus a non-simple intent header; no wildcard CORS headers. All responses use no-cache/CSP/frame/referrer protections.
+- User-supplied article and model text is rendered as text, not HTML. Updates are size-limited and preserve the immutable publication-denial marker. The Worker never fetches publisher websites or runs source-supplied instructions.
+- This is a **single-editor** tool. Cloudflare/GitHub account limits and token renewals still apply. For many users later, use a GitHub App and proper multi-tenant roles. It is not an independently verified news source or a posting service.
+- **No real deployment or logged-in browser verification has occurred yet.** Tests are mocks and offline runtime checks.
+
+### Release validation
+
+Run the existing GitHub CI after merging. Python tests and Node 22 Worker tests operate without network or paid AI. Cloudflare deployment is a separate manually approved workflow requiring the two Cloudflare GitHub Actions secrets; it does **not** use the GitHub editor PAT or enable publication.
