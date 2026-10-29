@@ -25,9 +25,11 @@ on:
           - '9'
 
 # NEVER scheduled or triggered by a PR/push. Separate from daily RSS collection.
-# This token cannot push commits, create issues or publish to X.
+# Built-in GITHUB_TOKEN can only read repository data and make Copilot requests.
+# It cannot push commits, create Issues, or publish to X.
 permissions:
   contents: read
+  copilot-requests: write  # GitHub Actions ephemeral token; no personal PAT needed.
 
 concurrency:
   group: single-copilot-editorial-preview
@@ -50,15 +52,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Check personal Copilot token is configured (never print token)
-        env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PERSONAL_TOKEN }}
-        shell: bash
-        run: |
-          if [[ -z "$COPILOT_GITHUB_TOKEN" ]]; then
-            echo "::error::Set Actions secret COPILOT_PERSONAL_TOKEN with a fine-grained PAT (Copilot Requests)."
-            exit 1
-          fi
       - name: Collect fresh RSS candidates in preview ONLY
         shell: bash
         run: |
@@ -79,7 +72,7 @@ jobs:
         shell: bash
         timeout-minutes: 5
         env:
-          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_PERSONAL_TOKEN }}
+          GITHUB_TOKEN: ${{ github.token }}
           COPILOT_AUTO_UPDATE: 'false'
         run: |
           set -euo pipefail
