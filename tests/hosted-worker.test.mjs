@@ -136,6 +136,42 @@ test('Private issues readable and safe browser assets served only to editor',asy
   assert.equal(m.writes.length,0);
 });
 
+test('Authenticated GitHub failures reveal only safe stage and HTTP status',async()=>{
+  const cases=[
+    {stage:'repository',status:401,path:'/repos/'+REPO},
+    {stage:'drafts',status:403,path:'/issues?'},
+  ];
+  for(const testcase of cases){
+    const m=createMock();
+    const fetcher=async(url,opts)=>{
+      if(url.includes(testcase.path))return Response.json({message:'private diagnostic'}, {status:testcase.status});
+      return m.fakeFetch(url,opts);
+    };
+    const res=await handleRequest(request('/api/inbox'),env,authorized,fetcher);
+    assert.equal(res.status,503);
+    const body=await res.json();
+    assert.deepEqual(body.diagnostic,{stage:testcase.stage,
+      reason:'github_http_error',github_status:testcase.status});
+    assert.equal(body.publication_authorized,false);
+    assert.doesNotMatch(JSON.stringify(body),/private diagnostic|not-a-real-gh-token/);
+    assert.equal(m.writes.length,0);
+  }
+});
+
+test('Malformed AI Draft and unexpected errors remain private',async()=>{
+  const malformed=createMock(issue({body:issueBody.replace('**Publication approval:** NOT GRANTED','missing')}));
+  const res=await handleRequest(request('/api/inbox'),env,authorized,malformed.fakeFetch);
+  assert.equal(res.status,503);
+  assert.deepEqual((await res.json()).diagnostic,
+    {stage:'drafts',reason:'draft_format_error'});
+  const networkError=async()=>{throw Error('secret token must never be echoed');};
+  const networkRes=await handleRequest(request('/api/inbox'),env,authorized,networkError);
+  const networkBody=await networkRes.json();
+  assert.deepEqual(networkBody.diagnostic,{stage:'repository',reason:'read_error'});
+  assert.doesNotMatch(JSON.stringify(networkBody),/secret token/);
+  assert.equal(malformed.writes.length,0);
+});
+
 test('Public repository fail closed before listing private drafts',async()=>{
   const m=createMock();
   const fetcher=async(url,options)=>{
