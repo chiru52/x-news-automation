@@ -101,7 +101,13 @@ class CopilotEditorialTests(unittest.TestCase):
         self.assertIn("permissions:\n  contents: read\n  copilot-requests: write", text)
         self.assertIn("--disable-builtin-mcps", text)
         self.assertIn("--deny-tool='shell,write,url,memory'", text)
-        self.assertNotIn("issues: write", text)
+        self.assertIn("save-private-ai-draft:", text)
+        self.assertIn("needs.one-draft.outputs.draft_ready == 'true'", text)
+        self.assertIn("      issues: write", text)
+        self.assertIn("    outputs:\n      draft_ready:", text)
+        # Issue writing is isolated from the Copilot job's permission scope.
+        self.assertIn("permissions:\n  contents: read\n  copilot-requests: write", text)
+        self.assertEqual(text.count("copilot -p "), 1)
         self.assertNotIn("https://api.twitter.com", text)
         self.assertNotIn("api.buffer.com", text)
 

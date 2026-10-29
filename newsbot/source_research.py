@@ -8,17 +8,19 @@ from __future__ import annotations
 
 import html
 import ipaddress
+import json
 import re
 import socket
 from html.parser import HTMLParser
 from urllib.error import HTTPError, URLError
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urljoin
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-MAX_HTML_BYTES = 400_000
+MAX_HTML_BYTES = 1_200_000  # Modern article HTML can include substantial CSS/JS
 MAX_EXCERPT_CHARS = 3_200
 MAX_PARAGRAPHS = 8
 TIMEOUT_SECONDS = 8
+MAX_SAME_HOST_REDIRECTS = 2
 
 # This is a narrow publisher allowlist, NOT an arbitrary URL fetcher.
 # Includes named RSS publishers and a few common finance syndication targets.
@@ -92,8 +94,14 @@ class ParagraphExtractor(HTMLParser):
         self.current = None
         self.current_in_main = False
         self.paragraphs = []
+        self.structured = []
+        self.jsonld = None
 
     def handle_starttag(self, tag, attrs):
+        attrs = dict(attrs)
+        if (tag == "script" and str(attrs.get("type", "")).lower()
+                == "application/ld+json" and self.jsonld is None):
+            self.jsonld = []
         if tag in self.IGNORED:
             self.ignored_depth += 1
         if tag in {"article", "main"}:
@@ -103,6 +111,14 @@ class ParagraphExtractor(HTMLParser):
             self.current_in_main = self.main_depth > 0
 
     def handle_endtag(self, tag):
+        if tag == "script" and self.jsonld is not None:
+            raw_json = "".join(self.jsonld)
+            self.jsonld = None
+            if len(raw_json) <= 160_000:
+                try:
+                    self.structured.append(json.loads(raw_json))
+                except (ValueError, RecursionError):
+                    pass
         if tag == "p" and self.current is not None:
             value = SPACE.sub(" ", html.unescape(" ".join(self.current))).strip()
             if 55 <= len(value) <= 2000 and not BOILERPLATE.match(value):
@@ -114,32 +130,100 @@ class ParagraphExtractor(HTMLParser):
             self.main_depth = max(0, self.main_depth - 1)
 
     def handle_data(self, data):
+        if self.jsonld is not None:
+            self.jsonld.append(data)
         if self.current is not None and self.ignored_depth == 0:
             self.current.append(data)
 
 
+def _structured_article_body(nodes: list) -> str:
+    """Retrieve only articleBody from explicitly typed NewsArticle JSON-LD."""
+    def find(node, depth=0):
+        if depth > 12:
+            return ""
+        if isinstance(node, list):
+            for item in node[:40]:
+                found = find(item, depth+1)
+                if found:
+                    return found
+        if isinstance(node, dict):
+            types = node.get("@type", [])
+            names = [types] if isinstance(types, str) else types
+            if isinstance(names, list) and any(str(t).lower() in {
+                "article", "newsarticle", "blogposting", "analysisnewsarticle",
+                "reportagenewsarticle"
+            } for t in names):
+                body = node.get("articleBody")
+                if isinstance(body, str) and len(body) >= 300:
+                    return body[:12_000]
+            for key in ("@graph", "mainEntity", "itemListElement"):
+                if key in node:
+                    found = find(node[key], depth+1)
+                    if found:
+                        return found
+        return ""
+    return find(nodes)
+
+
+def _short_chunks(values: list[str]) -> list[dict]:
+    """Return at most 3,200 chars of actual article prose as numbered claims."""
+    chunks = []
+    length = 0
+    seen = set()
+    for value in values:
+        value = SPACE.sub(" ", html.unescape(re.sub(r"<[^>]+>", " ", value))).strip()
+        if len(value) < 65 or BOILERPLATE.match(value):
+            continue
+        if value[:80] in seen:
+            continue
+        seen.add(value[:80])
+        # Truncate individual paragraphs rather than emit the publisher's article.
+        snippet = value[:550]
+        room = MAX_EXCERPT_CHARS - length
+        if room < 65:
+            break
+        snippet = snippet[:room]
+        chunks.append({"id": f"P{len(chunks)+1}", "text": snippet})
+        length += len(snippet)
+        if len(chunks) >= MAX_PARAGRAPHS:
+            break
+    return chunks if length >= 260 and len(chunks) >= 2 else []
+
+
 def extract_paragraphs(source: bytes) -> list[dict]:
-    """Return bounded numbered snippets; no raw HTML or full-article artifact."""
+    """Extract bounded article prose from HTML paragraphs or article JSON-LD."""
     parser = ParagraphExtractor()
-    # Ignore untrusted charset claims; replacement avoids decode failures.
     parser.feed(source.decode("utf-8", errors="replace"))
     preferred = [text for text, inside in parser.paragraphs if inside]
+    if sum(map(len, preferred)) >= 260:
+        chosen = _short_chunks(preferred)
+        if chosen:
+            return chosen
+    # JSON-LD can contain real articleBody even on JS-rendered news sites.
+    body = _structured_article_body(parser.structured)
+    if body:
+        fragments = re.split(r"\n\s*\n", body)
+        if len(fragments) < 2:
+            # Prefer sentence groups over splitting on arbitrary characters.
+            sentences = re.split(r"(?<=[.!?])\s+(?=[A-Z0-9])", body)
+            fragments = []
+            current = ""
+            for sentence in sentences:
+                if current and len(current) + len(sentence) > 270:
+                    fragments.append(current.strip())
+                    current = ""
+                current += " " + sentence
+            if current.strip():
+                fragments.append(current.strip())
+        chunks = _short_chunks(fragments)
+        if chunks:
+            return chunks
+    # Only use outside-article paragraphs when there is substantial coherent prose.
     all_text = [text for text, _inside in parser.paragraphs]
-    candidates = preferred if len(" ".join(preferred)) >= 400 else all_text
-    snippets = []
-    length = 0
-    for paragraph in candidates:
-        paragraph = paragraph[:550]
-        if length + len(paragraph) > MAX_EXCERPT_CHARS:
-            paragraph = paragraph[:max(0, MAX_EXCERPT_CHARS - length)]
-        if len(paragraph) < 55:
-            break
-        snippets.append({"id": f"P{len(snippets)+1}", "text": paragraph})
-        length += len(paragraph)
-        if len(snippets) >= MAX_PARAGRAPHS or length >= MAX_EXCERPT_CHARS:
-            break
-    # Some RSS links contain only nav/paywall/JS placeholder text.
-    return snippets if len(snippets) >= 2 and length >= 300 else []
+    if len(all_text) >= 3 and sum(map(len, all_text)) >= 700:
+        return _short_chunks(all_text)
+    return []
+
 
 
 def fetch_evidence(url: str, *, opener=None, dns_check=None) -> dict:
@@ -163,35 +247,57 @@ def fetch_evidence(url: str, *, opener=None, dns_check=None) -> dict:
     except (ValueError, OSError, socket.gaierror):
         result["reason"] = "dns_not_public_or_unavailable"
         return result
-    request = Request(url, headers={
-        "Accept": "text/html",
-        "Accept-Language": "en",
-        "User-Agent": "XNewsEditorialReview/1.0 (human review; no crawling)",
-    }, method="GET")
-    try:
-        client = opener or build_opener(NoRedirect())
-        with client.open(request, timeout=TIMEOUT_SECONDS) as response:
-            if response.geturl() != url:
+    client = opener or build_opener(NoRedirect())
+    original_host = host
+    current = url
+    body = b""
+    for hop in range(MAX_SAME_HOST_REDIRECTS + 1):
+        request = Request(current, headers={
+            "Accept": "text/html",
+            "Accept-Language": "en",
+            "User-Agent": "XNewsEditorialReview/1.0 (human review; no crawling)",
+        }, method="GET")
+        try:
+            with client.open(request, timeout=TIMEOUT_SECONDS) as response:
+                # Even custom test clients must not silently follow redirects.
+                if response.geturl() != current:
+                    result["reason"] = "redirect_blocked"
+                    return result
+                mime = str(response.headers.get("Content-Type", "")).split(";")[0].strip().lower()
+                if mime not in ("text/html", "application/xhtml+xml"):
+                    result["reason"] = "unsupported_media_type"
+                    return result
+                size = response.headers.get("Content-Length")
+                if size is not None and int(size) > MAX_HTML_BYTES:
+                    result["reason"] = "too_large"
+                    return result
+                body = response.read(MAX_HTML_BYTES + 1)
+                if len(body) > MAX_HTML_BYTES:
+                    result["reason"] = "too_large"
+                    return result
+            break
+        except HTTPError as exc:
+            # Follow at most two *same-host* HTTPS canonical redirects. No
+            # cross-domain redirects, paywall workarounds or cookies.
+            if exc.code not in (301, 302, 303, 307, 308) or hop >= MAX_SAME_HOST_REDIRECTS:
+                result["reason"] = ("redirect_blocked" if 300 <= exc.code < 400
+                                    else "http_unavailable")
+                return result
+            location = exc.headers.get("Location", "")
+            next_url = urljoin(current, location)
+            if (not location or public_article_host(next_url) != original_host or
+                    urlsplit(next_url).hostname != original_host or next_url == current):
                 result["reason"] = "redirect_blocked"
                 return result
-            mime = str(response.headers.get("Content-Type", "")).split(";")[0].strip().lower()
-            if mime not in ("text/html", "application/xhtml+xml"):
-                result["reason"] = "unsupported_media_type"
+            try:
+                (dns_check or require_public_dns)(original_host)
+            except (ValueError, OSError, socket.gaierror):
+                result["reason"] = "dns_not_public_or_unavailable"
                 return result
-            size = response.headers.get("Content-Length")
-            if size is not None and int(size) > MAX_HTML_BYTES:
-                result["reason"] = "too_large"
-                return result
-            body = response.read(MAX_HTML_BYTES + 1)
-            if len(body) > MAX_HTML_BYTES:
-                result["reason"] = "too_large"
-                return result
-    except HTTPError as exc:
-        result["reason"] = "redirect_blocked" if 300 <= exc.code < 400 else "http_unavailable"
-        return result
-    except (URLError, OSError, ValueError, TimeoutError):
-        result["reason"] = "network_or_http_error"
-        return result
+            current = next_url
+        except (URLError, OSError, ValueError, TimeoutError):
+            result["reason"] = "network_or_http_error"
+            return result
     excerpts = extract_paragraphs(body)
     if not excerpts:
         result["reason"] = "no_reliable_article_text"

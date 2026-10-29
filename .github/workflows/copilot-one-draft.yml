@@ -37,6 +37,8 @@ concurrency:
 
 jobs:
   one-draft:
+    outputs:
+      draft_ready: ${{ steps.editorial.outputs.ready }}
     # Default runs are skipped without consuming Copilot credits.
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.approve_credit_use == true }}
     runs-on: ubuntu-latest
@@ -113,6 +115,7 @@ jobs:
             --silent > "$RUNNER_TEMP/copilot-response.txt"
           test -s "$RUNNER_TEMP/copilot-response.txt"
       - name: Show unverified candidate in GitHub Actions Summary
+        id: editorial
         if: ${{ steps.source.outputs.usable == 'true' }}
         shell: bash
         run: |
@@ -123,6 +126,7 @@ jobs:
             --evidence "$RUNNER_TEMP/copilot-evidence.json" \
             --output "$RUNNER_TEMP/copilot-review.md"
           cat "$RUNNER_TEMP/copilot-review.md" >> "$GITHUB_STEP_SUMMARY"
+          echo 'ready=true' >> "$GITHUB_OUTPUT"
       - name: Upload editorial result only (no source tokens)
         if: ${{ steps.source.outputs.usable == 'true' }}
         uses: actions/upload-artifact@v4
@@ -131,3 +135,37 @@ jobs:
           path: ${{ runner.temp }}/copilot-review.md
           retention-days: 7
           if-no-files-found: warn
+
+  # Separate least-privilege job: only private GitHub Issues, no Copilot
+  # permission, no model call, no access to X credentials or publishing APIs.
+  save-private-ai-draft:
+    needs: one-draft
+    if: ${{ needs.one-draft.outputs.draft_ready == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          name: copilot-editorial-preview-${{ github.run_id }}
+          path: ai-draft-review
+      - name: Save editable draft in private GitHub Issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          ACTION_RUN_ID: ${{ github.run_id }}
+        shell: bash
+        run: |
+          python -m newsbot.ai_drafts \
+            --repo "$GH_REPO" \
+            --run-id "$ACTION_RUN_ID" \
+            --draft ai-draft-review/copilot-review.md \
+            --summary "$GITHUB_STEP_SUMMARY"

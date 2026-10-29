@@ -235,3 +235,21 @@ A manually authorized Copilot run now attempts the **preferred article first**, 
 If **none** of the nine candidate article pages yield usable text, the workflow exits successfully but **skips Copilot entirely**. It never falls back to headline-only AI drafting. It never performs independent corroboration and never authorizes posting. The GitHub credit-use checkbox is still **unchecked by default**, there is no AI schedule or X/Buffer publishing path, and the existing `--max-ai-credits=30` soft session limit applies only when the single Copilot request is actually made. The free publisher HTTP reads can take longer than one-source checks; no browser logins, cookies, paywalls or redirects are bypassed.
 
 To test after merge, the user must independently choose to invoke the manual workflow and approve the one Copilot request. PR CI itself performs offline tests only and consumes no AI credits.
+
+## Stage 19 — Better article extraction and private AI Drafts
+
+The [Step 18 run](https://github.com/varadachiru/x-news-automation/actions/runs/40916291735) shortlisted nine stories but extracted no usable publisher article prose, so Copilot was deliberately skipped.
+
+**Improved source handling:** Article retrieval now supports HTML paragraphs plus structured NewsArticle/Article/BlogPosting articleBody JSON-LD (commonly present on JavaScript-heavy news sites). The bounded HTML download cap increases from 400 KB to 1.2 MB, but material provided to Copilot stays at **8 snippets / 3,200 characters**. Up to two same-host HTTPS canonical redirects are supported, with public DNS checking. Redirects to other domains, HTTP, private hosts or paywalls remain blocked. This is **publisher evidence, not independent corroboration**. The existing table of extraction failure reasons remains available in Actions Summary.
+
+**Dedicated private AI Drafts area:** After an explicitly approved, successful Copilot run, a separate least-privilege GitHub Actions job creates one editable private Issue per run with the label **ai-draft-review**. Find all successful drafts at [AI Drafts — GitHub Issues](https://github.com/varadachiru/x-news-automation/issues?q=is%3Aissue%20label%3Aai-draft-review). Human edits are never overwritten by reruns; a duplicate run reuses the existing Issue. If the repository is ever made public, the Issue-saving job refuses to save any AI draft. The original Actions Summary and seven-day artifact remain available.
+
+**Safety:** Copilot job permissions remain read-only contents plus Copilot Requests write; a *separate* job can create private GitHub Issues with contents read and issues write but has no Copilot permission. No AI schedule, no X or Buffer API, and no automatic publishing. A new Copilot request still requires the manually checked, default-off approval checkbox; the 30-credit session limit is a soft limit and not a guaranteed spending cap.
+
+### Finding and editing a generated draft
+
+1. Following merge, manually run [Copilot — one news draft](https://github.com/varadachiru/x-news-automation/actions/workflows/copilot-one-draft.yml) **only when you choose to spend credits**.
+2. If a draft was generated, visit [AI Drafts](https://github.com/varadachiru/x-news-automation/issues?q=is%3Aissue%20label%3Aai-draft-review) and open the new run's Issue.
+3. Read the original source, corroborate claims, and edit the proposed text before manually posting anything. **Issue creation is not publishing approval.**
+4. If there is no new Issue, check the workflow's Source access diagnostics table to learn why the model may have been skipped.
+
