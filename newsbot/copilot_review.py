@@ -170,6 +170,61 @@ def render_summary(queue: dict, index: int, model_output: str, evidence: dict | 
     return "\n".join(lines) + "\n"
 
 
+
+def select_research_evidence(queue: dict, preferred_index: int,
+                             fetcher=fetch_evidence) -> dict:
+    """Attempt the preferred article then fallbacks; select at most one."""
+    _review_item(queue, preferred_index)
+    order = [preferred_index] + [
+        i for i in range(1, min(9, len(queue["articles"])) + 1)
+        if i != preferred_index
+    ]
+    attempts = []
+    chosen = None
+    for index in order:
+        item = _review_item(queue, index)
+        result = check_evidence(item, fetcher(str(item["link"])))
+        attempts.append({
+            "index": index, "status": result["status"],
+            "reason": str(result.get("reason") or "none")[:80],
+        })
+        if result["status"] == "extracted_unverified":
+            chosen = dict(result, selected_index=index)
+            break
+        if chosen is None:
+            chosen = dict(result, selected_index=preferred_index)
+    assert chosen is not None
+    chosen["preferred_index"] = preferred_index
+    chosen["attempts"] = attempts
+    return chosen
+
+
+def write_source_summary(evidence: dict, path: str) -> None:
+    """Write only hard-coded status labels and numeric indices to GitHub."""
+    valid_reasons = {
+        "domain_not_allowed_or_insecure", "dns_not_public_or_unavailable",
+        "redirect_blocked", "http_unavailable", "unsupported_media_type",
+        "too_large", "network_or_http_error", "no_reliable_article_text",
+        "none", "not_collected",
+    }
+    lines = ["### Source access diagnostics (no AI credit used yet)", "",
+             "The preferred article is checked first; up to eight other shortlisted "
+             "articles may be checked as fallback.", "",
+             "| Candidate | Extraction status | Reason |",
+             "|---|---|---|"]
+    for a in evidence["attempts"]:
+        reason = a["reason"] if a["reason"] in valid_reasons else "other_error"
+        status = a["status"] if a["status"] in {"unavailable", "extracted_unverified"} else "invalid"
+        lines.append(f"| {int(a['index'])} | {status} | {reason} |")
+    lines += ["", "**Selected article index:** " + str(int(evidence["selected_index"])),
+              "**Publisher evidence available:** " +
+              ("yes — not independently verified" if evidence["status"] == "extracted_unverified"
+               else "no — Copilot step will be skipped"), ""]
+    with open(path, "a", encoding="utf-8") as output:
+        output.write("\n".join(lines) + "\n")
+
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("command", choices=("research", "prepare", "finalize"))
@@ -178,15 +233,20 @@ def main() -> int:
     p.add_argument("--output", required=True)
     p.add_argument("--model-output")
     p.add_argument("--evidence")
+    p.add_argument("--summary")
     args = p.parse_args()
     queue = json.loads(Path(args.queue).read_text(encoding="utf-8"))
     if args.command == "research":
-        item = _review_item(queue, args.index)
-        fetched = fetch_evidence(str(item["link"]))
+        fetched = select_research_evidence(queue, args.index)
         target = Path(args.output)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(fetched, ensure_ascii=False), encoding="utf-8")
-        print("Article extraction: " + fetched["status"] + " (NOT independently verified)")
+        if args.summary:
+            write_source_summary(fetched, args.summary)
+        print("Publisher article extraction: " + fetched["status"] +
+              "; selected index: " + str(fetched["selected_index"]) +
+              "; attempted: " + str(len(fetched["attempts"])) +
+              " (NOT independently verified)")
         return 0
     evidence = json.loads(Path(args.evidence).read_text(encoding="utf-8")) if args.evidence else None
     if args.command == "prepare":
