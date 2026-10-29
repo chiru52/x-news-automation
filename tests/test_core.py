@@ -142,5 +142,39 @@ class CoreTests(unittest.TestCase):
 
 
 
+    def test_nine_daily_drafts_balanced(self):
+        state = {"seen": {}, "daily_drafts": {}}
+        items = [Article(title=f"{category} article {i}", link=f"https://example.com/{category}/{i}",
+                         source="Synthetic feed", published_at=NOW.isoformat(), category=category)
+                 for category in ("technology", "markets", "saas") for i in range(12)]
+        selected = select_articles(items, state, NOW, daily_limit=9)
+        self.assertEqual(len(selected), 9)
+        self.assertEqual({category: sum(item.category == category for item in selected)
+                          for category in ("technology", "markets", "saas")},
+                         {"technology": 3, "markets": 3, "saas": 3})
+        self.assertEqual(select_articles(items, state, NOW + timedelta(minutes=1), daily_limit=9), [])
+
+    def test_nine_drafts_fall_back_when_one_topic_has_no_news(self):
+        state = {"seen": {}, "daily_drafts": {}}
+        items = [Article(title=f"{category} article {i}", link=f"https://example.com/{category}/{i}",
+                         source="Synthetic feed", published_at=NOW.isoformat(), category=category)
+                 for category in ("technology", "markets") for i in range(12)]
+        selected = select_articles(items, state, NOW, daily_limit=9)
+        self.assertEqual(len(selected), 9)
+        self.assertEqual(sum(item.category == "saas" for item in selected), 0)
+
+    def test_configured_source_safety_and_capacity(self):
+        from urllib.parse import urlsplit
+        settings = json.loads(Path("config/settings.json").read_text(encoding="utf-8"))
+        sources = json.loads(Path("config/sources.json").read_text(encoding="utf-8"))
+        self.assertEqual(settings["daily_draft_limit"], 9)
+        self.assertEqual(settings["ai_provider"], "none")
+        self.assertIs(settings["publishing_enabled"], False)
+        self.assertEqual(set(settings["category_order"]), {"technology", "markets", "saas"})
+        self.assertEqual(len({row["url"] for row in sources}), len(sources))
+        self.assertTrue(all(urlsplit(row["url"]).scheme == "https" for row in sources))
+        self.assertTrue(all(row["category"] in settings["category_order"] for row in sources))
+
+
 if __name__ == "__main__":
     unittest.main()
