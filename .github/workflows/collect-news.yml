@@ -11,9 +11,15 @@ on:
         required: false
         type: boolean
         default: true
+      create_review_issue:
+        description: 'Create or reuse private daily review Issue in GitHub'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
+  issues: write  # Private editorial Issues only; no X access.
 
 concurrency:
   group: news-draft-collection
@@ -50,6 +56,14 @@ jobs:
         with:
           path: .state/seen.json
           key: draft-history-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Create or reuse editorial GitHub Issue
+        if: ${{ success() && (github.event_name == 'schedule' || inputs.create_review_issue == true) }}
+        run: python -m newsbot.github_review issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Display news directly in Actions Summary
+        if: always()
+        run: python -m newsbot.github_review summary
       - name: Upload review queue
         if: always()
         uses: actions/upload-artifact@v4
