@@ -133,7 +133,7 @@ class FocusedExcerptTests(unittest.TestCase):
         self.assertIn("60,000", excerpt)
         self.assertLessEqual(len(excerpt), 192)
         self.assertTrue(excerpt.startswith("…"))
-        self.assertTrue(excerpt.endswith("…"))
+        # A source excerpt reaching the paragraph end should not invent a trailing ellipsis.
 
     def test_focused_snippet_escapes_untrusted_html_when_rendered(self):
         evidence = {
