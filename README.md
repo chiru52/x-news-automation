@@ -92,3 +92,27 @@ For example, a general hardware product rumor in a feed labeled SaaS and an unre
 This can be turned off locally for comparison by setting `relevance_filter_enabled` to `false` in `config/settings.json`. **Do not enable publishing:** `publishing_enabled=false` and `ai_provider=none` are still mandatory safety checks.
 
 The 9-draft cap is per Stockholm calendar day; today's existing review history remains intact. GitHub Actions caches can expire and are not a durable posting ledger. Do not use this collector for unattended X publishing until source verification, durable idempotency and manual approval are implemented.
+
+## Step 6: offline editorial review dashboard and quota-free preview
+
+Every collector run now includes `review_dashboard.html` alongside the existing Markdown and JSON files in the GitHub Actions artifact. Download the ZIP, **extract it**, and open the HTML file in a browser. It is a standalone, responsive client-side page: there is **no server, login, third-party JavaScript, network submission, Buffer integration, or X posting**. The only network activity is when you click a publisher's article link.
+
+You can search and filter candidates, open the original news sources, inspect matched terms and heuristic relevance scores, and mark each story **Shortlist**, **Skip**, or **Reset**. Shortlist means only that you want to consider the story for later writing—it is **not approval for publication**. Copy the unfinished template or export decisions to `editorial-decisions.json` for later use. Decisions are held in the browser session and **are lost on reload unless you exported them**. Exports explicitly set `publication_authorized=false`.
+
+The **Run workflow** manual action now includes a `preview` checkbox, enabled by default. Preview collects current RSS data and creates up to nine **additional candidate templates**, but it does **not** change the persisted draft history or consume the day's quota. Previously seen articles remain excluded to reduce repetition. The scheduled collection remains quota-enforcing. There is still no AI text-generation API in this repository and no way to publish from the review page.
+
+### Try it
+
+1. Merge the PR, then open GitHub **Actions → Collect news (review drafts only)**.
+2. Click **Run workflow**, select `main`, and leave **preview = true**.
+3. Download the new `review-queue-...` artifact. Extract and open `review_dashboard.html`.
+4. Review shortlisted stories and export your decisions. Never treat this as published content.
+
+Local test (no API keys needed):
+
+```sh
+python -m unittest discover -s tests -v
+python -m newsbot --demo --preview --state .state/demo.json --output output/demo-preview
+```
+
+The demo uses clearly synthetic articles. The HTML page renders RSS fields safely as text. The relevance score is a keyword heuristic, not verified reporting or a factual guarantee.

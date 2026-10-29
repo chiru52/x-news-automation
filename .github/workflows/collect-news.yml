@@ -5,6 +5,12 @@ on:
     # 06:17 UTC = 07:17 or 08:17 Stockholm, depending on daylight savings.
     - cron: '17 6 * * *'
   workflow_dispatch:
+    inputs:
+      preview:
+        description: 'Preview fresh candidates without consuming the daily quota'
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -29,11 +35,17 @@ jobs:
           key: draft-history-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: draft-history-
       - name: Collect RSS and create review templates (never publish)
-        run: python -m newsbot
+        run: |
+          if [ "$PREVIEW" = "true" ]; then
+            python -m newsbot --preview
+          else
+            python -m newsbot
+          fi
         env:
           PUBLISH_ENABLED: 'false'
+          PREVIEW: ${{ github.event_name == 'workflow_dispatch' && inputs.preview == true }}
       - name: Save draft history
-        if: success()
+        if: ${{ success() && !(github.event_name == 'workflow_dispatch' && inputs.preview == true) }}
         uses: actions/cache/save@v4
         with:
           path: .state/seen.json

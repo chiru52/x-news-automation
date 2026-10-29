@@ -5,8 +5,8 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from .core import (Article, fetch_feed, load_state, parse_feed, render_outputs,
-                   save_state, select_articles)
+from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
+                   render_outputs, save_state, select_articles)
 
 
 def main() -> int:
@@ -16,6 +16,8 @@ def main() -> int:
     parser.add_argument("--state", default=".state/seen.json")
     parser.add_argument("--output", default="output")
     parser.add_argument("--demo", action="store_true", help="Use illustrative offline articles")
+    parser.add_argument("--preview", action="store_true",
+                        help="Show more review candidates without consuming today\'s real quota")
     args = parser.parse_args()
     settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
     if settings.get("publishing_enabled") is not False or settings.get("ai_provider") != "none":
@@ -50,18 +52,23 @@ def main() -> int:
                 errors.append(f"{source.get('name','unknown source')}: {type(exc).__name__}: {exc}")
             diagnostics.append(stat)
     state = load_state(Path(args.state))
-    selected = select_articles(stories, state, now, daily_limit=int(settings["daily_draft_limit"]),
+    selection_state = make_preview_state(state, now, settings["timezone"]) if args.preview else state
+    selected = select_articles(stories, selection_state, now, daily_limit=int(settings["daily_draft_limit"]),
                                lookback_hours=int(settings["lookback_hours"]),
                                timezone_name=settings["timezone"],
                               category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))),
                               rank_by_relevance=settings.get("relevance_filter_enabled") is True)
-    render_outputs(selected, Path(args.output), now, errors, diagnostics)
-    save_state(Path(args.state), state)
+    render_outputs(selected, Path(args.output), now, errors, diagnostics,
+                   preview_only=args.preview)
+    if not args.preview:
+        save_state(Path(args.state), state)
     print(f"Collected {len(stories)} articles, drafted {len(selected)}, feed errors {len(errors)}")
     for item in diagnostics:
         print(f"FEED {item['source']}: {item['parsed_articles']} parsed, "
               f"{item['recent_articles']} recent, status={item['status']}")
     print("SAFETY: no AI or publishing API called; no X posts sent.")
+    if args.preview:
+        print("PREVIEW: daily draft quota and persisted history were not changed.")
     return 0 if stories or args.demo else 2
 
 

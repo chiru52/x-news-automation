@@ -131,6 +131,22 @@ def title_key(title: str) -> str:
     return re.sub(r"[^a-z0-9]", "", title.casefold())
 
 
+def make_preview_state(state: dict, now: datetime,
+                       timezone_name: str = "Europe/Stockholm") -> dict:
+    """Copy history for a manual preview; reset today's quota without erasing seen items.
+
+    Callers must never save this state. The real daily draft count and original
+    history must remain untouched.
+    """
+    from copy import deepcopy
+
+    preview = deepcopy(state)
+    day = now.astimezone(ZoneInfo(timezone_name)).date().isoformat()
+    preview.setdefault("daily_drafts", {}).pop(day, None)
+    preview.setdefault("daily_categories", {}).pop(day, None)
+    return preview
+
+
 def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                     daily_limit: int = 5, lookback_hours: int = 36,
                     timezone_name: str = "Europe/Stockholm",
@@ -232,7 +248,8 @@ def draft_template(article: Article) -> str:
 
 
 def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors: list[str],
-                   source_diagnostics: list[dict] | None = None) -> None:
+                   source_diagnostics: list[dict] | None = None,
+                   preview_only: bool = False) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     queue = []
     for item in articles:
@@ -242,7 +259,7 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
                       "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
                       "category_verified": False, "relevance": assessment})
     payload = {"generated_at": now.isoformat(), "draft_count": len(queue),
-               "publishing_enabled": False, "articles": queue, "feed_errors": errors,
+               "publishing_enabled": False, "preview_only": preview_only, "articles": queue, "feed_errors": errors,
                "source_diagnostics": source_diagnostics or []}
     (outdir / "review_queue.json").write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -269,3 +286,6 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
                          f" — {stat['status']}")
         lines.append("")
     (outdir / "review_queue.md").write_text("\n".join(lines), encoding="utf-8")
+    from .review import create_review_page
+    (outdir / "review_dashboard.html").write_text(
+        create_review_page(payload), encoding="utf-8")

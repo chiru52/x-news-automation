@@ -276,5 +276,54 @@ class CoreTests(unittest.TestCase):
 
 
 
+    def test_review_dashboard_present_and_offline(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "output"
+            render_outputs([article(2)], out, NOW, [], preview_only=True)
+            html = (out / "review_dashboard.html").read_text(encoding="utf-8")
+            self.assertIn("Editorial review", html)
+            self.assertIn("Export decisions JSON", html)
+            self.assertIn("Shortlist", html)
+            self.assertIn("publication_authorized: false", html)
+            self.assertNotIn("https://cdn.", html)
+            data = json.loads((out / "review_queue.json").read_text(encoding="utf-8"))
+            self.assertTrue(data["preview_only"])
+            self.assertFalse(data["publishing_enabled"])
+
+    def test_embedded_news_cannot_inject_html_script(self):
+        from newsbot.review import create_review_page
+        attack = '</script><script>window.stolen=true</script>'
+        page = create_review_page({"articles": [
+            {"title": attack, "summary": attack, "link": "https://example.org/safe"}
+        ]})
+        self.assertNotIn(attack, page)
+        self.assertIn("\\u003c/script\\u003e", page)
+        self.assertEqual(page.count('<script id="queue-data" type="application/json">'), 1)
+
+    def test_preview_state_does_not_spend_quota(self):
+        from newsbot.core import make_preview_state
+        state = {"seen": {"abc": NOW.isoformat()}, "seen_titles": {},
+                 "daily_drafts": {"2026-10-29": 9},
+                 "daily_categories": {"2026-10-29": {"technology": 3, "markets": 3, "saas": 3}}}
+        preview = make_preview_state(state, NOW)
+        self.assertNotIn("2026-10-29", preview["daily_drafts"])
+        self.assertNotIn("2026-10-29", preview["daily_categories"])
+        self.assertIn("abc", preview["seen"])
+        self.assertEqual(state["daily_drafts"]["2026-10-29"], 9)
+        self.assertEqual(state["daily_categories"]["2026-10-29"]["saas"], 3)
+
+    def test_preview_selection_is_independent(self):
+        from newsbot.core import make_preview_state
+        state = {"seen": {}, "daily_drafts": {"2026-10-29": 9},
+                 "daily_categories": {"2026-10-29": {"markets": 9}}}
+        preview = make_preview_state(state, NOW)
+        candidates = [article(50), article(51)]
+        selected = select_articles(candidates, preview, NOW, daily_limit=9)
+        self.assertEqual(len(selected), 2)
+        self.assertEqual(state["daily_drafts"]["2026-10-29"], 9)
+        self.assertEqual(state.get("seen", {}), {})
+
+
+
 if __name__ == "__main__":
     unittest.main()
