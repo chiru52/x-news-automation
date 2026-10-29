@@ -167,12 +167,16 @@ def build_updated_body(body: str, draft: str) -> str:
         raise IssueValidationError("Issue has no editable review section")
     # Write only the editor's own paragraph; NEVER modify publisher evidence
     # or turn publication approval on.
-    replacement = (r"\g<1>" + "<pre>" + html.escape(draft, quote=True) +
-                   "</pre>" + r"\g<3>" if draft.strip() else
-                   r"\g<1>> [No reviewed post entered]\g<3>")
-    # A literal replacement callback prevents backslashes in user edits
-    # from being interpreted as regular-expression group references.
-    result, count = EDIT_REGION.subn(lambda _: replacement, body, count=1)
+    # Escape Markdown marker asterisks as entities too, so editor text
+    # cannot masquerade as the fixed Publication approval boundary.
+    escaped = html.escape(draft, quote=True).replace("*", "&#42;")
+    editor = ("<pre>" + escaped + "</pre>" if draft.strip()
+              else "> [No reviewed post entered]")
+    # A callback prevents backslashes from being interpreted as regex
+    # substitutions and preserves the immutable review/publishing marker.
+    result, count = EDIT_REGION.subn(
+        lambda match: match.group(1) + editor + match.group(3),
+        body, count=1)
     if count != 1 or len(result.encode("utf-8")) > MAX_BODY_BYTES:
         raise IssueValidationError("Invalid updated review body")
     return result
