@@ -70,3 +70,12 @@ def assess_story(title: str, summary: str, category: str,
     return {"score": score, "topic_match": True, "headline_terms": title_terms[:6],
             "summary_terms": summary_terms[:5], "impact_terms": impact[:3],
             "reason": "Keyword-based editorial ranking only; not verified"}
+
+def is_saas_funding_headline(title: str) -> bool:
+    """Detect capital-raising announcements, not SaaS product releases."""
+    return bool(re.search(
+        r"\b(?:series[ -]?[a-f]|pre-seed|seed round|funding round)\b"
+        r"|\braises?\s+(?:[$€£₹¥]|\d[\d,.]*)",
+        title, flags=re.I
+    ))
+

@@ -23,7 +23,7 @@ class DraftSuggestionTests(unittest.TestCase):
         item = story(summary="ARTICLE SUMMARY: The model invented 99 new features.")
         suggestion = suggest_post(item)
         self.assertIn(item.title, suggestion["text"])
-        self.assertIn("Via BBC Technology:", suggestion["text"])
+        self.assertIn("Read at example.org:", suggestion["text"])
         self.assertIn(item.link, suggestion["text"])
         self.assertNotIn("99 new features", suggestion["text"])
         self.assertFalse(suggestion["fact_checked"])
@@ -60,6 +60,18 @@ class DraftSuggestionTests(unittest.TestCase):
         self.assertTrue(any("shortened" in note for note in result["verification_warnings"]))
         self.assertLessEqual(result["approx_x_length"], 270)
 
+    def test_syndicated_headline_links_real_article_site(self):
+        item = story("Nasdaq futures mixed after Fed policy statement",
+                     category="markets",
+                     link="https://stocktwits.com/news-articles/markets/example",
+                     source="Yahoo Finance - Market Indices")
+        suggestion = suggest_post(item)
+        self.assertIn("Read at stocktwits.com:", suggestion["text"])
+        self.assertNotIn("Via Yahoo Finance", suggestion["text"])
+        self.assertEqual(suggestion["rss_feed_name"], "Yahoo Finance - Market Indices")
+        self.assertEqual(suggestion["linked_article_site"], "stocktwits.com")
+        self.assertTrue(any("syndicate" in x for x in suggestion["verification_warnings"]))
+
     def test_fails_closed_for_missing_source(self):
         with self.assertRaises(ValueError):
             suggest_post(story(link="javascript:alert(1)"))
@@ -72,7 +84,7 @@ class DraftSuggestionTests(unittest.TestCase):
             render_outputs([story()], out, NOW, [], preview_only=True)
             data = json.loads((out / "review_queue.json").read_text(encoding="utf-8"))
             selected = data["articles"][0]
-            self.assertIn("Via BBC Technology:", selected["suggested_post"])
+            self.assertIn("Read at example.org:", selected["suggested_post"])
             self.assertIn("[Write one verified insight", selected["draft"])
             self.assertFalse(selected["writing"]["fact_checked"])
             self.assertFalse(selected["publishable"])

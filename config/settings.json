@@ -11,5 +11,7 @@
     "markets",
     "saas"
   ],
-  "relevance_filter_enabled": true
+  "relevance_filter_enabled": true,
+  "max_drafts_per_source_per_day": 2,
+  "max_saas_funding_drafts_per_day": 1
 }

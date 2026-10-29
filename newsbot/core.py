@@ -16,7 +16,7 @@ from urllib.request import Request, urlopen
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
-from .relevance import assess_story
+from .relevance import assess_story, is_saas_funding_headline
 from .writing import suggest_post
 
 ATOM = "{http://www.w3.org/2005/Atom}"
@@ -145,6 +145,8 @@ def make_preview_state(state: dict, now: datetime,
     day = now.astimezone(ZoneInfo(timezone_name)).date().isoformat()
     preview.setdefault("daily_drafts", {}).pop(day, None)
     preview.setdefault("daily_categories", {}).pop(day, None)
+    preview.setdefault("daily_sources", {}).pop(day, None)
+    preview.setdefault("daily_saas_funding", {}).pop(day, None)
     return preview
 
 
@@ -152,7 +154,9 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                     daily_limit: int = 5, lookback_hours: int = 36,
                     timezone_name: str = "Europe/Stockholm",
                     category_order: tuple[str, ...] = ("technology", "markets", "saas"),
-                    rank_by_relevance: bool = False) -> list[Article]:
+                    rank_by_relevance: bool = False,
+                    max_per_source_per_day: int | None = None,
+                    max_saas_funding_per_day: int | None = None) -> list[Article]:
     """Select fresh, unique stories fairly across categories and runs in a local day.
 
     The daily counter is authoritative: newly configured categories cannot override
@@ -166,6 +170,14 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
     count = int(state["daily_drafts"].get(day, 0))
     remaining = max(0, daily_limit - count)
     min_date = now - timedelta(hours=lookback_hours)
+    if max_per_source_per_day is not None and max_per_source_per_day < 1:
+        raise ValueError("Source daily cap must be at least one")
+    if max_saas_funding_per_day is not None and max_saas_funding_per_day < 0:
+        raise ValueError("SaaS funding daily cap cannot be negative")
+    state.setdefault("daily_sources", {})
+    state.setdefault("daily_saas_funding", {})
+    source_counts = state["daily_sources"].setdefault(day, {})
+    funding_count = int(state["daily_saas_funding"].get(day, 0))
     state.setdefault("seen_titles", {})
     state.setdefault("daily_categories", {})
     category_counts = state["daily_categories"].setdefault(day, {})
@@ -203,22 +215,35 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
     run_ids: set[str] = set()
     run_titles: set[str] = set()
     while len(selected) < remaining:
-        available = []
+        available: dict[str, tuple[int, Article]] = {}
         for category in ordered:
-            bucket = by_category.get(category, [])
-            while bucket and (bucket[0].identity in run_ids or title_key(bucket[0].title) in run_titles):
-                bucket.pop(0)
-            if bucket:
-                available.append(category)
+            for idx, item in enumerate(by_category.get(category, [])):
+                if item.identity in run_ids or title_key(item.title) in run_titles:
+                    continue
+                if max_per_source_per_day is not None and (
+                    source_counts.get(item.source, 0) >= max_per_source_per_day
+                ):
+                    continue
+                if (max_saas_funding_per_day is not None and item.category == "saas"
+                        and is_saas_funding_headline(item.title)
+                        and funding_count >= max_saas_funding_per_day):
+                    continue
+                available[category] = (idx, item)
+                break
         if not available:
             break
-        # Pick the category with the fewest drafts so far today, tie by rotation.
+        # Prefer the least represented available category and maintain its rank order.
         chosen = min(available, key=lambda cat: (category_counts.get(cat, 0), ordered.index(cat)))
-        item = by_category[chosen].pop(0)
+        idx, item = available[chosen]
+        by_category[chosen].pop(idx)
         selected.append(item)
         run_ids.add(item.identity)
         run_titles.add(title_key(item.title))
         category_counts[chosen] = category_counts.get(chosen, 0) + 1
+        source_counts[item.source] = source_counts.get(item.source, 0) + 1
+        if item.category == "saas" and is_saas_funding_headline(item.title):
+            funding_count += 1
+    state["daily_saas_funding"][day] = funding_count
     for item in selected:
         state["seen"][item.identity] = now.isoformat()
         state["seen_titles"][title_key(item.title)] = now.isoformat()
@@ -232,6 +257,12 @@ def select_articles(articles: Iterable[Article], state: dict, now: datetime,
                              if key >= cutoff.date().isoformat()}
     state["daily_categories"] = {key: totals for key, totals in state["daily_categories"].items()
                                  if key >= cutoff.date().isoformat()}
+    state["daily_sources"] = {key: totals for key, totals in state["daily_sources"].items()
+                              if key >= cutoff.date().isoformat()}
+    state["daily_saas_funding"] = {
+        key: total for key, total in state["daily_saas_funding"].items()
+        if key >= cutoff.date().isoformat()
+    }
     return selected
 
 def draft_template(article: Article) -> str:

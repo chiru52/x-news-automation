@@ -150,3 +150,15 @@ The new queue fields are `suggested_post` and `writing` (method, approximate X l
 **These are NOT independently fact-checked posts.** The source headline can itself be wrong, imprecise, or incomplete. Users must open the article, verify all claims and dates, check X's official length handling, and rewrite the final post before use. The calculated character count approximates X's 23-character URL weighting, not the platform's official unicode/link calculation. No post is marked publishable or editor approved.
 
 Existing daily GitHub Issues are not overwritten, specifically to preserve manual edits. To preview these new suggestions on the same day, use the latest **GitHub Actions run Summary**. A new editable Issue is created on the next Stockholm day with eligible stories. The workflow does not call X, Buffer, Grok, or OpenAI.
+
+## Stage 10: diversified news selection and correct link attribution
+
+The first live run of automatic post suggestions succeeded, but the queue concentrated **all three SaaS picks on funding rounds**, **all three technology picks on The Verge**, and **three market picks on Yahoo Finance** (with some Yahoo RSS links leading to Stocktwits stories). The automated text is still a source-attributed **unverified headline**, not engaging original commentary.
+
+To improve editorial variety without guessing at reporting:
+- The daily review queue now selects **at most 2 drafts from the same RSS feed** when configured as `max_drafts_per_source_per_day=2`. If other relevant feeds are dry, it returns fewer drafts instead of bypassing the cap.
+- The daily queue includes **at most 1 SaaS fundraising headline**, with `max_saas_funding_drafts_per_day=1`. Other SaaS products/launches can fill remaining eligible slots. This detects common “Series A/B” and “raises $...” forms; heuristics are not a full SaaS classifier.
+- Source attribution in suggested text names the **linked article domain**, e.g. `Read at stocktwits.com`, rather than implying that the RSS feed is the writer. The feed name and linked domain are separately recorded in `writing.rss_feed_name` and `writing.linked_article_site`.
+- Both new limits are respected across multiple non-preview runs within a Stockholm day and are reset only in the in-memory preview state. Prior day's history is unaffected.
+
+All suggestions remain `publishable=false`, `fact_checked=false`, and `editor_approved=false`. Even a valid linked site does not prove the underlying facts. Old GitHub Issues are never overwritten. No AI API, Buffer, X posting, or billing has been added.

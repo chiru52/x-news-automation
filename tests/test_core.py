@@ -361,5 +361,68 @@ class CoreTests(unittest.TestCase):
 
 
 
+    def test_source_diversity_limits_repetitive_feeds(self):
+        now = NOW
+        state = {"seen": {}, "daily_drafts": {}}
+        items = []
+        for source in ("Feed A", "Feed B", "Feed C"):
+            for i in range(6):
+                items.append(Article(
+                    title=f"Stocks update from {source} edition {i}",
+                    link=f"https://example.org/{source.replace(' ', '')}/{i}",
+                    source=source, published_at=now.isoformat(), category="markets"))
+        chosen = select_articles(items, state, now, daily_limit=9,
+                                 max_per_source_per_day=2)
+        self.assertEqual(len(chosen), 6)
+        self.assertEqual({a.source: sum(x.source == a.source for x in chosen) for a in chosen},
+                         {"Feed A": 2, "Feed B": 2, "Feed C": 2})
+        self.assertEqual(state["daily_sources"]["2026-10-29"]["Feed A"], 2)
+
+    def test_saas_funding_cap_prefers_product_announcements(self):
+        now = NOW
+        state = {"seen": {}, "daily_drafts": {}}
+        funding = [Article(
+            title=f"SaaS startup raises $25M Series A funding edition {i}",
+            link=f"https://example.org/funding/{i}", source=f"Feed {i}",
+            published_at=now.isoformat(), category="saas")
+            for i in range(5)]
+        products = [Article(
+            title=f"SaaS automation platform launches new workflow edition {i}",
+            link=f"https://example.org/product/{i}", source=f"Product {i}",
+            published_at=now.isoformat(), category="saas")
+            for i in range(5)]
+        chosen = select_articles(funding + products, state, now, daily_limit=6,
+                                 rank_by_relevance=True, max_saas_funding_per_day=1)
+        self.assertEqual(len(chosen), 6)
+        self.assertEqual(sum("funding" in s.title for s in chosen), 1)
+        self.assertEqual(state["daily_saas_funding"]["2026-10-29"], 1)
+
+    def test_saas_funding_limit_respected_across_runs(self):
+        from newsbot.relevance import is_saas_funding_headline
+        state = {"seen": {}, "daily_drafts": {}}
+        base = [Article(title=f"Startup raises $5M Series A deal {i}",
+                        link=f"https://example.org/round/{i}",
+                        source=f"Feed {i}", published_at=NOW.isoformat(), category="saas")
+                for i in range(4)]
+        first = select_articles(base[:2], state, NOW, daily_limit=2,
+                                max_saas_funding_per_day=1)
+        second = select_articles(base[2:], state, NOW + timedelta(minutes=1),
+                                 daily_limit=6, max_saas_funding_per_day=1)
+        self.assertEqual(len(first), 1)
+        self.assertEqual(len(second), 0)
+        self.assertTrue(is_saas_funding_headline(first[0].title))
+
+    def test_preview_clears_source_and_funding_daily_counts(self):
+        from newsbot.core import make_preview_state
+        state = {"seen": {}, "daily_drafts": {"2026-10-29": 9},
+                 "daily_sources": {"2026-10-29": {"Feed A": 2}},
+                 "daily_saas_funding": {"2026-10-29": 1}}
+        preview = make_preview_state(state, NOW)
+        self.assertNotIn("2026-10-29", preview["daily_sources"])
+        self.assertNotIn("2026-10-29", preview["daily_saas_funding"])
+        self.assertEqual(state["daily_sources"]["2026-10-29"]["Feed A"], 2)
+
+
+
 if __name__ == "__main__":
     unittest.main()
