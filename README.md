@@ -172,3 +172,29 @@ After the live Stage 10 review preview, the rules correctly selected 9 stories a
 **Attribution:** use a small explicit list of known feed domains; warn about cross-site links only when a known feed links outside its expected domain (e.g. a Yahoo Finance RSS result linking to Stocktwits). The linked domain is still not a guarantee about authorship or accuracy; human verification remains necessary. Unknown feeds don't trigger spurious mismatch claims.
 
 No change to the nine-draft maximum, per-source and SaaS funding limits, review-only permissions, or publication safeguards.
+
+## Stage 15: GitHub Copilot one-draft review test (opt-in; no automatic posting)
+
+The **selected AI provider is GitHub Copilot**, using a separate, explicitly triggered workflow: `.github/workflows/copilot-one-draft.yml` (**Copilot - one news draft (manual, consumes AI credits)**). The existing daily RSS collector and its schedule remain unchanged and NEVER invoke Copilot. There is deliberately **no scheduled AI run**.
+
+### Personal-account setup (one-time)
+
+Your repository `varadachiru/x-news-automation` is **personally owned**. Unlike eligible organization-owned repositories, its Copilot usage should be authenticated using a **fine-grained personal access token** linked to your own Copilot entitlement. Create a fine-grained PAT at https://github.com/settings/personal-access-tokens/new owned by your personal account. Restrict its repository access to `x-news-automation`, grant the minimum **Copilot Requests** account permission supported by GitHub, set a short expiration date, and create the secret `COPILOT_PERSONAL_TOKEN` under **Repository → Settings → Secrets and variables → Actions**. Never paste the token into this chat, an Issue, a PR or the repository source. GitHub may require additional account or policy eligibility; the workflow fails closed if authentication is missing.
+
+### First test
+
+1. Keep **additional paid Copilot usage disabled** in GitHub billing settings. The screenshot of included credits does not establish the exact remaining quantity or guarantee that all AI usage is free.
+2. After this PR passes CI and is merged, open **Actions → Copilot - one news draft (manual, consumes AI credits)**.
+3. Click **Run workflow** on `main`. Select **Article index = 1** and explicitly check **I approve one Copilot AI request using my included credits**. It defaults to **unchecked**.
+4. The workflow collects fresh RSS in `--preview` mode only (no quota history change), then submits **one** candidate as an unverified RSS prompt to GitHub Copilot CLI. It displays the result in the Actions **Summary**, and stores an optional `copilot-editorial-preview` artifact.
+5. Independently open the linked publisher article, verify claims, and manually edit the final proposed text. The tool cannot mark it verified or approved, and **never posts to X, Buffer or any other network**.
+
+The workflow uses a **30 AI credit soft limit per Copilot CLI session**, the minimum currently supported; this is not a guaranteed hard spending ceiling (an in-flight model response can slightly exceed it). A GitHub Actions job timeout and a single invocation further restrict usage. Using a personal Copilot account's included allowance is expected only if available and eligible; excess usage depends on your actual GitHub billing settings.
+
+### Security
+
+The workflow requires `workflow_dispatch`, checks the explicit credit-use checkbox, and has only `contents: read` repository permission. It does not use the repository built-in token for Copilot requests. Its personal secret is injected **only into the token check and the Copilot invocation**. The runner checks out repository content without persistently storing checkout credentials. Copilot is run from an isolated temporary working directory with shell, write, URL and memory tools denied, built-in MCPs disabled, and custom instructions disabled. This limits what the AI assistant itself can execute, but **the CLI must still connect to GitHub Copilot's model service**; the user approves this network and AI-credit usage by checking the box.
+
+The output is displayed only as HTML-escaped text, marked **NOT VERIFIED** and **NOT APPROVED**, with publisher link, and without any automated posting. The model is **not asked to browse external articles**, because this first test disables web tools for security and predictability. It can only draft from unverified RSS metadata. High-quality independent research and source verification require a later separately reviewed step.
+
+**Do not confuse Stage 14 (manual ChatGPT PR #13, not merged) with this alternative:** this PR implements a separate GitHub Copilot path and does not depend on that PR.
