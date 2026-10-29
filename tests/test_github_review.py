@@ -31,7 +31,6 @@ class GithubReviewTests(unittest.TestCase):
         body = render(SAMPLE)
         self.assertIn("News editorial review — 2026-10-29", body)
         self.assertIn("Open article", body)
-        self.assertIn("Opened", body) if False else None
         self.assertIn("Read original article and verified", body)
         self.assertIn("My reviewed X draft", body)
         self.assertIn("publication_authorized=false", body)
