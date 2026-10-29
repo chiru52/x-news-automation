@@ -81,8 +81,10 @@ def issue_revision(issue: dict) -> str:
     """Changes to draft text or labels invalidate stale browser saves."""
     labels = sorted(x["name"] for x in issue.get("labels", [])
                     if isinstance(x, dict) and isinstance(x.get("name"), str))
-    value = json.dumps([issue.get("body"), labels, issue.get("updated_at") or
-                        issue.get("updatedAt")], ensure_ascii=False, sort_keys=True)
+    # gh issue list (GraphQL) and gh api (REST) can format timestamps
+    # differently. Only compare editable contents and status labels.
+    value = json.dumps([issue.get("body"), labels],
+                       ensure_ascii=False, sort_keys=True)
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
@@ -128,7 +130,7 @@ def parse_issue(issue: dict) -> dict:
     return {
         "number": int(issue["number"]),
         "title": match_text(TITLE, body, limit=400) or bounded(str(issue.get("title", "")), 400),
-        "url": str(issue.get("url") or ""),
+        "url": str(issue.get("html_url") or issue.get("url") or ""),
         "source_url": raw_url,
         "proposed_draft": match_text(CLEAN_POST, body, limit=MAX_DRAFT_CHARS),
         "edited_draft": read_edited_post(body),
@@ -168,7 +170,9 @@ def build_updated_body(body: str, draft: str) -> str:
     replacement = (r"\g<1>" + "<pre>" + html.escape(draft, quote=True) +
                    "</pre>" + r"\g<3>" if draft.strip() else
                    r"\g<1>> [No reviewed post entered]\g<3>")
-    result, count = EDIT_REGION.subn(replacement, body, count=1)
+    # A literal replacement callback prevents backslashes in user edits
+    # from being interpreted as regular-expression group references.
+    result, count = EDIT_REGION.subn(lambda _: replacement, body, count=1)
     if count != 1 or len(result.encode("utf-8")) > MAX_BODY_BYTES:
         raise IssueValidationError("Invalid updated review body")
     return result
@@ -254,6 +258,9 @@ def handler_factory(repo: str, csrf: str, gh=gh_json):
             if self.path == "/dashboard.js":
                 from .editorial_inbox_ui import SCRIPT
                 return self.send_data(200, SCRIPT, content_type="application/javascript; charset=utf-8")
+            if self.path == "/dashboard.css":
+                from .editorial_inbox_ui import STYLE
+                return self.send_data(200, STYLE, content_type="text/css; charset=utf-8")
             if self.path == "/api/inbox":
                 try:
                     data = list_inbox(repo, gh)
