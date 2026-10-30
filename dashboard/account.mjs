@@ -2,7 +2,7 @@
 // Never put service_role or secret keys in a browser configuration.
 const $=id=>document.getElementById(id);
 const status=$("auth-status"),form=$("auth-form"),submit=$("auth-submit");
-let client=null,mode="sign-in",verifiedUser=false;
+let client=null,mode="sign-in",verifiedUser=false,currentUser=null;
 const dashboardUrl="./";
 const cleanMode=()=>["sign-in","sign-up","forgot","update-password"].includes(location.hash.slice(1))?location.hash.slice(1):"sign-in";
 function message(value){status.textContent=value;}
@@ -22,8 +22,55 @@ function showMode(){
     $("account-"+(name==="forgot"?"recover":name)).setAttribute("aria-current",name===mode?"page":"false");
   }
   if(client) form.hidden=!$("account-signed-in").hidden && !(mode==="update-password" && verifiedUser);
+  document.querySelector(".account-links").hidden=verifiedUser && mode!=="update-password";
   if(mode==="update-password" && !verifiedUser){form.hidden=true;message("Use your password-reset email link to update your password.");}
 }
+function renderAccountUser(user){
+  currentUser=user||null;verifiedUser=!!user;
+  $("account-signed-in").hidden=!user;
+  document.querySelector(".account-links").hidden=!!user && mode!=="update-password";
+  if(!user)return;
+  $("account-email").textContent="Signed in as "+(user.email||"account");
+  $("account-created").textContent=user.created_at?"Account created: "+new Date(user.created_at).toLocaleDateString():"";
+  $("profile-name").value=String(user.user_metadata?.display_name||"").slice(0,80);
+  $("preference-theme").value=localStorage.getItem("signaldesk:theme:v1")||"system";
+  const region=localStorage.getItem("signaldesk:preferred-view:v1")||"all";
+  $("preference-region").value=["all","global","india","trending"].includes(region)?region:"all";
+}
+function settingsMessage(value){$("account-settings-status").textContent=value;}
+$("profile-form").addEventListener("submit",async event=>{
+  event.preventDefault();if(!client||!currentUser)return;
+  const button=event.currentTarget.querySelector("button");button.disabled=true;
+  try{
+    const display_name=$("profile-name").value.trim();
+    const {data,error}=await client.auth.updateUser({data:{display_name}});
+    if(error)throw error;
+    renderAccountUser(data.user);settingsMessage("Profile saved.");
+  }catch(_error){settingsMessage("Could not save profile. Please try again.");}
+  finally{button.disabled=false;}
+});
+$("profile-password-reset").addEventListener("click",async()=>{
+  if(!client||!currentUser?.email)return;
+  const button=$("profile-password-reset");button.disabled=true;
+  try{
+    const {error}=await client.auth.resetPasswordForEmail(currentUser.email,{redirectTo:location.origin+location.pathname+"#update-password"});
+    if(error)throw error;
+    settingsMessage("If this address is eligible, a password-reset link will arrive by email.");
+  }catch(_error){settingsMessage("Unable to send password reset email. Try again.");}
+  finally{button.disabled=false;}
+});
+$("preferences-form").addEventListener("submit",event=>{
+  event.preventDefault();if(!currentUser)return;
+  try{
+    const theme=$("preference-theme").value,region=$("preference-region").value;
+    if(!["system","light","dark"].includes(theme)||!["all","global","india","trending"].includes(region))return;
+    if(theme==="system")localStorage.removeItem("signaldesk:theme:v1");
+    else localStorage.setItem("signaldesk:theme:v1",theme);
+    localStorage.setItem("signaldesk:preferred-view:v1",region);
+    settingsMessage("Preferences saved in this browser.");
+  }catch(_error){settingsMessage("Preferences could not be saved in this browser.");}
+});
+
 async function setup(){
   let phase="configuration";
   try{
@@ -42,15 +89,13 @@ async function setup(){
     client.auth.onAuthStateChange((event,session)=>{
       if(event==="PASSWORD_RECOVERY"){location.hash="update-password";}
       const user=session?.user;
-      verifiedUser=!!user;
-      $("account-signed-in").hidden=!user;
+      renderAccountUser(user);
       if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && verifiedUser);if(mode!=="update-password")message("Your account is active.");}
       else {form.hidden=mode==="update-password";}
     });
     phase="Supabase session check";
     const {data:{user}}=await client.auth.getUser();
-    verifiedUser=!!user;
-    $("account-signed-in").hidden=!user;
+    renderAccountUser(user);
     if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && verifiedUser);if(mode!=="update-password")message("Your account is active.");}
     else {message("Sign in, register, or reset your password.");form.hidden=mode==="update-password";}
     showMode();
@@ -73,7 +118,7 @@ form.addEventListener("submit",async event=>{
     if(mode==="update-password"){
       const signedOut=await client.auth.signOut();
       if(signedOut.error) throw signedOut.error;
-      verifiedUser=false;$("account-signed-in").hidden=true;
+      renderAccountUser(null);
       location.hash="sign-in";showMode();
       message("Password updated successfully. Please sign in with your new password.");
     } else if(mode==="sign-in"){
@@ -82,5 +127,5 @@ form.addEventListener("submit",async event=>{
   }catch(err){message(err?.message||"Account request failed.");}
   finally{submit.disabled=false;}
 });
-$("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();if(error){message(error.message);return;}verifiedUser=false;message("Signed out.");$("account-signed-in").hidden=true;location.hash="sign-in";showMode();});
+$("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();if(error){message(error.message);return;}renderAccountUser(null);message("Signed out.");location.hash="sign-in";showMode();});
 showMode();setup();

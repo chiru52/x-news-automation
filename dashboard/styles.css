@@ -225,3 +225,13 @@
 #profile-sign-out:not([hidden]):hover{background:rgba(125,90,205,.1)}
 #profile-sign-out:disabled{opacity:.6;cursor:wait}
 #profile-account-status:not([hidden]){font-size:12px;margin:5px 0;color:inherit}
+
+/* Optional signed-in account settings */
+.account-settings{margin-top:20px;border-top:1px solid #ebe5f2;padding-top:12px}
+.account-settings h2{font-size:16px;margin:23px 0 8px}
+.account-settings form{display:grid;gap:9px;margin:12px 0}
+.account-settings label{font-size:12px;font-weight:650}
+.account-settings input,.account-settings select{width:100%;border:1px solid #d8ceea;border-radius:8px;padding:11px;background:#fff;color:#252332}
+.account-settings button{border:0;background:#6c48ca;color:white;border-radius:8px;padding:11px;font-weight:700;cursor:pointer}
+.account-settings button:disabled{opacity:.6;cursor:wait}
+.account-settings[hidden],.account-links[hidden]{display:none}
