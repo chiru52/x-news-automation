@@ -40,6 +40,23 @@ class LiveCollectorWiringTests(unittest.TestCase):
             self.assertIn("connect-src 'self' " + configure_live.APPROVED_ORIGIN + ";",headers)
             self.assertNotIn("CLOUDFLARE_API_TOKEN", headers)
 
+    def test_existing_auth_and_feed_origins_survive_configuration(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            self.setup_bundle(dest)
+            url = configure_live.APPROVED_ENDPOINT
+            origin = configure_live.APPROVED_ORIGIN
+            custom = ("/*\\n  Content-Security-Policy: default-src 'none'; "
+                      "script-src 'self' https://cdn.jsdelivr.net; "
+                      "connect-src 'self' https://nmvsdgpsmvycwarnomot.supabase.co " +
+                      origin + ";\\n")
+            (dest / "_headers").write_text(custom, encoding="utf-8")
+            (dest / "feed-config.json").write_text(
+                json.dumps({"schema_version": 1, "live_feed_url": url}), encoding="utf-8")
+            value = configure_live.configure(dest)
+            self.assertEqual(value["live_feed_url"], url)
+            self.assertEqual((dest / "_headers").read_text("utf-8"), custom)
+
     def test_unapproved_worker_hostname_falls_back(self):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)

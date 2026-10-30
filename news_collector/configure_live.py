@@ -24,12 +24,17 @@ def configure(output_dir):
                 current.get("live_feed_url") != APPROVED_ENDPOINT):
             raise ValueError("No approved public collector endpoint configured")
         original = headers_path.read_text(encoding="utf-8")
-        if "connect-src 'self';" not in original:
+        directives = [part.strip() for part in original.split(";")]
+        connect = next((part for part in directives if part.startswith("connect-src ")), "")
+        if APPROVED_ORIGIN in connect.split():
+            updated = original  # Keep already-approved feed and auth origins.
+        elif "connect-src 'self';" in original:
+            updated = original.replace(
+                "connect-src 'self';",
+                "connect-src 'self' " + APPROVED_ORIGIN + ";"
+            )
+        else:
             raise ValueError("Unexpected baseline Content Security Policy")
-        updated = original.replace(
-            "connect-src 'self';",
-            "connect-src 'self' " + APPROVED_ORIGIN + ";"
-        )
         headers_path.write_text(updated, encoding="utf-8")
         result["live_feed_url"] = APPROVED_ENDPOINT
         print("Exact public collector URL configured; browser keeps static fallback")

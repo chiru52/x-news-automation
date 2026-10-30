@@ -92,8 +92,10 @@ jobs:
           headers = (root / '_headers').read_text(encoding='utf-8')
           if cfg != {'schema_version': 1, 'live_feed_url': APPROVED_ENDPOINT}:
               raise RuntimeError('Public collector configuration was not applied')
-          if "connect-src 'self' " + APPROVED_ORIGIN + ";" not in headers:
+          if "connect-src 'self' " not in headers or APPROVED_ORIGIN not in headers:
               raise RuntimeError('Public collector CSP allowlist not applied')
+          if "https://nmvsdgpsmvycwarnomot.supabase.co" not in headers or "https://cdn.jsdelivr.net" not in headers:
+              raise RuntimeError('Approved authentication origins missing from CSP')
           print('Exact approved shared collector URL and CSP verified; daily fallback retained')
           PY
       - name: Confirm Cloudflare Pages deployment credentials
