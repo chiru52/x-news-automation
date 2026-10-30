@@ -2,7 +2,6 @@ import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as s
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
-import {collectBrowserBackup, validateBackup, restoreBrowserBackup} from "./cloud-sync.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -1113,6 +1112,7 @@ themeToggle.addEventListener("click",()=>{
 });
 
 const profileToggle=$("profile-toggle"),profileMenu=$("profile-menu");
+let canOpenAccountWorkspace=false;
 function setProfileOpen(open) {
   profileMenu.hidden=!open;
   profileToggle.setAttribute("aria-expanded",String(open));
@@ -1124,7 +1124,7 @@ async function updateOptionalAccountProfile(){
   const signIn=profileMenu.querySelector('a[href="./account.html#sign-in"]');
   const signUp=profileMenu.querySelector('a[href="./account.html#sign-up"]');
   const manage=$("profile-account-link");
-  const greeting=$("profile-greeting"),manageNav=$("nav-manage-account");
+  const greeting=$("profile-greeting");
   let currentAccount=null;
   const signOut=$("profile-sign-out"),accountStatus=$("profile-account-status");
   try{
@@ -1145,7 +1145,8 @@ async function updateOptionalAccountProfile(){
       title.textContent=signedIn?"Signed in to SignalDesk":"Browsing as guest";
       description.textContent=signedIn?"Account: "+(user.email||"Signed-in user")+" · Your saved items remain in this browser until cloud sync is enabled.":"Your saved items stay in this browser. Sign-in is optional.";
       signIn.hidden=signedIn;signUp.hidden=signedIn;manage.hidden=!signedIn;signOut.hidden=!signedIn;
-      manageNav.hidden=!signedIn;
+      canOpenAccountWorkspace=signedIn;
+      if(signedIn && new URLSearchParams(location.search).get("view")==="account")openAccountWorkspace();
       const name=String(user?.user_metadata?.display_name||"").trim().slice(0,40);
       greeting.hidden=!signedIn;greeting.textContent=signedIn?"Hi "+(name||"there")+"!":"";
       if(!signedIn && document.querySelector(".content").classList.contains("account-open"))closeAccountWorkspace();
@@ -1191,61 +1192,6 @@ async function updateOptionalAccountProfile(){
         $("manage-status").textContent="Password could not be updated. Check your current password and try again.";
       }finally{button.disabled=false;}
     });
-    const cloudSave=$("cloud-backup-save");
-    const cloudRestore=$("cloud-backup-restore");
-    const cloudStatus=$("cloud-backup-status");
-    const disableBackupControls=disabled=>{cloudSave.disabled=disabled;cloudRestore.disabled=disabled;};
-    async function verifiedAccount(){
-      const {data,error}=await auth.auth.getUser();
-      if(error||!data?.user?.id||data.user.id!==currentAccount?.id)
-        throw Error("Your sign-in expired. Please sign in again.");
-      return data.user.id;
-    }
-    cloudSave.addEventListener("click",async()=>{
-      disableBackupControls(true);
-      cloudStatus.textContent="Checking private cloud backup…";
-      try{
-        const userId=await verifiedAccount();
-        const payload=collectBrowserBackup(localStorage);
-        const {data:previous,error:lookupError}=await auth
-          .from("signaldesk_personal_backups").select("updated_at")
-          .eq("user_id",userId).maybeSingle();
-        if(lookupError)throw lookupError;
-        if(previous && !window.confirm("Replace your existing cloud backup with this browser's current data? Other devices will not update automatically.")){
-          cloudStatus.textContent="Backup cancelled. No data was uploaded.";
-          return;
-        }
-        const {error}=await auth.from("signaldesk_personal_backups")
-          .upsert({user_id:userId,payload,updated_at:new Date().toISOString()},{onConflict:"user_id"});
-        if(error)throw error;
-        cloudStatus.textContent="Cloud backup saved. Open another device and choose Restore to this browser.";
-      }catch(error){
-        cloudStatus.textContent=error?.message?.startsWith("Browser data is too large")?error.message:
-          "Could not back up this browser. Your local work is unchanged.";
-      }finally{disableBackupControls(false);}
-    });
-    cloudRestore.addEventListener("click",async()=>{
-      disableBackupControls(true);
-      cloudStatus.textContent="Checking your private cloud backup…";
-      try{
-        const userId=await verifiedAccount();
-        const {data,error}=await auth.from("signaldesk_personal_backups")
-          .select("payload,updated_at").eq("user_id",userId).maybeSingle();
-        if(error)throw error;
-        if(!data){cloudStatus.textContent="No cloud backup yet. Back up a browser first.";return;}
-        const payload=validateBackup(data.payload);
-        if(!window.confirm("Replace the saved items, notes, drafts and workflow statuses on THIS browser with your cloud backup from "+
-          new Date(data.updated_at).toLocaleString()+"? Local changes not in that backup will be lost.")){
-          cloudStatus.textContent="Restore cancelled. Your local work is unchanged.";
-          return;
-        }
-        restoreBrowserBackup(localStorage,payload);
-        cloudStatus.textContent="Restored successfully. Reloading news and workflow…";
-        window.location.reload();
-      }catch(_error){
-        cloudStatus.textContent="Restore failed. Your existing browser data is unchanged.";
-      }finally{disableBackupControls(false);}
-    });
     signOut.addEventListener("click",async()=>{
       signOut.disabled=true;accountStatus.hidden=false;accountStatus.textContent="Signing out…";
       try{
@@ -1261,28 +1207,25 @@ async function updateOptionalAccountProfile(){
   }catch(_error){ /* Account health must never block public news. */ }
 }
 function openAccountWorkspace(){
+  // Manage Account is a profile action, never a news navigation item.
+  if(!canOpenAccountWorkspace)return;
   const workspace=$("account-workspace"),content=document.querySelector(".content");
-  if($("nav-manage-account").hidden)return;
-  content.classList.add("account-open");workspace.hidden=false;
+  content.classList.add("account-open");
+  workspace.hidden=false;
   updateMobileMenuLabel("account");
   document.querySelectorAll(".nav-items [data-view]").forEach(button=>{
     button.classList.remove("active");
     button.removeAttribute("aria-current");
   });
-  $("nav-manage-account").classList.add("active");
-  $("nav-manage-account").setAttribute("aria-current","page");
   setProfileOpen(false);
-  if(window.matchMedia("(max-width: 850px)").matches)
-    $("nav-manage-account").scrollIntoView({block:"nearest",inline:"center"});
-  history.replaceState(null,"","?view=account");
+  if(new URLSearchParams(location.search).get("view")!=="account")
+    history.replaceState(null,"","?view=account");
   window.scrollTo({top:0,behavior:"smooth"});
 }
 function closeAccountWorkspace(){
   $("account-workspace").hidden=true;
   document.querySelector(".content").classList.remove("account-open");
   updateMobileMenuLabel(selectedView);
-  $("nav-manage-account").classList.remove("active");
-  $("nav-manage-account").removeAttribute("aria-current");
   if(!document.querySelector(".nav-items [data-view].active")){
     const prior=document.querySelector('.nav-items [data-view="'+selectedView+'"]');
     if(prior){prior.classList.add("active");prior.setAttribute("aria-current","page");}
@@ -1326,11 +1269,9 @@ document.addEventListener("keydown",event=>{
     setMobileMenuOpen(false,true);
 });
 mobileMenuMedia.addEventListener("change",()=>setMobileMenuOpen(false));
-$("nav-manage-account").addEventListener("click",openAccountWorkspace);
 $("profile-account-link").addEventListener("click",event=>{event.preventDefault();openAccountWorkspace()});
 document.querySelectorAll(".nav-items [data-view]").forEach(button=>button.addEventListener("click",closeAccountWorkspace));
 updateOptionalAccountProfile();
-if(new URLSearchParams(location.search).get("view")==="account")openAccountWorkspace();
 profileToggle.addEventListener("click",()=>setProfileOpen(profileMenu.hidden));
 document.addEventListener("click",(event)=>{
   if(!event.target.closest(".profile-wrap")) setProfileOpen(false);
