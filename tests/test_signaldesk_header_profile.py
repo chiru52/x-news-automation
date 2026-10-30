@@ -31,7 +31,7 @@ class HeaderAccountTests(unittest.TestCase):
         self.assertIn('"account.mjs"',export)
         self.assertIn('"auth-config.json"',export)
         config=(ROOT/"dashboard/auth-config.json").read_text()
-        self.assertIn('"enabled":false',config)
+        self.assertIn('"enabled":true',config)
         client=(ROOT/"dashboard/account.mjs").read_text()
         self.assertIn("signInWithPassword",client)
         self.assertIn("signUp",client)
