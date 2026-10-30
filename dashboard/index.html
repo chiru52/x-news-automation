@@ -75,7 +75,7 @@
           <section id="topic-writer" class="topic-writer" aria-labelledby="topic-writer-heading" hidden>
             <div class="review-desk-head">
               <div><span class="section-kicker">MY WORKFLOW · PERSONAL WRITING</span><h3 id="topic-writer-heading">Topic &amp; Perspective Writer</h3>
-                <p>Write about broader topics, markets, technology or everyday observations in your own voice. These are writing structures, not AI-written analysis or verified news.</p>
+                <p>Write about broader topics, markets, technology or everyday observations in your own voice. AI suggestions are generated on request and are not verified news. Review every claim.</p>
               </div>
               <button type="button" id="topic-writer-close" class="secondary-action">Back to workflow</button>
             </div>
@@ -95,8 +95,12 @@
                 <textarea id="topic-writer-insight" rows="5" maxlength="500" placeholder="What did you notice? What's your takeaway? Use your own words and avoid unverified claims."></textarea>
                 <label for="topic-writer-source">Supporting article (optional for personal opinions)</label>
                 <input id="topic-writer-source" type="url" maxlength="900" placeholder="https://publisher.example/article" inputmode="url"/>
-                <button type="button" id="topic-writer-build">Create writing starter</button>
-                <p class="topic-writer-note">If you include numbers, prices or other factual claims, add a reliable source and check the actual report. This doesn't automatically research articles.</p>
+                <div class="topic-writer-actions">
+                  <button type="button" id="topic-writer-build">Basic writing starter</button>
+                  <button type="button" id="topic-writer-ai-generate">Generate 3 AI drafts</button>
+                </div>
+                <div id="topic-writer-ai-choices" class="ai-draft-choices" aria-label="AI draft choices"></div>
+                <p class="topic-writer-note">If you include numbers, prices or other factual claims, add a reliable source and check the actual report. AI suggestions don't automatically research or verify linked articles.</p>
               </div>
               <div class="topic-writer-preview">
                 <label for="topic-writer-draft">Edit your X post</label>
