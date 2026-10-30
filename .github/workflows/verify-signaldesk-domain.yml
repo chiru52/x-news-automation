@@ -1,0 +1,119 @@
+name: Verify SignalDesk custom domain and exact DNS CNAME
+
+# One-time, tightly scoped Cloudflare DNS reconciliation for the requested
+# news.littlekingchess.com subdomain ONLY. Never changes existing DNS records.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/verify-signaldesk-domain.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Inspect approved Cloudflare Pages domain and exact DNS name
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError, URLError
+          from urllib.parse import quote
+
+          ZONE='littlekingchess.com'
+          NAME='news.littlekingchess.com'
+          PROJECT='signaldesk-news'
+          TARGET='signaldesk-news.pages.dev'
+          account=os.environ.get('CLOUDFLARE_ACCOUNT_ID','')
+          token=os.environ.get('CLOUDFLARE_API_TOKEN','')
+          if not account or not token:
+              raise RuntimeError('Cloudflare account ID / API token not configured')
+
+          base='https://api.cloudflare.com/client/v4'
+          headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'}
+          def api(method, path, data=None):
+              req=Request(base+path,headers=headers,method=method,
+                          data=json.dumps(data).encode('utf-8') if data is not None else None)
+              try:
+                  with urlopen(req,timeout=20) as response:
+                      result=json.load(response)
+              except HTTPError as error:
+                  raise RuntimeError('Cloudflare '+method+' permission/API failure HTTP '+str(error.code)) from None
+              except URLError:
+                  raise RuntimeError('Cloudflare network access failed') from None
+              if result.get('success') is not True:
+                  raise RuntimeError('Cloudflare declined the '+method+' request')
+              return result.get('result')
+
+          page_path='/accounts/'+account+'/pages/projects/'+PROJECT+'/domains/'+NAME
+          current=api('GET',page_path)
+          if not isinstance(current,dict) or current.get('name')!=NAME:
+              raise RuntimeError('Expected Cloudflare Pages custom-domain association missing')
+          status=str(current.get('status','unknown'))
+          print('Pages custom-domain status:', status)
+          changed=False
+          if status not in ('active','pending','initializing'):
+              raise RuntimeError('Cloudflare custom-domain status needs investigation: '+status)
+
+          # If active, the domain is already associated and should not need DNS changes.
+          if status!='active':
+              zone_result=api('GET','/zones?name='+quote(ZONE)+'&account.id='+quote(account))
+              if not isinstance(zone_result,list) or len(zone_result)!=1:
+                  raise RuntimeError('Cloudflare zone missing or ambiguous; check DNS manually')
+              zone=zone_result[0]
+              if zone.get('name')!=ZONE or zone.get('account',{}).get('id')!=account:
+                  raise RuntimeError('Refusing to modify an unexpected Cloudflare zone')
+              zone_id=zone.get('id')
+              if not isinstance(zone_id,str) or len(zone_id)!=32:
+                  raise RuntimeError('Zone ID unavailable or invalid')
+              if zone.get('status')!='active':
+                  raise RuntimeError('Domain zone not active. Resolve Cloudflare zone setup first')
+              records_path='/zones/'+zone_id+'/dns_records'
+              records=api('GET',records_path+'?name='+quote(NAME)+'&per_page=100')
+              if not isinstance(records,list):
+                  raise RuntimeError('Cannot verify existing DNS records')
+              if len(records)>1:
+                  raise RuntimeError('Multiple DNS records exist for requested name: manual review required')
+              if records:
+                  record=records[0]
+                  if (record.get('type')!='CNAME' or
+                      str(record.get('content','')).rstrip('.').lower()!=TARGET):
+                      raise RuntimeError('Existing DNS record conflicts; nothing changed')
+                  print('Correct CNAME already present, leaving existing record unchanged')
+              else:
+                  # A new record is safe only when the exact DNS name has no
+                  # existing records and the exact Pages project is associated.
+                  new=api('POST',records_path,{
+                      'type':'CNAME','name':NAME,'content':TARGET,
+                      'ttl':1,'proxied':True,
+                      'comment':'SignalDesk Cloudflare Pages custom domain'
+                  })
+                  if (not isinstance(new,dict) or new.get('type')!='CNAME' or
+                      new.get('name')!=NAME or
+                      str(new.get('content','')).rstrip('.').lower()!=TARGET):
+                      raise RuntimeError('Cloudflare DNS creation not verified')
+                  changed=True
+                  print('Created exact CNAME for SignalDesk Pages; no other DNS records altered')
+          else:
+              print('Cloudflare reports domain active; no DNS modification needed')
+
+          later=api('GET',page_path)
+          later_status=later.get('status','unknown') if isinstance(later,dict) else 'unknown'
+          summary=os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary,'a',encoding='utf-8') as stream:
+                  stream.write('## SignalDesk custom domain check\n\n')
+                  stream.write('Requested domain: '+NAME+'\n\n')
+                  stream.write('Cloudflare status: '+str(later_status)+'\n\n')
+                  stream.write('CNAME created this run: '+str(changed)+'\n\n')
+                  stream.write('DNS target: '+TARGET+'\n\n')
+                  stream.write('If not active yet, wait for Cloudflare certificate/domain validation and check Pages > Custom domains.\n')
+          PY
