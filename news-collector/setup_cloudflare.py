@@ -112,7 +112,14 @@ def discover():
     last_error = "not yet available"
     for attempt in range(1, 9):
         try:
-            with urlopen(url + "/health", timeout=12) as response:
+            # Match our confirmed successful read-only diagnostic request.
+            # Generic urllib defaults can receive a Cloudflare 403 before
+            # reaching the Worker, even with the public route enabled.
+            request = Request(url + "/health", headers={
+                "User-Agent": "SignalDesk-ReadOnly-HealthDiagnostic/1.0",
+                "Accept": "application/json",
+            })
+            with urlopen(request, timeout=12) as response:
                 health = json.load(response)
             if (health.get("status") == "read_only" and
                     health.get("x_posting_enabled") is False and

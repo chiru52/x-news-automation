@@ -70,6 +70,16 @@ class LiveCollectorWiringTests(unittest.TestCase):
         self.assertNotIn("pages deploy",workflow)
         self.assertIn("PUBLISH_ENABLED: 'false'",workflow)
 
+    def test_worker_health_probe_matches_successful_read_only_diagnostic(self):
+        setup=(ROOT / "news-collector/setup_cloudflare.py").read_text("utf-8")
+        deploy=(ROOT / ".github/workflows/deploy-news-collector.yml").read_text("utf-8")
+        self.assertIn('"User-Agent": "SignalDesk-ReadOnly-HealthDiagnostic/1.0"', setup)
+        self.assertIn('"Accept": "application/json"', setup)
+        self.assertIn('with urlopen(request, timeout=12)', setup)
+        self.assertIn("'news-collector/**'", deploy)
+        self.assertNotIn("'news_collector/**'", deploy)
+        self.assertNotIn("secrets.X_", deploy)
+
     def test_public_dashboard_never_triggers_news_collection(self):
         js=(ROOT/"dashboard/app.js").read_text("utf-8")
         self.assertIn('fetch(endpoint,{cache:"no-store",mode:"cors",credentials:"omit"})',js)
