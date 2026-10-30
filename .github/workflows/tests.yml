@@ -38,6 +38,8 @@ jobs:
           node --test tests/signaldesk-news-intelligence.test.mjs
       - name: Test no-cost Post Studio and research tools offline
         run: node --test tests/signaldesk-studio.test.mjs
+      - name: Test AI Writer endpoint fails closed without credentials
+        run: node --test tests/signaldesk-ai-writer.test.mjs
       - name: Test personal-topic perspective writing offline
         run: |
           node --check dashboard/perspective.mjs
