@@ -183,8 +183,9 @@ async function readFeedData() {
     if (dynamic.schema_version!==1 || !Array.isArray(dynamic.news) ||
         dynamic.news.length<5 || dynamic.news.length>40 ||
         !Number.isFinite(dynamicDate) || Date.now()-dynamicDate>90*60*1000 ||
-        dynamicDate>Date.now()+10*60*1000 ||
-        !(dynamicDate>staticDate)) return {data:staticData,fromLive:false};
+        dynamicDate>Date.now()+10*60*1000) return {data:staticData,fromLive:false};
+    // Source diagnostics can be newer than the static build even when news is not.
+    if (!(dynamicDate>staticDate)) return {data:{...staticData,source_health:dynamic.source_health},fromLive:false};
     return {data:{
       schema_version:1,generated_at:dynamic.generated_at,
       news:dynamic.news,
@@ -949,7 +950,10 @@ async function initialize(background = false) {
         ["india","global"].includes(x.region) &&
         ["ok","empty","error"].includes(x.status) &&
         Number.isInteger(x.recent_articles) && x.recent_articles>=0);
-    $("source-health").hidden=!validHealth;
+    $("source-health").hidden=false;
+    $("source-health-summary").textContent="Diagnostics unavailable";
+    $("source-health-list").replaceChildren();
+    $("source-health-message").hidden=!!validHealth;
     if(validHealth) {
       const sources=health.sources, failures=sources.filter(x=>x.status==="error").length;
       $("source-health-summary").textContent=sources.length+" sources checked · "+

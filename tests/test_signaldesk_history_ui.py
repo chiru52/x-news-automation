@@ -14,6 +14,11 @@ class HistoryUITests(unittest.TestCase):
         cls.archive=(ROOT/"news-collector/archive.mjs").read_text("utf-8")
         cls.client=(ROOT/"dashboard/archive-client.mjs").read_text("utf-8")
 
+    def test_source_health_remains_visible_on_static_fallback(self):
+        self.assertIn('id="source-health-message"',self.page)
+        self.assertIn('$("source-health").hidden=false',self.js)
+        self.assertIn('source_health:dynamic.source_health},fromLive:false',self.js)
+
     def test_compact_source_health_panel_uses_public_diagnostics(self):
         self.assertIn('id="source-health"',self.page)
         self.assertIn('id="source-health-summary"',self.page)
