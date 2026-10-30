@@ -1,0 +1,95 @@
+name: Deploy empty SignalDesk starter to Cloudflare Pages
+
+# Deploys ONLY public-safe empty files. No private draft ZIP / data.json.
+# Runs once when this workflow is merged, or by explicit manual dispatch.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/deploy-signaldesk-starter.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy-starter:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify empty public-only starter before any upload
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d=json.loads(Path('dashboard/data.json').read_text(encoding='utf-8'))
+          assert d['schema_version'] == 1
+          assert d['news'] == [] and d['drafts'] == []
+          out=Path('dist/public-starter')
+          out.mkdir(parents=True, exist_ok=True)
+          for name in ('index.html','styles.css','app.js','data.json','_headers'):
+              (out / name).write_bytes((Path('dashboard') / name).read_bytes())
+          assert len(list(out.iterdir())) == 5
+          print('Verified: ONLY five static starter assets, zero private drafts.')
+          PY
+      - name: Verify Cloudflare account credentials are configured
+        shell: bash
+        env:
+          ACCOUNT_SET: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+          TOKEN_SET: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+        run: |
+          if [[ "$ACCOUNT_SET" != "true" || "$TOKEN_SET" != "true" ]]; then
+            echo 'Cloudflare token and account ID required in GitHub Actions secrets.'
+            exit 1
+          fi
+      - name: Create Cloudflare Pages project if not already created
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+          account=os.environ['CLOUDFLARE_ACCOUNT_ID']
+          token=os.environ['CLOUDFLARE_API_TOKEN']
+          base='https://api.cloudflare.com/client/v4/accounts/'+account+'/pages/projects'
+          headers={'Authorization':'Bearer '+token,'Content-Type':'application/json'}
+          def call(url, method, payload=None):
+              data=json.dumps(payload).encode() if payload else None
+              req=Request(url,headers=headers,data=data,method=method)
+              with urlopen(req,timeout=25) as res:
+                  return json.load(res)
+          try:
+              existing=call(base+'/signaldesk-news','GET')
+              if not existing.get('success'):
+                  raise RuntimeError('Pages project lookup not successful')
+              print('Pages starter project exists, reusing it.')
+          except HTTPError as e:
+              if e.code != 404:
+                  raise RuntimeError('Cloudflare Pages lookup denied (HTTP '+str(e.code)+')') from None
+              try:
+                  created=call(base,'POST',{'name':'signaldesk-news','production_branch':'main'})
+              except HTTPError as create_error:
+                  raise RuntimeError('Cloudflare Pages creation denied (HTTP '+str(create_error.code)+')') from None
+              if not created.get('success'):
+                  raise RuntimeError('Cloudflare Pages project creation failed')
+              print('Created empty SignalDesk Pages project.')
+          PY
+      - name: Deploy ONLY empty starter assets (never private drafts)
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/public-starter --project-name=signaldesk-news --branch=main
+      - name: Safety and deployment summary
+        run: |
+          echo '## SignalDesk empty starter' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Only the public-safe EMPTY dashboard was deployed (no stories or AI drafts).' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Cloudflare Pages project: signaldesk-news' >> "$GITHUB_STEP_SUMMARY"
+          echo 'BEFORE deploying the private data ZIP: protect production pages.dev, previews and custom domain with Cloudflare Access.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No X publishing, no Cloudflare access policy changed.' >> "$GITHUB_STEP_SUMMARY"
