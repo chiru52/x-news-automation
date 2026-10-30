@@ -16,6 +16,7 @@ from urllib.parse import urlsplit
 
 from .editorial_inbox import IssueValidationError, parse_issue
 from .news_quality import unique_stories
+from .source_context import preview_from_rss
 
 REPO = "varadachiru/x-news-automation"
 ROOT = Path(__file__).resolve().parents[1]
@@ -90,10 +91,13 @@ def read_news(queue: dict) -> list[dict]:
         if category not in CATEGORIES:
             category = categorize(title)
         suggestion = clean(article.get("suggested_post") or article.get("draft"), 1000)
+        source_preview = preview_from_rss(article.get("summary"), title)
         out.append({
             "id": hashlib.sha256(url.encode()).hexdigest()[:24],
             "title": title,
             "description": "Publisher report. Verify all claims before sharing.",
+            "source_preview": source_preview,
+            "context_status": "rss_preview" if source_preview else "headline_only",
             "publisher": clean(article.get("source"), 100),
             "source_url": url,
             "post": suggestion,
@@ -178,7 +182,7 @@ def fetch_private_issues() -> list[dict]:
 # Explicit public contract. Never export private GitHub issue bodies, full
 # publisher evidence, analysis, transcripts, URLs into private issues or tokens.
 PUBLIC_TOP = {"schema_version","generated_at","news","drafts","warnings"}
-PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","published_at","status","trend_score","coverage_feeds","trend_reason"}
+PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","published_at","status","trend_score","coverage_feeds","trend_reason","source_preview","context_status"}
 PUBLIC_DRAFT = {"id","title","description","publisher","source_url","post","category","updated_at","status"}
 PRIVATE_MARKERS = (
     "github_pat_", "ghp_", "gho_", "ghs_", "ghu_", "ghr_",
@@ -215,8 +219,14 @@ def validate_public_bundle(data: dict) -> None:
             if (not entry["id"] or not entry["title"] or entry["category"] not in CATEGORIES
                     or source_url(entry["source_url"]) != entry["source_url"]):
                 raise ValueError("Unsafe public article")
-            if kind == "news" and entry["status"] != "unverified":
-                raise ValueError("Unverified RSS suggestions cannot be marked reviewed")
+            if kind == "news":
+                if entry["context_status"] not in ("rss_preview", "headline_only"):
+                    raise ValueError("Unsupported RSS source context status")
+                if (len(entry["source_preview"]) > 170 or
+                        (entry["context_status"] == "headline_only") != (entry["source_preview"] == "")):
+                    raise ValueError("Invalid or mismatched RSS preview context")
+                if entry["status"] != "unverified":
+                    raise ValueError("Unverified RSS suggestions cannot be marked reviewed")
             if kind == "drafts" and entry["status"] not in ("pending", "reviewed"):
                 raise ValueError("Rejected or unknown AI drafts cannot be published")
     if not isinstance(data["warnings"], list) or any(

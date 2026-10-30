@@ -14,6 +14,7 @@ on:
       - 'newsbot/__main__.py'
       - 'newsbot/core.py'
       - 'newsbot/writing.py'
+      - 'newsbot/source_context.py'
       - '.github/workflows/build-news-dashboard.yml'
   workflow_dispatch:
   schedule:
@@ -47,6 +48,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
           python -m unittest discover -s tests -p 'test_writing.py' -v
+          python -m unittest discover -s tests -p 'test_signaldesk_rss_context.py' -v
           node --check dashboard/app.js
           node --test tests/signaldesk-studio.test.mjs
       - name: Collect current RSS candidates (review and copy only)

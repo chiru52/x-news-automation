@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {postStarters, researchGuide, safeArticleUrl, approximateXCharacters, VALID_TONES} from "../dashboard/studio.mjs";
+import {postStarters, researchGuide, draftFromNotes, safeArticleUrl, approximateXCharacters, VALID_TONES} from "../dashboard/studio.mjs";
 
 const base = {
   title: "OpenAI launches a new developer tool",
@@ -89,8 +89,8 @@ test("research guide is limited to existing public publisher headline", () => {
   assert.equal(guide.publisher, base.publisher);
   assert.equal(guide.source_url, base.source_url);
   assert.equal(guide.questions.length, 3);
-  assert.match(guide.evidence, /No full-text article analysis/);
-  assert.match(guide.caution, /not an independently verified fact/);
+  assert.match(guide.evidence, /Headline and original link only/);
+  assert.match(guide.caution, /can omit qualifications/);
   assert.ok(guide.questions.every(question => question.includes("?")));
   assert.ok(guide.next.includes("Open the original article"));
 });
@@ -101,6 +101,39 @@ test("category-specific questions, no claims inferred from unseen body", () => {
   assert.notDeepEqual(market.questions,saas.questions);
   assert.ok(market.questions.some(q=>q.includes("prediction")));
   assert.ok(saas.questions.some(q=>q.includes("pricing")));
+});
+
+test("RSS context is visibly attributed, not full article research or AI", () => {
+  const guide = researchGuide({...base, kind:"news", context_status:"rss_preview",
+    source_preview:"The publisher's feed says the launch is expected in November with a $5M budget."});
+  assert.match(guide.preview_label,/RSS preview.*unverified/);
+  assert.match(guide.evidence,/not checked against full article/);
+  assert.match(guide.preview,/expected in November/);
+  assert.ok(guide.questions.some(q=>q.includes("$5M")));
+  assert.ok(guide.questions.some(q=>q.includes("forecast, possibility")));
+  assert.equal(guide.source_url, base.source_url);
+});
+
+test("missing or malformed feed context fails back to headline-only", () => {
+  for (const data of [
+    {...base, kind:"draft",context_status:"rss_preview",source_preview:"This is not RSS"},
+    {...base, kind:"news",context_status:"full_article_verified",source_preview:"Do not display"},
+    {...base, kind:"news",context_status:"rss_preview",source_preview:"x".repeat(171)}
+  ]) {
+    const guide=researchGuide(data);
+    assert.equal(guide.preview, "");
+    assert.match(guide.preview_label, /No additional RSS preview available/);
+  }
+});
+
+test("research notes become a sourced, bounded, user-authored draft", () => {
+  const draft=draftFromNotes("My reading: I'd check the original figures.",base.source_url);
+  assert.match(draft,/My reading/);
+  assert.ok(draft.endsWith(base.source_url));
+  assert.ok(approximateXCharacters(draft) <= 280);
+  assert.equal(draftFromNotes("",base.source_url),"");
+  assert.equal(draftFromNotes("Claims","http://unsafe.example/a"),"");
+  assert.ok(approximateXCharacters(draftFromNotes("A very long observation ".repeat(50),base.source_url)) <= 280);
 });
 
 test("source attribution is escaped through DOM textContent, not HTML injection", () => {

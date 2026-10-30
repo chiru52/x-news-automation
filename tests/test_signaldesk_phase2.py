@@ -24,7 +24,7 @@ class Phase2StudioTests(unittest.TestCase):
             self.assertIn(fragment, html)
         self.assertIn('aria-expanded="false"', html)
         self.assertIn('No-cost writing starters · not AI-generated', html)
-        self.assertIn('The full article has not been analyzed.', html)
+        self.assertIn('It is not a full article analysis or fact check.', html)
         self.assertIn('Check the original article', html)
 
     def test_working_client_loads_module_and_applies_drafts(self):
@@ -38,6 +38,9 @@ class Phase2StudioTests(unittest.TestCase):
         self.assertIn('guide.questions.map(', js)
         self.assertIn('li.textContent = question', js)
         self.assertIn('researchLink.href = guide.source_url', js)
+        self.assertIn('previewText.textContent = guide.preview', js)
+        self.assertIn('draftFromNotes(notes.value, guide.source_url)', js)
+        self.assertIn('rememberEdit(item.id, draft, suggestion)', js)
         self.assertIn('class="studio-panel"', self.page)
         self.assertIn('.studio-panel,.research-panel{', self.styles)
 

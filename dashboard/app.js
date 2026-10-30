@@ -1,4 +1,4 @@
-import {postStarters, researchGuide, approximateXCharacters as studioXCharacters} from "./studio.mjs";
+import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -339,6 +339,13 @@ function card(item) {
   const guide = researchGuide(item);
   node.querySelector(".research-headline").textContent = guide.heading;
   node.querySelector(".research-publisher").textContent = "As reported by " + guide.publisher;
+  const previewBox = node.querySelector(".rss-context");
+  const previewText = node.querySelector(".rss-context-text");
+  const previewLabel = node.querySelector(".rss-context-label");
+  previewLabel.textContent = guide.preview_label;
+  previewText.textContent = guide.preview || "No additional feed details were provided. Open the original source to check the story.";
+  previewBox.classList.toggle("preview-missing", !guide.preview);
+
   const researchLink = node.querySelector(".research-source");
   if (guide.source_url) researchLink.href = guide.source_url;
   else researchLink.hidden = true;
@@ -350,7 +357,26 @@ function card(item) {
   }));
   const notes = node.querySelector(".research-notes");
   notes.value = researchNotes.get(item.id) || "";
-  notes.addEventListener("input", () => saveResearchNote(item.id, notes.value));
+  const notesToDraft = node.querySelector(".research-apply");
+  function updateNotesAction() {
+    notesToDraft.disabled = !notes.value.trim() || !guide.source_url;
+  }
+  updateNotesAction();
+  notes.addEventListener("input", () => {
+    saveResearchNote(item.id, notes.value);
+    updateNotesAction();
+  });
+  notesToDraft.addEventListener("click", () => {
+    const draft = draftFromNotes(notes.value, guide.source_url);
+    if (!draft) return;
+    if (edits.has(item.id) && currentDraft() !== draft &&
+        !window.confirm("Replace your existing local edit with your research notes?")) return;
+    rememberEdit(item.id, draft, suggestion);
+    refreshDraft();
+    closeToolPanels();
+    showEditor(true);
+    showNotice("Your notes are now in the post editor. Verify every claim before manually posting to X.");
+  });
   researchToggle.addEventListener("click", () => {
     const next = researchPanel.hidden;
     closeToolPanels();
@@ -432,6 +458,8 @@ function parseItem(item, kind, index) {
     kind,
     title: clean(item.title, 300),
     description: clean(item.description, 500),
+    source_preview: kind === "news" ? clean(item.source_preview, 170) : "",
+    context_status: kind === "news" ? clean(item.context_status, 30) : "headline_only",
     publisher: clean(item.publisher, 100),
     source_url: clean(item.source_url, 2000),
     post: clean(item.post, 1000),

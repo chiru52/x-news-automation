@@ -1,5 +1,15 @@
 # SignalDesk — public Cloudflare news dashboard
 
+## Phase 2B — Source-specific RSS context (without paid AI)
+
+The **Why it matters** panel now shows a short (up to 170 characters) sanitized excerpt of the public RSS feed's description **when provided**. It is labelled **"From the RSS preview (unverified)"**. A syndicated RSS description is not proof of publisher authorship, not the full article, and not an AI-generated or independently verified summary.
+
+The research guide highlights relevant forecast language and numbers to verify against the original source. The **Use my notes as draft** action converts only the visitor's own research notes into an editable X-style post with an original source link. It does not call a model, post to X, or save notes on a server. The site refuses to display invalid/malformed context fields or unexpected private evidence and credential markers.
+
+Missing, promotional, duplicate or malformed descriptions produce a clear headline-only fallback. The dashboard remains functional even when RSS context is unavailable.
+
+**Next genuine AI milestone:** choose a provider, budget and evidence policy. Only then can an authenticated server-side model gateway be added with a strict daily cost cap, input/output bounds, validated article evidence, and independent safeguards. No model calls or spending are enabled by this phase.
+
 ## Phase 2 — Post Studio and Why It Matters (no-cost foundation)
 
 The site now includes two additional tools within each story card:

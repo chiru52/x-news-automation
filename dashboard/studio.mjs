@@ -134,19 +134,45 @@ export function postStarters(item) {
     text: prepareText(draft.lines, url)
   }));
 }
+export function draftFromNotes(notes, url) {
+  const content = cleanText(notes, 1200);
+  if (!content || !safeArticleUrl(url)) return "";
+  // This is entirely USER-WRITTEN prose. No model or fact verification.
+  return prepareText([content], url);
+}
 export function researchGuide(item) {
   const url = safeArticleUrl(item?.source_url);
   const title = cleanText(item?.title, MAX_HEADLINE);
   const publisher = cleanText(item?.publisher, 90) || "Original publisher";
   const category = ["technology","saas","markets"].includes(item?.category)
     ? item.category : "technology";
+  // This came only from RSS description metadata; it must never be described
+  // as independently checked, a full article reading or an AI summary.
+  const hasPreview = item?.kind === "news" &&
+    item?.context_status === "rss_preview" &&
+    typeof item?.source_preview === "string" &&
+    item.source_preview.length > 0 && item.source_preview.length <= 170;
+  const sourcePreview = hasPreview ? cleanText(item.source_preview, 170) : "";
+  const questions = [...QUESTIONS[category]];
+  const factsToCheck = title + " " + sourcePreview;
+  const amounts = [...new Set(factsToCheck.match(/(?:[$€£₹]\s?\d[\d,.]*\s?(?:million|billion|[KMB])?|\b\d[\d,.]*\s?%)/gi) || [])].slice(0,3);
+  if (amounts.length) {
+    questions.unshift("Can you verify " + amounts.join(", ") + " from the original publisher or a primary source?");
+  }
+  if (/\b(?:may|might|could|will|rumou?r|forecast|expect(?:s|ed)?)\b/i.test(factsToCheck)) {
+    questions.unshift("Is this a forecast, possibility or rumor rather than an established outcome?");
+  }
   return {
     heading: title,
     publisher,
     source_url: url,
-    evidence: "Publisher headline and linked article only. No full-text article analysis has been performed.",
-    caution: "The headline is an attributed report, not an independently verified fact.",
-    questions: [...QUESTIONS[category]],
+    evidence: sourcePreview
+      ? "Short RSS-feed preview only; not checked against full article."
+      : "Headline and original link only; RSS description not available.",
+    preview: sourcePreview,
+    preview_label: sourcePreview ? "From the RSS preview (unverified)" : "No additional RSS preview available",
+    caution: "A feed description can omit qualifications or contain errors. Read the source before sharing.",
+    questions: questions.slice(0,5),
     next: "Open the original article and verify its date, primary sources and material claims."
   };
 }
