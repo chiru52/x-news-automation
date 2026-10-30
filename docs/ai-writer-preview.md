@@ -5,6 +5,8 @@ This feature uses Cloudflare Pages Functions at `/api/ai-writer` and OpenAI's Re
 ## Required Cloudflare preview project configuration
 
 Configure these in **signaldesk-preview** only. Never commit them in GitHub:
+- `AI_WRITER_ENABLED` — set to `true` only on the separate preview project
+- `AI_WRITER_ALLOWED_USER_ID` — single approved Supabase Auth user UUID for controlled preview tests
 - `OPENAI_API_KEY` — encrypted secret, server-only
 - `AI_WRITER_MODEL` — supported model name in your OpenAI project
 - `SUPABASE_URL` — SignalDesk Supabase Auth project URL
@@ -18,8 +20,8 @@ Do not enter these on the production project until explicitly approved.
 ## Behavior
 
 - The browser requests a Supabase access token from an existing signed-in session.
-- Server authenticates token using Supabase Auth, checks allowed Origin, validates input, and consumes a soft hourly quota before making an OpenAI request.
-- The model returns three different styles. Users explicitly select/edit one.
+- Server authenticates token using Supabase Auth, checks allowed Origin, validates input, and consumes a soft five-per-hour and twenty-per-day quotas before making an OpenAI request. Only the allowlisted Supabase user can use this endpoint, and it refuses non-preview hostnames.
+- The model returns three different styles using a strict JSON response shape. Users explicitly select/edit one.
 - No AI key is sent to the browser. No automatic X publishing. No AI API calls when unconfigured.
 - Supporting source URLs are **not fetched or verified**. Numeric/current claims need independent human verification.
 - Production `news.littlekingchess.com` stays untouched.
