@@ -1,0 +1,38 @@
+name: X editorial post preflight (manual, read-only)
+
+# On-demand check only. NEVER sends to X or updates GitHub Issues.
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'AI Draft Issue number: must be Reviewed, not Rejected'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: x-editorial-preflight
+  cancel-in-progress: false
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PUBLISH_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Inspect private reviewed Issue and write preview to Actions Summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+        run: python -m newsbot.x_preflight
