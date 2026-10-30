@@ -12,7 +12,7 @@ let records = [], selectedView = "all", selectedCategory = "all", selectedStage 
 let visibleCount = 12;
 let historyOpen = false, historyItems = [], historyTotal = 0;
 let historyPage = 0, historyHasMore = false, historyRequest = 0;
-function archiveMode() {return selectedView === "all" && historyOpen;}
+function archiveMode() {return selectedView === "archive" && historyOpen;}
 function trackHistoryItem(item) {
   // Copied archive cards need to appear in the existing personal library.
   // Keep this historical item out of the current live news metrics.
@@ -21,7 +21,7 @@ function trackHistoryItem(item) {
 }
 
 function setArchiveVisibility() {
-  $("archive-entry").hidden = selectedView !== "all" || historyOpen;
+  $("archive-entry").hidden = true; // History is accessed from the dedicated Archive navigation.
   $("archive-controls").hidden = !archiveMode();
   $("archive-toggle").setAttribute("aria-expanded", String(archiveMode()));
 }
@@ -460,6 +460,12 @@ function updateCounts() {
 function setView(view) {
   exitArchive();
   selectedView = view;
+  if(view === "archive") {
+    const now=Date.now();
+    $("archive-date").min=new Date(now-29*86400000).toISOString().slice(0,10);
+    $("archive-date").max=new Date(now).toISOString().slice(0,10);
+    historyOpen=true;
+  }
   setArchiveVisibility();
   // Navigation means a fresh section; old searches should not make it
   // unexpectedly appear empty after switching Global ↔ India.
@@ -487,7 +493,7 @@ function setView(view) {
   const titles = {
     all: "All stories", trending: "Trending news", global: "Global news",
     india: "India news", copied: "Copied articles",
-    workflow: "My Workflow", saved: "Saved for later"
+    workflow: "My Workflow", saved: "Saved for later", archive: "News Archive"
   };
   const descriptions = {
     all: "Global and India news together, including trending stories. Each article appears only once.",
@@ -496,11 +502,13 @@ function setView(view) {
     india: "India-related startups, AI, technology and markets, regardless of publisher country.",
     workflow: "Review article stages and find prepared X drafts in one workspace. Saved only in this browser.",
     copied: "Stories marked Copied or copied to your clipboard. This does not mean they were posted on X.",
-    saved: "Your bookmarked articles and drafts, stored only in this browser."
+    saved: "Your bookmarked articles and drafts, stored only in this browser.",
+    archive: "Search historical public RSS headlines by date, region, publisher, topic and keyword."
   };
   $("feed-title").textContent = titles[view];
   $("feed-description").textContent = descriptions[view];
   render();
+  if(view === "archive") loadHistory(0);
 }
 function setCategory(category) {
   selectedCategory = category;
@@ -770,7 +778,7 @@ function card(item) {
 function render() {
   updateCounts();
   if(archiveMode()) {
-    $("feed-title").textContent="News history";
+    $("feed-title").textContent="News Archive";
     $("feed-description").textContent="Browse archived public headlines from the last 7–30 days. Collection started when history was enabled.";
     $("result-count").textContent=historyTotal+" historical matches";
     $("cards").replaceChildren(...historyItems.map(card));
@@ -977,12 +985,7 @@ $("archive-toggle").addEventListener("click",()=>{
   render();
   loadHistory(0);
 });
-$("archive-close").addEventListener("click",()=>{
-  exitArchive();
-  $("feed-title").textContent="All stories";
-  $("feed-description").textContent="Global and India news together, including trending stories. Each article appears only once.";
-  render();
-});
+$("archive-close").addEventListener("click",()=>setView("all"));
 $("archive-search").addEventListener("click",()=>loadHistory(0));
 $("archive-days").addEventListener("change",()=>{
   $("archive-date").value="";

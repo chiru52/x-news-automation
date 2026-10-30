@@ -1,4 +1,4 @@
-"""SignalDesk's seven-menu navigation and mutual-exclusion news contract."""
+"""SignalDesk's eight-menu navigation and mutual-exclusion news contract."""
 import re
 import unittest
 from pathlib import Path
@@ -13,14 +13,15 @@ class SimplifiedNavigationTests(unittest.TestCase):
         cls.js=(ROOT/"dashboard/app.js").read_text("utf-8")
         cls.selectors=(ROOT/"dashboard/news-sections.mjs").read_text("utf-8")
 
-    def test_seven_main_menu_items_in_requested_order(self):
+    def test_eight_main_menu_items_in_requested_order(self):
         nav=self.html.split('<nav class="nav-items" aria-label="Main navigation">',1)[1].split("</nav>",1)[0]
         views=re.findall(r'data-view="([^"]+)"',nav)
-        self.assertEqual(views, ["all","trending","global","india","workflow","copied","saved"])
+        self.assertEqual(views, ["all","trending","global","india","workflow","copied","saved","archive"])
         self.assertIn("All stories",nav)
         self.assertIn("Trending news",nav)
         self.assertIn("Global news",nav)
         self.assertIn("India news",nav)
+        self.assertIn("Archive",nav)
         self.assertNotIn("X-ready drafts",nav)
 
     def test_sidebar_topic_section_removed_but_optional_content_filters_remain(self):
