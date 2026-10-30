@@ -1,4 +1,4 @@
-"""News History is a read-only sub-view, not another sidebar menu."""
+"""News History uses a dedicated, read-only Archive sidebar view."""
 import re
 import unittest
 from pathlib import Path
@@ -14,15 +14,15 @@ class HistoryUITests(unittest.TestCase):
         cls.archive=(ROOT/"news-collector/archive.mjs").read_text("utf-8")
         cls.client=(ROOT/"dashboard/archive-client.mjs").read_text("utf-8")
 
-    def test_history_is_inside_all_stories_without_new_sidebar_nav(self):
+    def test_history_has_last_sidebar_menu(self):
         nav=self.page.split('<nav class="nav-items" aria-label="Main navigation">',1)[1].split("</nav>",1)[0]
         self.assertEqual(re.findall(r'data-view="([^"]+)"',nav),
-                         ["all","trending","global","india","workflow","copied","saved"])
+                         ["all","trending","global","india","workflow","copied","saved","archive"])
         for field in ("archive-toggle","archive-controls","archive-days",
                       "archive-date","archive-region","archive-publisher",
                       "archive-search","archive-status","archive-prev","archive-next"):
             self.assertIn(f'id="{field}"',self.page)
-        self.assertIn('function archiveMode() {return selectedView === "all" && historyOpen;}',self.js)
+        self.assertIn('function archiveMode() {return selectedView === "archive" && historyOpen;}',self.js)
         self.assertIn('"archive-controls").hidden = !archiveMode()',self.js)
 
     def test_archive_is_deliberate_fetch_only_without_background_polling(self):
