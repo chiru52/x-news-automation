@@ -1,0 +1,87 @@
+name: Attach SignalDesk custom subdomain to Cloudflare Pages
+
+# One-time Cloudflare Pages domain association ONLY. No DNS edits, no X,
+# no GitHub issue access. Fails closed on conflicting domain ownership.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/attach-signaldesk-custom-domain.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  attach-pages-domain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate Cloudflare credentials are configured
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [[ "$HAS_TOKEN" != "true" || "$HAS_ACCOUNT" != "true" ]]; then
+            echo 'Cloudflare Pages credentials missing.'
+            exit 1
+          fi
+      - name: Attach requested subdomain without touching unrelated DNS
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          python - <<'PY'
+          import json, os
+          from urllib.error import HTTPError, URLError
+          from urllib.request import Request, urlopen
+
+          PROJECT = 'signaldesk-news'
+          DOMAIN = 'news.littlekingchess.com'
+          account = os.environ['CLOUDFLARE_ACCOUNT_ID']
+          token = os.environ['CLOUDFLARE_API_TOKEN']
+          endpoint = ('https://api.cloudflare.com/client/v4/accounts/' +
+                      account + '/pages/projects/' + PROJECT + '/domains')
+          headers = {'Authorization': 'Bearer ' + token,
+                     'Content-Type': 'application/json'}
+
+          def api(method, url, data=None):
+              req = Request(url, method=method, headers=headers,
+                            data=json.dumps(data).encode() if data is not None else None)
+              try:
+                  with urlopen(req, timeout=25) as result:
+                      obj = json.load(result)
+              except HTTPError as e:
+                  # Avoid echoing provider response bodies, secrets or request URLs.
+                  raise RuntimeError('Cloudflare Pages API returned HTTP ' + str(e.code)) from None
+              except URLError:
+                  raise RuntimeError('Cloudflare Pages API network unavailable') from None
+              if not obj.get('success'):
+                  raise RuntimeError('Cloudflare Pages API declined request')
+              return obj.get('result')
+
+          domains = api('GET', endpoint)
+          if not isinstance(domains, list):
+              raise RuntimeError('Cloudflare Pages returned unexpected domain list')
+
+          matching = [d for d in domains if isinstance(d, dict) and d.get('name') == DOMAIN]
+          if matching:
+              status = str(matching[0].get('status', 'unknown'))
+              print('Domain already associated with this Pages project. Status:', status)
+          else:
+              created = api('POST', endpoint, {'name': DOMAIN})
+              if not isinstance(created, dict) or created.get('name') != DOMAIN:
+                  raise RuntimeError('Domain association could not be verified')
+              status = str(created.get('status', 'unknown'))
+              print('Domain associated with SignalDesk Pages. Status:', status)
+
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary, 'a', encoding='utf-8') as file:
+                  file.write('## SignalDesk custom domain\n\n')
+                  file.write('Domain: ' + DOMAIN + '\n\n')
+                  file.write('Pages project: ' + PROJECT + '\n\n')
+                  file.write('Cloudflare association status: ' + status + '\n\n')
+                  file.write('If pending, follow Pages > Custom domains for DNS/certificate verification.\n')
+                  file.write('No DNS records or other services were modified by this workflow.\n')
+          PY
