@@ -3,6 +3,7 @@
 const $=id=>document.getElementById(id);
 const status=$("auth-status"),form=$("auth-form"),submit=$("auth-submit");
 let client=null,mode="sign-in",verifiedUser=false;
+const dashboardUrl="./";
 const cleanMode=()=>["sign-in","sign-up","forgot","update-password"].includes(location.hash.slice(1))?location.hash.slice(1):"sign-in";
 function message(value){status.textContent=value;}
 function showMode(){
@@ -69,7 +70,15 @@ form.addEventListener("submit",async event=>{
     if(response?.error)throw response.error;
     message(mode==="sign-up"?"If confirmation is required, check your email to complete registration.":mode==="forgot"?"If the address has an account, you will receive a reset email.":mode==="update-password"?"Password updated.":"Signed in.");
     $("auth-password").value="";
-    if(mode==="update-password"){location.hash="sign-in";showMode();message("Password updated successfully. You can now sign in with your new password.");}
+    if(mode==="update-password"){
+      const signedOut=await client.auth.signOut();
+      if(signedOut.error) throw signedOut.error;
+      verifiedUser=false;$("account-signed-in").hidden=true;
+      location.hash="sign-in";showMode();
+      message("Password updated successfully. Please sign in with your new password.");
+    } else if(mode==="sign-in"){
+      location.assign(dashboardUrl);
+    }
   }catch(err){message(err?.message||"Account request failed.");}
   finally{submit.disabled=false;}
 });
