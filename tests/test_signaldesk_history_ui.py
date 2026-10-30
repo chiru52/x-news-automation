@@ -14,6 +14,14 @@ class HistoryUITests(unittest.TestCase):
         cls.archive=(ROOT/"news-collector/archive.mjs").read_text("utf-8")
         cls.client=(ROOT/"dashboard/archive-client.mjs").read_text("utf-8")
 
+    def test_compact_source_health_panel_uses_public_diagnostics(self):
+        self.assertIn('id="source-health"',self.page)
+        self.assertIn('id="source-health-summary"',self.page)
+        self.assertIn('id="source-health-list"',self.page)
+        self.assertIn('source_health:dynamic.source_health',self.js)
+        self.assertIn('row.textContent=source.name',self.js)
+        self.assertIn('source_health:{checked_at:',self.worker)
+
     def test_history_has_last_sidebar_menu(self):
         nav=self.page.split('<nav class="nav-items" aria-label="Main navigation">',1)[1].split("</nav>",1)[0]
         self.assertEqual(re.findall(r'data-view="([^"]+)"',nav),

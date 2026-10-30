@@ -208,3 +208,12 @@
 .content:has(#dashboard-intro[hidden]) .section-title{margin-bottom:13px}
 .content:has(#dashboard-intro[hidden]) .toolbar{margin-bottom:13px}
 @media(max-width:650px){.content:has(#dashboard-intro[hidden]){padding-top:18px}}
+
+/* Read-only collector diagnostics; collapsed so daily reading stays uncluttered. */
+.source-health{border:1px solid var(--line);border-radius:12px;margin:0 0 16px;padding:12px 15px;background:var(--white)}
+.source-health summary{cursor:pointer;font-size:12px;font-weight:700;color:var(--purple)}
+.source-health summary span{font-weight:400;color:var(--muted);margin-left:12px}
+.source-health p{font-size:11px;color:var(--muted)}
+.source-health ul{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px 16px;padding-left:18px;color:var(--muted);font-size:11px}
+@media(max-width:650px){.source-health ul{grid-template-columns:1fr}}
+[data-theme="dark"] .source-health{background:#24212d;border-color:#40374c}

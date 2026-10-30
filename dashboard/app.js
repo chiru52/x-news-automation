@@ -191,6 +191,7 @@ async function readFeedData() {
       india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 15 ? dynamic.india_news : [],
       drafts:staticData.drafts,
       warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
+      source_health:dynamic.source_health,
     },fromLive:true};
   } catch (_) {
     return {data:staticData,fromLive:false};
@@ -942,6 +943,24 @@ async function initialize(background = false) {
     $("refresh-note").textContent = fromLive
       ? "News is collected approximately every 15 minutes. Last refreshed shows the news generation time."
       : "Showing the latest available news snapshot. Last refreshed shows when it was generated.";
+    const health=data.source_health;
+    const validHealth=health && Array.isArray(health.sources) && health.sources.length<=20 &&
+      health.sources.every(x=>typeof x.name==="string" && x.name.length<=100 &&
+        ["india","global"].includes(x.region) &&
+        ["ok","empty","error"].includes(x.status) &&
+        Number.isInteger(x.recent_articles) && x.recent_articles>=0);
+    $("source-health").hidden=!validHealth;
+    if(validHealth) {
+      const sources=health.sources, failures=sources.filter(x=>x.status==="error").length;
+      $("source-health-summary").textContent=sources.length+" sources checked · "+
+        failures+" unavailable · "+sources.filter(x=>x.status==="empty").length+" without recent headlines";
+      $("source-health-list").replaceChildren(...sources.map(source=>{
+        const row=document.createElement("li");
+        row.textContent=source.name+" · "+source.region+" · "+source.status+
+          " · "+source.recent_articles+" recent";
+        return row;
+      }));
+    }
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();
