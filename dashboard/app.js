@@ -1184,8 +1184,15 @@ function openAccountWorkspace(){
   const workspace=$("account-workspace"),content=document.querySelector(".content");
   if($("nav-manage-account").hidden)return;
   content.classList.add("account-open");workspace.hidden=false;
+  document.querySelectorAll(".nav-items [data-view]").forEach(button=>{
+    button.classList.remove("active");
+    button.removeAttribute("aria-current");
+  });
   $("nav-manage-account").classList.add("active");
+  $("nav-manage-account").setAttribute("aria-current","page");
   setProfileOpen(false);
+  if(window.matchMedia("(max-width: 850px)").matches)
+    $("nav-manage-account").scrollIntoView({block:"nearest",inline:"center"});
   history.replaceState(null,"","?view=account");
   window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -1193,8 +1200,24 @@ function closeAccountWorkspace(){
   $("account-workspace").hidden=true;
   document.querySelector(".content").classList.remove("account-open");
   $("nav-manage-account").classList.remove("active");
-  if(location.search.includes("view=account"))history.replaceState(null,"",location.pathname);
+  $("nav-manage-account").removeAttribute("aria-current");
+  if(!document.querySelector(".nav-items [data-view].active")){
+    const prior=document.querySelector('.nav-items [data-view="'+selectedView+'"]');
+    if(prior){prior.classList.add("active");prior.setAttribute("aria-current","page");}
+  }
+  if(new URLSearchParams(location.search).get("view")==="account")
+    history.replaceState(null,"",location.pathname);
 }
+// Both visible brand logos return to All Stories, including from Manage Account.
+document.querySelectorAll("[data-home-link]").forEach(link=>link.addEventListener("click",event=>{
+  event.preventDefault();
+  closeAccountWorkspace();
+  setView("all");
+  const allButton=document.querySelector('.nav-items [data-view="all"]');
+  if(window.matchMedia("(max-width: 850px)").matches)
+    allButton?.scrollIntoView({block:"nearest",inline:"start"});
+  window.scrollTo({top:0,behavior:"smooth"});
+}));
 $("nav-manage-account").addEventListener("click",openAccountWorkspace);
 $("profile-account-link").addEventListener("click",event=>{event.preventDefault();openAccountWorkspace()});
 document.querySelectorAll(".nav-items [data-view]").forEach(button=>button.addEventListener("click",closeAccountWorkspace));

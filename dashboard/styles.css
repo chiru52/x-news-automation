@@ -278,3 +278,48 @@
 .manage-account-grid button{border:0;border-radius:9px;background:var(--purple);color:#fff;padding:12px 16px;font-weight:700;cursor:pointer}
 .manage-account-grid button:disabled{opacity:.65;cursor:wait}#manage-status{font-size:13px;color:var(--purple)}
 @media(max-width:750px){.manage-account-panel{padding:20px}.manage-account-grid{grid-template-columns:1fr;gap:20px}}
+
+
+/* Mobile workspace: real header first, compact swipeable navigation second. */
+@media(max-width:850px){
+  .shell{display:flex;flex-direction:column;min-width:0}
+  .workspace{display:contents}
+  .topbar{order:1;position:relative;z-index:11;width:100%;min-width:0;min-height:64px;height:auto;padding:10px 16px;gap:10px;justify-content:space-between}
+  .sidebar{order:2;z-index:1;width:100%;min-width:0;overflow:visible;padding:8px 12px;background:var(--white)}
+  .nav-items{width:100%;min-width:0;display:flex;gap:6px;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:none;-webkit-overflow-scrolling:touch;scroll-snap-type:x proximity;padding:1px 0 3px}
+  .nav-items::-webkit-scrollbar{display:none}
+  .nav-items .nav-item{width:auto;min-height:42px;flex:0 0 auto;scroll-snap-align:start;white-space:nowrap;padding:9px 11px;gap:7px;font-size:12px;border-radius:10px}
+  .nav-items .nav-icon{width:17px;flex:0 0 17px;font-size:15px}
+  .nav-items .nav-count{margin-left:3px;font-size:10px}
+  .mobile-brand{display:flex;align-items:center;gap:8px;min-width:0;color:var(--ink);font-size:17px;text-decoration:none;line-height:1.1}
+  .mobile-brand strong{white-space:nowrap;letter-spacing:-.7px}
+  .mobile-brand .brand-mark{width:35px;height:35px;flex:0 0 35px}
+  .mobile-brand:focus-visible{outline:2px solid var(--purple);outline-offset:4px;border-radius:5px}
+  .top-right{min-width:0;gap:11px}
+  .content{order:3;width:100%;min-width:0;flex:1 0 auto;padding:28px 18px 36px}
+  .content.account-open{padding:24px 18px 36px}
+  #account-workspace{width:100%;min-width:0}
+  #account-workspace h1{font-size:clamp(25px,5vw,30px);line-height:1.18;overflow-wrap:break-word}
+  #account-workspace>p{font-size:13px;line-height:1.55;margin:10px 0 19px}
+  .manage-account-panel{padding:20px}
+  .manage-account-grid{grid-template-columns:1fr;gap:23px}
+  .manage-account-grid h2{font-size:18px}
+  .manage-account-grid input,.manage-account-grid select{font-size:16px}
+}
+@media(max-width:600px){
+  /* A timestamp must not consume half of a phone-width account header. */
+  .header-refreshed{display:none}
+  .theme-toggle{flex:0 0 38px;width:38px;height:38px;border-radius:50%;padding:0;justify-content:center}
+  .profile-toggle{width:38px;height:38px}
+  #profile-greeting:not([hidden]){max-width:95px;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
+  .top-right{gap:9px}
+}
+@media(max-width:390px){
+  .topbar{padding:9px 12px;gap:6px}
+  .mobile-brand{font-size:15px;gap:6px}
+  .mobile-brand .brand-mark{width:31px;height:31px;flex-basis:31px;font-size:19px}
+  #profile-greeting:not([hidden]){max-width:66px;font-size:11px}
+  .top-right{gap:6px}
+  .content.account-open{padding:21px 12px 32px}
+  .manage-account-panel{padding:16px}
+}
