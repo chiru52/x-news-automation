@@ -1,0 +1,43 @@
+name: Initialize GitHub editorial review labels
+
+# One-time bootstrap after the PR is merged to main; can be rerun manually.
+# Never runs for pull requests, scheduled collection, or other file changes.
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bootstrap-editorial-labels.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  labels:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Create and verify review-only status labels
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          test "$GH_REPO" = "varadachiru/x-news-automation"
+
+          # Idempotent: also works if labels were already created manually.
+          gh label create ai-editor-reviewed --repo "$GH_REPO" \
+            --color 2F855A \
+            --description 'Fact-checked for editorial review only; NOT approved for X publishing' \
+            --force
+          gh label create ai-editor-rejected --repo "$GH_REPO" \
+            --color C34D63 \
+            --description 'Rejected for editorial review; never publish' \
+            --force
+
+          labels="$(gh label list --repo "$GH_REPO" --limit 100 --json name --jq '.[].name')"
+          printf '%s\n' "$labels" | grep -Fxq 'ai-editor-reviewed'
+          printf '%s\n' "$labels" | grep -Fxq 'ai-editor-rejected'
+          echo 'Editorial status labels verified. All drafts remain unchanged.'
