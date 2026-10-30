@@ -92,6 +92,20 @@ def discover():
     if not isinstance(subdomain, str) or not re.fullmatch(r"[a-z0-9-]{1,63}", subdomain):
         raise RuntimeError("Worker account subdomain is unavailable")
     url = "https://" + SCRIPT_NAME + "." + subdomain + ".workers.dev"
+    # Verify the setting of exactly this Worker. Wrangler can deploy a script
+    # successfully while its workers.dev public route remains disabled.
+    setting = api("GET", "/workers/scripts/" + SCRIPT_NAME + "/subdomain")
+    if not isinstance(setting, dict) or type(setting.get("enabled")) is not bool:
+        raise RuntimeError("Unable to validate Worker-specific workers.dev routing")
+    print("Worker-specific workers.dev routing enabled:", setting["enabled"])
+    if setting["enabled"] is False:
+        # This does NOT alter Cloudflare Access policies, other scripts, DNS,
+        # the account subdomain, or previews. Only the intended public feed.
+        changed = api("POST", "/workers/scripts/" + SCRIPT_NAME + "/subdomain",
+                      {"enabled": True, "previews_enabled": False})
+        if not isinstance(changed, dict) or changed.get("enabled") is not True:
+            raise RuntimeError("Could not enable this Worker's specific public route")
+        print("Enabled only SignalDesk feed worker's public production route")
     # A new workers.dev route can require propagation after Wrangler succeeds.
     # Do not print response bodies (which may be upstream HTML); report only
     # HTTP status or transport category. This is an exact endpoint probe.
@@ -113,7 +127,7 @@ def discover():
         if attempt < 8:
             time.sleep(6)
     else:
-        raise RuntimeError("Collector public health endpoint not verified: " + last_error)
+        raise RuntimeError("Collector health failed despite Worker-specific route enabled: " + last_error + "; review Cloudflare Access for this hostname")
     output("live_feed_url", url + "/feed")
     print("Verified read-only collector health at " + url)
     return url + "/feed"
