@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
-  <meta name="robots" content="noindex, nofollow, noarchive">
+  <meta name="robots" content="index, follow">
   <title>SignalDesk — Your AI news workspace</title>
-  <meta name="description" content="Private news review workspace: browse, verify and copy drafts for X. No automatic posting.">
+  <meta name="description" content="Public AI news dashboard: browse sources and copy suggested X posts. No automatic posting.">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
@@ -28,14 +28,14 @@
       </nav>
       <div class="sidebar-bottom">
         <div class="safety-mini"><span class="safety-symbol">✓</span><div><strong>You stay in control</strong><span>Nothing is posted automatically.</span></div></div>
-        <p class="sidebar-foot">Private editorial workspace · v1</p>
+        <p class="sidebar-foot">Public news workspace · v1</p>
       </div>
     </aside>
     <div class="workspace">
       <header class="topbar">
         <div class="mobile-brand"><span class="brand-mark">S<span class="brand-dot">.</span></span><strong>signaldesk</strong></div>
         <div class="crumb"><span>Workspace</span><span class="slash">/</span><strong>News feed</strong></div>
-        <div class="top-right"><span id="sync-indicator" class="sync-indicator"><span class="pulse"></span> Reading feed</span><span class="avatar" aria-label="Private workspace">SD</span></div>
+        <div class="top-right"><span id="sync-indicator" class="sync-indicator"><span class="pulse"></span> Reading feed</span><span class="avatar" aria-label="SignalDesk">SD</span></div>
       </header>
       <main class="content">
         <section class="intro">
@@ -62,7 +62,7 @@
           <div id="cards" class="cards" aria-live="polite" aria-busy="true"></div>
           <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><button type="button" id="clear-filters" class="secondary-action">Clear filters</button></div>
         </section>
-        <footer class="footer"><span>SignalDesk — Built for thoughtful sharing</span><span>Source claims and AI drafts require independent verification. No X integration.</span></footer>
+        <footer class="footer"><span>SignalDesk — Built for thoughtful sharing</span><span>Suggested posts are unverified. Check sources before copying. No X integration.</span></footer>
       </main>
     </div>
   </div>

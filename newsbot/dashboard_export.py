@@ -1,7 +1,6 @@
 """Export a private static SignalDesk dashboard bundle from safe review data.
 
-This does not deploy a website or publish to X. A static bundle containing
-private editorial drafts MUST be access-restricted before Cloudflare deployment.
+Exposes only allowed display fields to a public news page. No X publishing.
 """
 from __future__ import annotations
 
@@ -75,7 +74,7 @@ def read_news(queue: dict) -> list[dict]:
         out.append({
             "id": hashlib.sha256(url.encode()).hexdigest()[:24],
             "title": title,
-            "description": clean(article.get("summary"), 450),
+            "description": "Publisher report. Verify all claims before sharing.",
             "publisher": clean(article.get("source"), 100),
             "source_url": url,
             "post": suggestion,
@@ -153,6 +152,52 @@ def fetch_private_issues() -> list[dict]:
     raise ValueError("Issue history exceeds maximum export size")
 
 
+
+# Explicit public contract. Never export private GitHub issue bodies, full
+# publisher evidence, analysis, transcripts, URLs into private issues or tokens.
+PUBLIC_TOP = {"schema_version","generated_at","news","drafts","warnings"}
+PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","published_at","status"}
+PUBLIC_DRAFT = {"id","title","description","publisher","source_url","post","category","updated_at","status"}
+PRIVATE_MARKERS = (
+    "github_pat_", "ghp_", "gho_", "ghs_", "ghu_", "ghr_",
+    "-----begin private key", "-----begin rsa private key",
+    "cloudflare_api_token", "github_editor_token", "gh_token=",
+    "x_api_secret", "access_aud", "publication_authorized=",
+    "## copilot's full analysis", "## supporting publisher excerpts",
+    "<!--", "<pre>", "</pre>",
+)
+
+
+def validate_public_bundle(data: dict) -> None:
+    """Fail closed before copying the site to an anonymous public endpoint."""
+    if not isinstance(data, dict) or set(data) != PUBLIC_TOP or data["schema_version"] != 1:
+        raise ValueError("Unexpected public dashboard schema")
+    if not isinstance(data["generated_at"], str) or not data["generated_at"]:
+        raise ValueError("Public dashboard timestamp required")
+    for kind, keys in (("news", PUBLIC_NEWS), ("drafts", PUBLIC_DRAFT)):
+        entries = data[kind]
+        if not isinstance(entries, list) or len(entries) > MAX_ITEMS:
+            raise ValueError("Malformed or oversized public news feed")
+        for entry in entries:
+            if not isinstance(entry, dict) or set(entry) != keys:
+                raise ValueError("Unexpected public article fields")
+            if any(not isinstance(value, str) for value in entry.values()):
+                raise ValueError("Public article fields must all be strings")
+            if (not entry["id"] or not entry["title"] or entry["category"] not in CATEGORIES
+                    or source_url(entry["source_url"]) != entry["source_url"]):
+                raise ValueError("Unsafe public article")
+            if kind == "news" and entry["status"] != "unverified":
+                raise ValueError("Unverified RSS suggestions cannot be marked reviewed")
+            if kind == "drafts" and entry["status"] not in ("pending", "reviewed"):
+                raise ValueError("Rejected or unknown AI drafts cannot be published")
+    if not isinstance(data["warnings"], list) or any(
+            warning != "some_feed_sources_unavailable" for warning in data["warnings"]):
+        raise ValueError("Unexpected public feed warnings")
+    serialized = json.dumps(data, ensure_ascii=False).lower()
+    if any(marker in serialized for marker in PRIVATE_MARKERS):
+        raise ValueError("Private evidence marker or token-like text in public feed")
+
+
 def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=None):
     if dest.resolve() == ASSETS.resolve():
         raise ValueError("Refusing to overwrite source assets")
@@ -166,6 +211,7 @@ def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=No
         "drafts": drafts,
         "warnings": ["some_feed_sources_unavailable"] if queue.get("feed_errors") else [],
     }
+    validate_public_bundle(result)
     dest.mkdir(parents=True, exist_ok=True)
     for filename in ("index.html", "styles.css", "app.js", "_headers"):
         shutil.copyfile(ASSETS / filename, dest / filename)

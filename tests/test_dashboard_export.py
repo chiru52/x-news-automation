@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 from newsbot.dashboard_export import (
     build_bundle, categorize, clean, read_drafts, read_news, source_url,
-    fetch_private_issues, REPO,
+    fetch_private_issues, validate_public_bundle, REPO,
 )
 
 SOURCE = "https://publisher.example/story"
@@ -125,6 +125,39 @@ class DashboardExportTests(unittest.TestCase):
             self.assertNotIn("fonts.googleapis.com", css)
             self.assertNotIn("api.x.com", js)
 
+    def test_public_feed_does_not_export_publisher_rss_excerpts(self):
+        q = queue()
+        q["articles"][0]["summary"] = "PRIVATE EVIDENCE DO NOT DISPLAY"
+        exported = read_news(q)
+        self.assertNotIn("PRIVATE EVIDENCE", json.dumps(exported))
+        self.assertIn("Verify all claims", exported[0]["description"])
+
+    def test_public_schema_blocks_private_issue_evidence_and_token_markers(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data = build_bundle(queue(), [issue()], Path(folder) / "public")
+        data["drafts"][0]["evidence"] = "Raw publisher quotation"
+        with self.assertRaises(ValueError):
+            validate_public_bundle(data)
+        data["drafts"][0].pop("evidence")
+        for marker in ("github_pat_123456", "-----BEGIN PRIVATE KEY-----",
+                       "## Supporting publisher excerpts", "<pre>raw original</pre>"):
+            modified = json.loads(json.dumps(data))
+            modified["drafts"][0]["post"] = marker
+            with self.subTest(marker=marker):
+                with self.assertRaises(ValueError):
+                    validate_public_bundle(modified)
+
+    def test_public_schema_rejects_unsafe_status_and_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data = build_bundle(queue(), [issue()], Path(folder) / "public")
+        data["drafts"][0]["status"] = "rejected"
+        with self.assertRaises(ValueError):
+            validate_public_bundle(data)
+        data["drafts"][0]["status"] = "pending"
+        data["drafts"][0]["source_url"] = "http://example.com/"
+        with self.assertRaises(ValueError):
+            validate_public_bundle(data)
+
     def test_reject_export_into_asset_source(self):
         from newsbot.dashboard_export import ASSETS
         with self.assertRaises(ValueError):
@@ -135,18 +168,22 @@ class DashboardExportTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 fetch_private_issues()
 
-    def test_workflow_never_deploys_or_posts(self):
+    def test_workflow_publishes_only_sanitized_public_feed_not_to_x(self):
         text = (Path(__file__).resolve().parents[1] /
                 ".github/workflows/build-news-dashboard.yml").read_text("utf-8")
         self.assertIn("workflow_dispatch:", text)
         self.assertIn("schedule:", text)
         self.assertIn("issues: read", text)
         self.assertNotIn("issues: write", text)
-        self.assertNotIn("secrets.", text)
-        self.assertNotIn("wrangler", text)
-        self.assertNotIn("pages deploy", text)
         self.assertIn("PUBLISH_ENABLED: 'false'", text)
-        self.assertIn("upload-artifact@v4", text)
+        self.assertIn("validate_public_bundle(data)", text)
+        self.assertIn("pages deploy dist/signaldesk", text)
+        self.assertIn("--project-name=signaldesk-news", text)
+        self.assertIn("secrets.CLOUDFLARE_API_TOKEN", text)
+        self.assertIn("secrets.CLOUDFLARE_ACCOUNT_ID", text)
+        self.assertNotIn("secrets.X_", text)
+        self.assertNotIn("api.x.com", text)
+        self.assertNotIn("copilot -p", text)
 
 
 if __name__ == "__main__":

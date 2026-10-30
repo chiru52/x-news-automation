@@ -1,8 +1,8 @@
-name: Build SignalDesk private news dashboard (no deployment)
+name: Build and publish public SignalDesk news dashboard (no X posting)
 
-# Prepares downloadable static assets. Nothing is pushed to Cloudflare or X.
-# The artifact contains PRIVATE editorial drafts; protect every Pages hostname
-# with Cloudflare Access before later deploying this artifact.
+# User-authorized PUBLIC read-only dashboard. All private GitHub data is
+# reduced to an explicit display allowlist before anonymous deployment.
+# No X tokens, no auto-posting, no Copilot requests, no issue writes.
 on:
   push:
     branches: [main]
@@ -19,11 +19,11 @@ permissions:
   issues: read
 
 concurrency:
-  group: signaldesk-static-build
+  group: signaldesk-public-deploy
   cancel-in-progress: false
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -35,11 +35,16 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run offline dashboard exporter tests
-        run: python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
-      - name: Collect current RSS review candidates, never publish to X
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Test public feed allowlist and no-posting safeguards
+        run: |
+          python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
+          node --check dashboard/app.js
+      - name: Collect current RSS candidates (review and copy only)
         run: python -m newsbot --preview --output output/dashboard-news
-      - name: Read private GitHub AI drafts and build static site locally
+      - name: Export only public-approved news and AI draft text
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -47,22 +52,45 @@ jobs:
             --queue output/dashboard-news/review_queue.json \
             --github \
             --output dist/signaldesk
-      - name: Record artifact and privacy requirements
+      - name: Validate exact public schema, no secrets or private evidence
         run: |
-          echo '## SignalDesk static dashboard — NOT deployed' >> "$GITHUB_STEP_SUMMARY"
-          echo 'The ZIP artifact contains private editorial drafts. Do not upload it to a public website.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'Configure Cloudflare Access for the Pages production URL, preview URLs, and custom domain BEFORE any deployment.' >> "$GITHUB_STEP_SUMMARY"
-          echo 'No X API calls, no posting, no Cloudflare deployment.' >> "$GITHUB_STEP_SUMMARY"
-      - name: Upload safe empty starter (use to configure Cloudflare Access first)
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from newsbot.dashboard_export import validate_public_bundle
+          data=json.loads(Path('dist/signaldesk/data.json').read_text(encoding='utf-8'))
+          validate_public_bundle(data)
+          count=len(data['news'])+len(data['drafts'])
+          if count == 0: raise RuntimeError('Refusing to deploy an empty live feed')
+          print(f'Public feed verified: {len(data["news"])} news, {len(data["drafts"])} drafts')
+          print('No private evidence, GitHub secrets, X token or publishing operation')
+          PY
+      - name: Confirm Cloudflare Pages deployment credentials
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [[ "$HAS_TOKEN" != "true" || "$HAS_ACCOUNT" != "true" ]]; then
+            echo 'Cloudflare Pages credentials missing; public deployment skipped.'
+            exit 1
+          fi
+      - name: Publish sanitized public files to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist/signaldesk --project-name=signaldesk-news --branch=main
+      - name: Publishing summary
+        run: |
+          echo '## SignalDesk public website deployed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Cloudflare Pages: https://signaldesk-news.pages.dev' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Public, read-only: news suggestions and prepared drafts only.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No GitHub issues, private source evidence or credentials exported.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No X publishing or account connection.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Save safe public site artifact for diagnostics
         uses: actions/upload-artifact@v4
         with:
-          name: signaldesk-public-starter
-          path: dashboard/
-          if-no-files-found: error
-          retention-days: 7
-      - uses: actions/upload-artifact@v4
-        with:
-          name: signaldesk-private-site-${{ github.run_id }}
+          name: signaldesk-public-site-${{ github.run_id }}
           path: dist/signaldesk/
           if-no-files-found: error
           retention-days: 7
