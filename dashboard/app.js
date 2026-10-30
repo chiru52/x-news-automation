@@ -1225,6 +1225,7 @@ function renderReviewDesk(){
   }
 }
 // No AI, network or account access: one locally retained user-authored topic draft.
+let topicAuthClient=null;
 const topicStorageKey="signaldesk:topic-writer:v1";
 const topicSubject=$("topic-writer-subject"),topicAngle=$("topic-writer-angle");
 const topicInsight=$("topic-writer-insight"),topicSource=$("topic-writer-source");
@@ -1276,6 +1277,50 @@ $("topic-writer-build").addEventListener("click",()=>{
   topicReviewed.checked=false;
   saveTopicDraft();
   updateTopicControls();
+});
+// AI drafting is an explicit server-side request. Never transmit credentials or publish.
+const aiGenerate=$("topic-writer-ai-generate");
+const aiChoices=$("topic-writer-ai-choices");
+aiGenerate.addEventListener("click",async()=>{
+  const topic=topicSubject.value.trim(),observation=topicInsight.value.trim();
+  if(!topic){topicStatus.textContent="Enter a topic first.";return;}
+  if(!topicAuthClient){topicStatus.textContent="Sign in to use AI writing.";return;}
+  if(topicDraft.value.trim()&&!window.confirm("Generate new AI drafts? Your existing draft stays until you select a replacement."))return;
+  aiGenerate.disabled=true;
+  aiChoices.replaceChildren();
+  topicStatus.textContent="Generating three AI drafts for manual review…";
+  try{
+    const {data,error}=await topicAuthClient.auth.getSession();
+    if(error||!data?.session?.access_token)throw Error("Please sign in before using AI Writer.");
+    const response=await fetch("/api/ai-writer",{
+      method:"POST",
+      headers:{"content-type":"application/json","authorization":"Bearer "+data.session.access_token},
+      body:JSON.stringify({topic,observation,angle:topicAngle.value,sourceUrl:topicSource.value.trim()})
+    });
+    const result=await response.json();
+    if(!response.ok)throw Error(result.error||"AI generation unavailable.");
+    if(!Array.isArray(result.drafts)||result.drafts.length!==3)throw Error("Invalid AI result.");
+    const captions=["Professional","Conversational","Analytical"];
+    for(let i=0;i<3;i++){
+      const draft=result.drafts[i];
+      if(typeof draft!=="string"||draft.length>280||!draft.trim())continue;
+      const button=document.createElement("button");
+      button.type="button";
+      button.className="ai-draft-option";
+      button.textContent=captions[i]+": "+draft;
+      button.addEventListener("click",()=>{
+        if(topicDraft.value.trim()&&!window.confirm("Replace current draft with this AI suggestion?"))return;
+        topicDraft.value=draft;
+        topicDraftSourceUrl="";
+        topicReviewed.checked=false;
+        saveTopicDraft();updateTopicControls();
+        topicStatus.textContent="AI draft selected. Verify all factual claims and sources before copying.";
+      });
+      aiChoices.append(button);
+    }
+    topicStatus.textContent="AI suggestions are not fact-checked. Select one, edit it, and review before copying.";
+  }catch(e){topicStatus.textContent=e instanceof Error?e.message:"AI Writer unavailable.";}
+  finally{aiGenerate.disabled=false;}
 });
 topicDraft.addEventListener("input",()=>{
   topicReviewed.checked=false;
@@ -1523,6 +1568,7 @@ async function updateOptionalAccountProfile(){
     const auth=createClient(url.href,config.publishable_key,{
       auth:{detectSessionInUrl:false,flowType:"pkce",persistSession:true,autoRefreshToken:true}
     });
+    topicAuthClient=auth;
     const renderSession=(user)=>{
       const signedIn=!!user;currentAccount=user||null;
       if(signedIn){$("manage-email").textContent=user.email||"Signed-in account";$("manage-created").textContent=user.created_at?"Account created: "+new Date(user.created_at).toLocaleDateString():"";$("manage-name").value=String(user.user_metadata?.display_name||"").slice(0,80);}
