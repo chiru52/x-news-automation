@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>SignalDesk — Account</title><link rel="stylesheet" href="./styles.css"><script type="module" src="./account.mjs?v=85"></script></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>SignalDesk — Account</title><link rel="stylesheet" href="./styles.css"><script type="module" src="./account.mjs?v=87"></script></head>
 <body class="account-page"><main class="account-panel">
 <a class="account-back" href="./">← Back to SignalDesk</a><div class="account-mark">S.</div>
 <h1 id="account-heading">Sign in to SignalDesk</h1>
@@ -8,7 +8,7 @@
 <p id="auth-status" role="status" aria-live="polite">Checking account availability…</p>
 <form id="auth-form" hidden>
 <label for="auth-email">Email</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254"/>
-<label for="auth-password" id="password-label">Password</label><input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128"/>
+<label for="auth-password" id="password-label">Password</label><input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="6" maxlength="128"/>
 <button id="auth-submit" type="submit">Sign in</button>
 </form>
 <section id="account-signed-in" hidden><p id="account-email"></p><button id="account-sign-out" type="button">Sign out</button></section>

@@ -2,7 +2,7 @@
 // Never put service_role or secret keys in a browser configuration.
 const $=id=>document.getElementById(id);
 const status=$("auth-status"),form=$("auth-form"),submit=$("auth-submit");
-let client=null,mode="sign-in",recoveryAuthorized=false;
+let client=null,mode="sign-in",verifiedUser=false;
 const cleanMode=()=>["sign-in","sign-up","forgot","update-password"].includes(location.hash.slice(1))?location.hash.slice(1):"sign-in";
 function message(value){status.textContent=value;}
 function showMode(){
@@ -20,8 +20,8 @@ function showMode(){
   for(const name of ["sign-in","sign-up","forgot"]){
     $("account-"+(name==="forgot"?"recover":name)).setAttribute("aria-current",name===mode?"page":"false");
   }
-  if(client) form.hidden=!$("account-signed-in").hidden && !(mode==="update-password" && recoveryAuthorized);
-  if(mode==="update-password" && !recoveryAuthorized){form.hidden=true;message("Use your password-reset email link to update your password.");}
+  if(client) form.hidden=!$("account-signed-in").hidden && !(mode==="update-password" && verifiedUser);
+  if(mode==="update-password" && !verifiedUser){form.hidden=true;message("Use your password-reset email link to update your password.");}
 }
 async function setup(){
   let phase="configuration";
@@ -39,16 +39,18 @@ async function setup(){
     phase="Supabase initialization";
     client=createClient(u.href,config.publishable_key,{auth:{detectSessionInUrl:true,flowType:"pkce",persistSession:true,autoRefreshToken:true}});
     client.auth.onAuthStateChange((event,session)=>{
-      if(event==="PASSWORD_RECOVERY"){recoveryAuthorized=true;location.hash="update-password";showMode();}
+      if(event==="PASSWORD_RECOVERY"){location.hash="update-password";}
       const user=session?.user;
+      verifiedUser=!!user;
       $("account-signed-in").hidden=!user;
-      if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
+      if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && verifiedUser);if(mode!=="update-password")message("Your account is active.");}
       else {form.hidden=mode==="update-password";}
     });
     phase="Supabase session check";
     const {data:{user}}=await client.auth.getUser();
+    verifiedUser=!!user;
     $("account-signed-in").hidden=!user;
-    if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
+    if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && verifiedUser);if(mode!=="update-password")message("Your account is active.");}
     else {message("Sign in, register, or reset your password.");form.hidden=mode==="update-password";}
     showMode();
   }catch(err){client=null;form.hidden=true;message(err?.message==="Accounts are not enabled yet."?"Accounts are not enabled yet. Continue browsing SignalDesk as a guest.":"Account connection unavailable ("+phase+"). News remains available without signing in.");}
@@ -67,9 +69,9 @@ form.addEventListener("submit",async event=>{
     if(response?.error)throw response.error;
     message(mode==="sign-up"?"If confirmation is required, check your email to complete registration.":mode==="forgot"?"If the address has an account, you will receive a reset email.":mode==="update-password"?"Password updated.":"Signed in.");
     $("auth-password").value="";
-    if(mode==="update-password"){recoveryAuthorized=false;location.hash="sign-in";showMode();}
+    if(mode==="update-password"){location.hash="sign-in";showMode();}
   }catch(err){message(err?.message||"Account request failed.");}
   finally{submit.disabled=false;}
 });
-$("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();if(error){message(error.message);return;}recoveryAuthorized=false;message("Signed out.");$("account-signed-in").hidden=true;location.hash="sign-in";showMode();});
+$("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();if(error){message(error.message);return;}verifiedUser=false;message("Signed out.");$("account-signed-in").hidden=true;location.hash="sign-in";showMode();});
 showMode();setup();
