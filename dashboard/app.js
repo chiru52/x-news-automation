@@ -1089,7 +1089,7 @@ async function initialize(background = false) {
       : "";
     $("refresh-note").textContent = (fromLive
       ? "News is collected approximately every 15 minutes. Last refreshed shows the news generation time."
-      : "Showing the latest available news snapshot. Last refreshed shows when it was generated.")+
+      : "Showing the daily fallback snapshot; the 15-minute live feed is not currently being used. India results reflect available eligible sources, not all India news.")+
       coverageText;
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();

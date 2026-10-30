@@ -17,10 +17,12 @@ from urllib.parse import urlsplit
 from .editorial_inbox import IssueValidationError, parse_issue
 from .news_quality import unique_stories
 from .source_context import preview_from_rss
+from .regions import explicit_india_sources, is_india_article
 
 REPO = "varadachiru/x-news-automation"
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "dashboard"
+INDIA_SOURCES = explicit_india_sources(json.loads((ROOT / "config/sources.json").read_text(encoding="utf-8")))
 CATEGORIES = frozenset(("technology", "saas", "markets"))
 MAX_ISSUES = 200
 MAX_ITEMS = 200
@@ -73,14 +75,14 @@ def bounded_trend(value: object) -> dict:
     return {"score": score, "coverage_feeds": count, "reason": reason}
 
 
-def read_news(queue: dict) -> list[dict]:
+def read_news(queue: dict, field: str = "articles") -> list[dict]:
     """Only use source-attributed review suggestions, never untrusted HTML."""
     if not isinstance(queue, dict) or queue.get("publishing_enabled") is not False:
         raise ValueError("Unsafe queue: publishing must be disabled")
-    if not isinstance(queue.get("articles"), list):
+    if field not in ("articles", "india_articles") or not isinstance(queue.get(field, []), list):
         raise ValueError("News queue has no articles")
     out, seen = [], set()
-    for article in queue["articles"][:MAX_ITEMS]:
+    for article in queue.get(field, [])[:MAX_ITEMS]:
         if not isinstance(article, dict) or article.get("publishable") is not False:
             raise ValueError("Unsafe or malformed news article")
         url = source_url(article.get("link"))
@@ -103,6 +105,7 @@ def read_news(queue: dict) -> list[dict]:
             "source_url": url,
             "post": suggestion,
             "category": category,
+            "region": "india" if is_india_article(article, INDIA_SOURCES) else "global",
             "published_at": clean(article.get("published_at"), 50),
             "status": "unverified",
             "trend_score": bounded_trend(article.get("trend", {}))["score"],
@@ -182,8 +185,8 @@ def fetch_private_issues() -> list[dict]:
 
 # Explicit public contract. Never export private GitHub issue bodies, full
 # publisher evidence, analysis, transcripts, URLs into private issues or tokens.
-PUBLIC_TOP = {"schema_version","generated_at","news","drafts","warnings"}
-PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","published_at","status","trend_score","coverage_feeds","trend_reason","source_preview","context_status"}
+PUBLIC_TOP = {"schema_version","generated_at","news","india_news","drafts","warnings"}
+PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","region","published_at","status","trend_score","coverage_feeds","trend_reason","source_preview","context_status"}
 PUBLIC_DRAFT = {"id","title","description","publisher","source_url","post","category","updated_at","status"}
 PRIVATE_MARKERS = (
     "github_pat_", "ghp_", "gho_", "ghs_", "ghu_", "ghr_",
@@ -201,14 +204,14 @@ def validate_public_bundle(data: dict) -> None:
         raise ValueError("Unexpected public dashboard schema")
     if not isinstance(data["generated_at"], str) or not data["generated_at"]:
         raise ValueError("Public dashboard timestamp required")
-    for kind, keys in (("news", PUBLIC_NEWS), ("drafts", PUBLIC_DRAFT)):
+    for kind, keys in (("news", PUBLIC_NEWS), ("india_news", PUBLIC_NEWS), ("drafts", PUBLIC_DRAFT)):
         entries = data[kind]
-        if not isinstance(entries, list) or len(entries) > MAX_ITEMS:
+        if not isinstance(entries, list) or len(entries) > (15 if kind == "india_news" else MAX_ITEMS):
             raise ValueError("Malformed or oversized public news feed")
         for entry in entries:
             if not isinstance(entry, dict) or set(entry) != keys:
                 raise ValueError("Unexpected public article fields")
-            if kind == "news":
+            if kind in ("news", "india_news"):
                 signal = bounded_trend({"score": entry["trend_score"],
                                         "coverage_feeds": entry["coverage_feeds"],
                                         "reason": entry["trend_reason"]})
@@ -220,7 +223,9 @@ def validate_public_bundle(data: dict) -> None:
             if (not entry["id"] or not entry["title"] or entry["category"] not in CATEGORIES
                     or source_url(entry["source_url"]) != entry["source_url"]):
                 raise ValueError("Unsafe public article")
-            if kind == "news":
+            if kind in ("news", "india_news"):
+                if entry["region"] not in ("india", "global") or (kind == "india_news" and entry["region"] != "india"):
+                    raise ValueError("Invalid news region")
                 if entry["context_status"] not in ("rss_preview", "headline_only"):
                     raise ValueError("Unsupported RSS source context status")
                 if (len(entry["source_preview"]) > 170 or
@@ -242,12 +247,14 @@ def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=No
     if dest.resolve() == ASSETS.resolve():
         raise ValueError("Refusing to overwrite source assets")
     news = read_news(queue)
+    india_news = [item for item in read_news(queue, "india_articles") if item["region"] == "india"][:15]
     drafts = read_drafts(issues)
     time_value = generated_at or datetime.now(timezone.utc).isoformat()
     result = {
         "schema_version": 1,
         "generated_at": time_value,
         "news": news,
+        "india_news": india_news,
         "drafts": drafts,
         "warnings": ["some_feed_sources_unavailable"] if queue.get("feed_errors") else [],
     }

@@ -8,6 +8,7 @@ from pathlib import Path
 from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
                    render_outputs, save_state, select_articles)
 from .trend_signals import signals_for_selected
+from .regions import select_india_preview_articles
 
 
 def main() -> int:
@@ -32,6 +33,7 @@ def main() -> int:
     stories: list[Article] = []
     errors: list[str] = []
     diagnostics: list[dict] = []
+    sources: list[dict] = []
     if args.demo:
         stories = [Article(title=f"DEMO ONLY: Illustrative technology headline {n}",
                            link=f"https://example.org/demo-story-{n}",
@@ -71,10 +73,15 @@ def main() -> int:
                                                          int(settings.get("max_saas_funding_drafts_per_day", 1))),
                               exclude_promotional_headlines=settings.get("exclude_promotional_headlines") is True,
                               max_us_index_futures_per_day=int(settings.get("max_us_index_futures_drafts_per_day", 1)))
+    india_selected = select_india_preview_articles(
+        stories, sources, now, lookback_hours=int(settings["lookback_hours"]),
+        exclude_promotional=settings.get("exclude_promotional_headlines") is True,
+    ) if not args.demo and args.preview else []
     trend_signals = signals_for_selected(selected, stories, now,
                                          lookback_hours=int(settings['lookback_hours']))
     render_outputs(selected, Path(args.output), now, errors, diagnostics,
-                   preview_only=args.preview, trend_signals=trend_signals)
+                   preview_only=args.preview, trend_signals=trend_signals,
+                   india_articles=india_selected)
     if not args.preview:
         save_state(Path(args.state), state)
     print(f"Collected {len(stories)} articles, drafted {len(selected)}, feed errors {len(errors)}")

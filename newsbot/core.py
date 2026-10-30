@@ -303,7 +303,8 @@ def draft_template(article: Article) -> str:
 def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors: list[str],
                    source_diagnostics: list[dict] | None = None,
                    preview_only: bool = False,
-                   trend_signals: dict[str, dict] | None = None) -> None:
+                   trend_signals: dict[str, dict] | None = None,
+                   india_articles: list[Article] | None = None) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     queue = []
     for item in articles:
@@ -315,8 +316,15 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
                       "suggested_post": suggestion["text"], "writing": suggestion,
                       "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
                       "category_verified": False, "relevance": assessment})
+    india_queue = []
+    for item in (india_articles or [])[:15]:
+        suggestion = suggest_post(item)
+        india_queue.append({**asdict(item), "suggested_post": suggestion["text"],
+                            "trend": {}, "status": "NEEDS_HUMAN_REVIEW",
+                            "publishable": False, "category_verified": False})
     payload = {"generated_at": now.isoformat(), "draft_count": len(queue),
-               "publishing_enabled": False, "preview_only": preview_only, "articles": queue, "feed_errors": errors,
+               "publishing_enabled": False, "preview_only": preview_only, "articles": queue,
+               "india_articles": india_queue, "feed_errors": errors,
                "source_diagnostics": source_diagnostics or []}
     (outdir / "review_queue.json").write_text(
         json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
