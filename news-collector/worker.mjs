@@ -21,7 +21,7 @@ const MAX_CONCURRENT = 4;
 const FETCH_TIMEOUT_MS = 9_000;
 const SNAPSHOT_KEY = "signaldesk:news:snapshot:v1";
 const SAFE_CATEGORIES = ["technology", "saas", "markets"];
-const WORDS = /(ai|artificial intelligence|technology|software|startup|saas|enterprise|cloud|launch|product|funding|invest|revenue|earnings|market|shares|stocks|business|security|developer|openai|anthropic|nvidia|microsoft|google|apple|finance|bank|economy)/i;
+const WORDS = /(ai|artificial intelligence|technology|software|startup|saas|enterprise|cloud|launch|product|funding|invest|revenue|earnings|market|shares|stocks|business|security|developer|openai|anthropic|nvidia|microsoft|google|apple|finance|bank|economy|nifty|sensex|rbi|sebi|ipo|nse|bse|rupee|bengaluru|mumbai|indian)/i;
 const SPAM = /\b(subscribe now|sponsored|advertisement|coupon|giveaway|deal of the day|best discounts)\b/i;
 const INDIA_MARKERS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi|fintech india)\b/i;
 function isIndiaStory(article) {

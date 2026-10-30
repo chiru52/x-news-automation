@@ -37,6 +37,7 @@ def safe_probe(route):
                     if isinstance(doc, dict) and isinstance(doc.get("news"), list):
                         feed_summary = {
                             "story_count": len(doc["news"]),
+                            "india_story_count": (len(doc["india_news"]) if isinstance(doc.get("india_news"), list) else None),
                             "snapshot_timestamp": str(doc.get("generated_at", ""))[:40],
                             "contains_private_drafts": bool(doc.get("drafts")),
                         }

@@ -57,6 +57,11 @@ test("selection avoids duplicates, caps source and balances topics",()=>{
   assert.ok(new Set(picks.map(x=>x.source_url)).size===30);
   assert.ok(Math.max(...Object.values(Object.groupBy(picks,x=>x.publisher)).map(x=>x.length))<=4);
 });
+test("India-specific finance headline terms qualify without generic market words",()=>{
+  const india=parseFeed(rss("RBI updates Nifty and Sensex index rules"),source,NOW);
+  assert.equal(india.length,1);
+  assert.equal(india[0].region,"india");
+});
 test("India feed is distinct and conservative about regional relevance",()=>{
   const india=[
     {...item("bengaluru-1","saas","Inc42 India Startups"),region:"india",
