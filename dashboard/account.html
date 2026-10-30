@@ -1,13 +1,16 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>SignalDesk — Accounts</title><link rel="stylesheet" href="./styles.css"></head>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>SignalDesk — Account</title><link rel="stylesheet" href="./styles.css"><script type="module" src="./account.mjs"></script></head>
 <body class="account-page"><main class="account-panel">
-<a class="account-back" href="./">← Back to SignalDesk</a>
-<div class="account-mark">S.</div>
+<a class="account-back" href="./">← Back to SignalDesk</a><div class="account-mark">S.</div>
 <h1 id="account-heading">Sign in to SignalDesk</h1>
-<p>Account sign-in and registration are not available yet. You can use SignalDesk without an account, and your personal drafts and saved items remain in this browser.</p>
-<div class="account-links"><a href="#sign-in" id="account-sign-in">Sign in</a><a href="#sign-up" id="account-sign-up">Create account</a></div>
-<p class="account-note">We won't ask for passwords until secure authentication is implemented. No automatic X posting.</p>
-</main><script>
-function showMode(){const signup=location.hash==="#sign-up";document.getElementById("account-heading").textContent=signup?"Create a SignalDesk account":"Sign in to SignalDesk";document.getElementById("account-sign-in").setAttribute("aria-current",signup?"false":"page");document.getElementById("account-sign-up").setAttribute("aria-current",signup?"page":"false");}
-addEventListener("hashchange",showMode);showMode();
-</script></body></html>
+<p id="account-intro">Your news feed remains available without an account.</p>
+<nav class="account-links" aria-label="Account options"><a id="account-sign-in" href="#sign-in">Sign in</a><a id="account-sign-up" href="#sign-up">Create account</a><a id="account-recover" href="#forgot">Forgot password</a></nav>
+<p id="auth-status" role="status" aria-live="polite">Checking account availability…</p>
+<form id="auth-form" hidden>
+<label for="auth-email">Email</label><input id="auth-email" name="email" type="email" autocomplete="email" required maxlength="254"/>
+<label for="auth-password" id="password-label">Password</label><input id="auth-password" name="password" type="password" autocomplete="current-password" minlength="12" maxlength="128"/>
+<button id="auth-submit" type="submit">Sign in</button>
+</form>
+<section id="account-signed-in" hidden><p id="account-email"></p><button id="account-sign-out" type="button">Sign out</button></section>
+<p class="account-note">Your browser-only saved articles and drafts are not synchronized yet. Nothing is posted to X automatically.</p>
+</main></body></html>
