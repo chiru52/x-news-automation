@@ -474,9 +474,18 @@ function updateCounts() {
     $("count-ready").textContent=historyItems.filter(item=>workflowStage(item)==="ready").length;
   }
 }
+function updateMobileMenuLabel(view){
+  const titles={
+    all:"All stories",trending:"Trending news",global:"Global news",india:"India news",
+    workflow:"My workflow",copied:"Copied articles",saved:"Saved for later",
+    archive:"Archive",account:"Manage account"
+  };
+  $("mobile-current-view").textContent=titles[view]||"All stories";
+}
 function setView(view) {
   exitArchive();
   selectedView = view;
+  updateMobileMenuLabel(view);
   if(view === "archive") {
     const now=Date.now();
     $("archive-date").min=new Date(now-29*86400000).toISOString().slice(0,10);
@@ -1184,6 +1193,7 @@ function openAccountWorkspace(){
   const workspace=$("account-workspace"),content=document.querySelector(".content");
   if($("nav-manage-account").hidden)return;
   content.classList.add("account-open");workspace.hidden=false;
+  updateMobileMenuLabel("account");
   document.querySelectorAll(".nav-items [data-view]").forEach(button=>{
     button.classList.remove("active");
     button.removeAttribute("aria-current");
@@ -1199,6 +1209,7 @@ function openAccountWorkspace(){
 function closeAccountWorkspace(){
   $("account-workspace").hidden=true;
   document.querySelector(".content").classList.remove("account-open");
+  updateMobileMenuLabel(selectedView);
   $("nav-manage-account").classList.remove("active");
   $("nav-manage-account").removeAttribute("aria-current");
   if(!document.querySelector(".nav-items [data-view].active")){
@@ -1211,6 +1222,7 @@ function closeAccountWorkspace(){
 // Both visible brand logos return to All Stories, including from Manage Account.
 document.querySelectorAll("[data-home-link]").forEach(link=>link.addEventListener("click",event=>{
   event.preventDefault();
+  setMobileMenuOpen(false);
   closeAccountWorkspace();
   setView("all");
   const allButton=document.querySelector('.nav-items [data-view="all"]');
@@ -1218,6 +1230,31 @@ document.querySelectorAll("[data-home-link]").forEach(link=>link.addEventListene
     allButton?.scrollIntoView({block:"nearest",inline:"start"});
   window.scrollTo({top:0,behavior:"smooth"});
 }));
+// Mobile navigation replaces the crowded horizontal news tabs with one menu.
+const mobileMenuToggle=$("mobile-menu-toggle");
+const mobileMenuBackdrop=$("mobile-menu-backdrop");
+const mobileMenuMedia=window.matchMedia("(max-width:850px)");
+function setMobileMenuOpen(open,restoreFocus=false){
+  const visible=Boolean(open)&&mobileMenuMedia.matches;
+  document.querySelector(".sidebar").classList.toggle("mobile-nav-open",visible);
+  mobileMenuBackdrop.hidden=!visible;
+  mobileMenuToggle.setAttribute("aria-expanded",String(visible));
+  mobileMenuToggle.setAttribute("aria-label",visible?"Close navigation menu":"Open navigation menu");
+  document.body.classList.toggle("mobile-menu-open",visible);
+  if(!visible && restoreFocus && mobileMenuMedia.matches)mobileMenuToggle.focus({preventScroll:true});
+}
+mobileMenuToggle.addEventListener("click",()=>{
+  setMobileMenuOpen(mobileMenuToggle.getAttribute("aria-expanded")!=="true");
+});
+mobileMenuBackdrop.addEventListener("click",()=>setMobileMenuOpen(false,true));
+document.querySelectorAll("#sidebar-menu button").forEach(button=>{
+  button.addEventListener("click",()=>setMobileMenuOpen(false,true));
+});
+document.addEventListener("keydown",event=>{
+  if(event.key==="Escape" && mobileMenuToggle.getAttribute("aria-expanded")==="true")
+    setMobileMenuOpen(false,true);
+});
+mobileMenuMedia.addEventListener("change",()=>setMobileMenuOpen(false));
 $("nav-manage-account").addEventListener("click",openAccountWorkspace);
 $("profile-account-link").addEventListener("click",event=>{event.preventDefault();openAccountWorkspace()});
 document.querySelectorAll(".nav-items [data-view]").forEach(button=>button.addEventListener("click",closeAccountWorkspace));

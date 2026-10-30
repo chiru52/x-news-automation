@@ -14,7 +14,7 @@ class SimplifiedNavigationTests(unittest.TestCase):
         cls.selectors=(ROOT/"dashboard/news-sections.mjs").read_text("utf-8")
 
     def test_eight_main_menu_items_in_requested_order(self):
-        nav=self.html.split('<nav class="nav-items" aria-label="Main navigation">',1)[1].split("</nav>",1)[0]
+        nav=self.html.split('<nav class="nav-items"',1)[1].split('>',1)[1].split("</nav>",1)[0]
         views=re.findall(r'data-view="([^"]+)"',nav)
         self.assertEqual(views, ["all","trending","global","india","workflow","copied","saved","archive"])
         self.assertIn("All stories",nav)

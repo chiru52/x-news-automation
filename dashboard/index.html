@@ -15,7 +15,11 @@
     <aside class="sidebar" aria-label="Workspace navigation">
       <a href="./" class="brand" aria-label="SignalDesk home — All stories" data-home-link><span class="brand-mark">S<span class="brand-dot">.</span></span><span>signal<span class="brand-light">desk</span><small>YOUR EDITORIAL SPACE</small></span></a>
       <div class="sidebar-section-label">WORKSPACE</div>
-      <nav class="nav-items" aria-label="Main navigation">
+      <button type="button" id="mobile-menu-toggle" class="mobile-menu-toggle" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Open navigation menu">
+        <span class="mobile-menu-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></span>
+        <span class="mobile-menu-caption">Menu <strong id="mobile-current-view">All stories</strong></span><span class="mobile-menu-caret" aria-hidden="true">▾</span>
+      </button>
+      <nav class="nav-items" id="sidebar-menu" aria-label="Main navigation">
         <button class="nav-item active" data-view="all" aria-current="page"><span class="nav-icon">▦</span> All stories <span id="nav-all-count" class="nav-count">–</span></button>
         <button class="nav-item" data-view="trending"><span class="nav-icon">↗</span> Trending news <span id="nav-trend-count" class="nav-count">–</span></button>
         <button class="nav-item" data-view="global"><span class="nav-icon">◎</span> Global news <span id="nav-global-count" class="nav-count">–</span></button>
@@ -30,6 +34,7 @@
         <p class="sidebar-foot">Public news workspace · v1</p>
       </div>
     </aside>
+    <button type="button" id="mobile-menu-backdrop" class="mobile-menu-backdrop" aria-label="Close navigation menu" hidden></button>
     <div class="workspace">
       <header class="topbar">
         <a class="mobile-brand" href="./" aria-label="SignalDesk home — All stories" data-home-link><span class="brand-mark">S<span class="brand-dot">.</span></span><strong>signaldesk</strong></a>
