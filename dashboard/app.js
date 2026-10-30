@@ -10,6 +10,23 @@ let visibleCount = 12;
 let loadedSnapshot = "";
 let feedCheckInProgress = false;
 const NEWS_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+const INDIA_TERMS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi)\b/i;
+const INDIA_FOCUSED_PUBLISHERS = new Set(["Inc42 India Startups","ET Entrepreneur India Startups"]);
+function isIndiaNews(item) {
+  return item.kind === "news" && (item.region === "india" ||
+    INDIA_FOCUSED_PUBLISHERS.has(item.publisher) || INDIA_TERMS.test(item.title));
+}
+let copyUndo = null;
+function showCopyUndo(item, previousStage) {
+  copyUndo = {id:item.id, previousStage};
+  $("copy-undo-message").textContent = "Copied to clipboard. Moved out of your main feed — not posted to X.";
+  $("copy-undo").hidden = false;
+}
+function hideCopyUndo() {
+  copyUndo = null;
+  $("copy-undo").hidden = true;
+}
+
 let liveFeedUrl = null;
 let liveConfigChecked = false;
 function allowCollectorUrl(value) {
@@ -54,7 +71,9 @@ async function readFeedData() {
         !(dynamicDate>staticDate)) return {data:staticData,fromLive:false};
     return {data:{
       schema_version:1,generated_at:dynamic.generated_at,
-      news:dynamic.news,drafts:staticData.drafts,
+      news:dynamic.news,
+      india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 15 ? dynamic.india_news : [],
+      drafts:staticData.drafts,
       warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
     },fromLive:true};
   } catch (_) {
@@ -74,6 +93,39 @@ try {
     }
   }
 } catch (_) { /* Browser storage is optional. */ }
+const copiedLibraryKey = "signaldesk:copied-library:v1";
+const copiedLibrary = new Map();
+try {
+  const library = JSON.parse(localStorage.getItem(copiedLibraryKey) || "[]");
+  if (Array.isArray(library)) for (const entry of library.slice(-100)) {
+    if (!entry || !["news","draft"].includes(entry.kind) ||
+        typeof entry.id !== "string" || !/^(news|draft):[a-z0-9]{16,120}$/i.test(entry.id) ||
+        typeof entry.title !== "string" || !safeSource(entry.source_url)) continue;
+    copiedLibrary.set(entry.id, entry);
+  }
+} catch (_) { /* Copied history is optional and browser-local. */ }
+function rememberCopied(item) {
+  copiedLibrary.delete(item.id);
+  copiedLibrary.set(item.id, {
+    id:item.id, kind:item.kind, title:item.title, description:item.description,
+    source_preview:item.source_preview, context_status:item.context_status,
+    publisher:item.publisher, source_url:item.source_url, post:item.post,
+    category:item.category, region:item.region, published_at:item.published_at,
+    status:item.status, trend_score:item.trend_score,
+    coverage_feeds:item.coverage_feeds, trend_reason:item.trend_reason
+  });
+  if (copiedLibrary.size > 100) copiedLibrary.delete(copiedLibrary.keys().next().value);
+  try {localStorage.setItem(copiedLibraryKey, JSON.stringify([...copiedLibrary.values()]));}
+  catch (_) {showNotice("Copied history could not be saved in this browser.");}
+}
+function readCopiedLibrary() {
+  return [...copiedLibrary.values()].map((entry,i)=>{
+    const bareId=entry.id.slice(entry.kind.length+1);
+    const parsed=parseItem({...entry,id:bareId},entry.kind,i);
+    return parsed && parsed.id === entry.id && workflowStage(parsed)==="copied"
+      ? {...parsed,history_only:true} : null;
+  }).filter(Boolean);
+}
 function workflowStage(item) { return workflow.get(item.id) || "new"; }
 function setWorkflowStage(item, stage) {
   if (!STAGES.includes(stage)) return;
@@ -84,7 +136,7 @@ function setWorkflowStage(item, stage) {
   updateCounts();
 }
 function trendingPicks() {
-  return records.filter(item => item.kind === "news")
+  return records.filter(item => item.kind === "news" && !item.history_only)
     .sort((a,b) => b.trend_score - a.trend_score || byFreshness(a,b))
     .slice(0,5);
 }
@@ -187,14 +239,16 @@ function showNotice(message) {
   note.hidden = !message;
 }
 function updateCounts() {
-  const news = records.filter(r => r.kind === "news").length;
-  const drafts = records.filter(r => r.kind === "draft").length;
+  const news = records.filter(r => r.kind === "news" && !r.history_only).length;
+  const drafts = records.filter(r => r.kind === "draft" && !r.history_only).length;
   $("count-news").textContent = news;
   $("count-trending").textContent = Math.min(5, news);
   $("count-ready").textContent = records.filter(r => workflowStage(r) === "ready").length;
-  $("nav-all-count").textContent = records.length;
+  $("nav-all-count").textContent = records.filter(r => !r.history_only && !["copied","archived"].includes(workflowStage(r))).length;
   $("nav-trend-count").textContent = Math.min(5, news);
   $("nav-workflow-count").textContent = records.filter(r => workflowStage(r) !== "new").length;
+  $("nav-copied-count").textContent = records.filter(r => workflowStage(r) === "copied").length;
+  $("nav-india-count").textContent = records.filter(r => isIndiaNews(r) && !["copied","archived"].includes(workflowStage(r))).length;
   $("nav-draft-count").textContent = drafts;
   $("nav-saved-count").textContent = saved.size;
 }
@@ -219,13 +273,15 @@ function setView(view) {
     btn.classList.toggle("active", btn.dataset.filter === "all");
     btn.setAttribute("aria-pressed", String(btn.dataset.filter === "all"));
   });
-  const titles = {all: "Explore the latest", trending: "Trending news", drafts: "Your X draft library", workflow: "Your content workflow", saved: "Saved for later"};
+  const titles = {all: "Explore the latest", trending: "Trending news", india: "India news", copied: "Copied articles", drafts: "Your X draft library", workflow: "Your content workflow", saved: "Saved for later"};
   const descriptions = {
     all: "Fresh stories and prepared drafts, all in one place.",
     trending: "The strongest headline signals from the current news feed, not social popularity.",
     workflow: "Organize your own reading and copying stages, stored only in this browser.",
     drafts: "Suggestions to verify, edit and copy when you choose.",
-    saved: "Your bookmarked stories, stored only in this browser."
+    saved: "Your bookmarked stories, stored only in this browser.",
+    india: "Indian startups, AI, technology and markets — from India-focused reporting and relevant headlines.",
+    copied: "Stories you copied to the clipboard. This does not mean they were posted on X."
   };
   $("feed-title").textContent = titles[view];
   $("feed-description").textContent = descriptions[view];
@@ -344,10 +400,13 @@ function card(item) {
   });
   editButton.addEventListener("click", () => showEditor(!editing));
   copy.addEventListener("click", () => handleCopy(currentDraft().trim(), copy, () => {
+    const previousStage = workflowStage(item);
     setWorkflowStage(item, "copied");
+    rememberCopied(item);
+    showCopyUndo(item, previousStage);
     stageSelect.value = "copied";
     status.textContent = "Personal: Copied · not posted to X";
-    if (selectedView === "workflow" && selectedStage !== "all") render();
+    if (selectedView !== "workflow" || selectedStage !== "all") render();
   }));
   refreshDraft();
 
@@ -460,9 +519,17 @@ function card(item) {
   stageSelect.addEventListener("change", () => {
     const stage = stageSelect.value;
     setWorkflowStage(item, stage);
+    if (stage === "copied") rememberCopied(item);
+    else if (copiedLibrary.has(item.id)) {
+      copiedLibrary.delete(item.id);
+      try {localStorage.setItem(copiedLibraryKey, JSON.stringify([...copiedLibrary.values()]));}
+      catch (_) { /* Optional browser storage. */ }
+    }
     updateStageNote(stage);
     if (stage === "ready") showNotice("Ready is your personal mark. Check the source and claims before publishing manually.");
-    if (selectedView === "workflow" && selectedStage !== "all" || selectedView === "all" && stage === "archived") render();
+    if (selectedView === "workflow" && selectedStage !== "all" ||
+        ["all","trending","india","drafts","saved"].includes(selectedView) && ["copied","archived"].includes(stage) ||
+        selectedView === "copied" && stage !== "copied") render();
   });
   const save = node.querySelector(".save-button");
   save.setAttribute("aria-pressed", String(saved.has(item.id)));
@@ -475,6 +542,10 @@ function render() {
   const trendIds = new Set(trendingPicks().map(item => item.id));
   let list = records.filter(item => {
     if (selectedView === "trending" && !trendIds.has(item.id)) return false;
+    if (selectedView === "india" && !isIndiaNews(item)) return false;
+    if (selectedView === "copied" && workflowStage(item) !== "copied") return false;
+    if (["all","trending","india","drafts","saved"].includes(selectedView) &&
+        ["copied","archived"].includes(workflowStage(item))) return false;
     if (selectedView === "workflow" && selectedStage !== "all" && workflowStage(item) !== selectedStage) return false;
     if (selectedView === "all" && workflowStage(item) === "archived") return false;
     if (selectedView === "drafts" && item.kind !== "draft") return false;
@@ -507,10 +578,10 @@ function render() {
   $("more-counter").textContent = Math.min(list.length, visibleCount) + " of " + list.length + " shown";
   $("load-more").textContent = "Show " + Math.min(12, remaining) + " more";
   $("empty").hidden = list.length > 0;
-  $("empty-title").textContent = !records.length ? "Your workspace is ready" : "No matching stories";
+  $("empty-title").textContent = !records.length ? "Your workspace is ready" : selectedView === "india" ? "No India stories in this snapshot" : "No matching stories";
   $("empty-text").textContent = !records.length
     ? "Build the news dashboard data in GitHub Actions to display collected news and drafts here."
-    : "Try another topic or search term.";
+    : selectedView === "india" ? "India-focused reporting appears as the shared collector finds eligible stories. Check again after the next news update." : "Try another topic or search term.";
 }
 function parseItem(item, kind, index) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return null;
@@ -518,6 +589,7 @@ function parseItem(item, kind, index) {
   if (!id || !["technology", "saas", "markets"].includes(item.category)) return null;
   return {
     id: kind + ":" + id,
+    region: kind === "news" && item.region === "india" ? "india" : "global",
     kind,
     title: clean(item.title, 300),
     description: clean(item.description, 500),
@@ -548,6 +620,7 @@ async function initialize(background = false) {
     if (background && loadedSnapshot &&
         new Date(data.generated_at).getTime() <= new Date(loadedSnapshot).getTime()) return;
     const updated = [...data.drafts.map((x,i) => parseItem(x,"draft",i)),
+                     ...(Array.isArray(data.india_news) ? data.india_news : []).map((x,i) => parseItem(x,"news",i)),
                      ...data.news.map((x,i) => parseItem(x,"news",i))]
       .filter(Boolean).slice(0,300);
     const seen = new Set();
@@ -556,6 +629,12 @@ async function initialize(background = false) {
       seen.add(x.id);
       return true;
     });
+    for (const copy of readCopiedLibrary()) {
+      if (!seen.has(copy.id)) {
+        records.push(copy);
+        seen.add(copy.id);
+      }
+    }
     loadedSnapshot = data.generated_at;
     const date = new Date(data.generated_at);
     $("updated-display").textContent = new Intl.DateTimeFormat(undefined, {
@@ -609,6 +688,18 @@ $("clear-filters").addEventListener("click", () => {
   $("search-input").value = "";
   query = "";
   setView("all");
+});
+$("undo-copy").addEventListener("click", () => {
+  if (!copyUndo) return;
+  const {id,previousStage} = copyUndo;
+  const item = records.find(value => value.id === id);
+  hideCopyUndo();
+  if (!item) return;
+  setWorkflowStage(item, previousStage);
+  copiedLibrary.delete(item.id);
+  try { localStorage.setItem(copiedLibraryKey, JSON.stringify([...copiedLibrary.values()])); }
+  catch (_) { /* Workflow status remains the source of truth. */ }
+  render();
 });
 $("load-more").addEventListener("click", () => {
   visibleCount += 12;

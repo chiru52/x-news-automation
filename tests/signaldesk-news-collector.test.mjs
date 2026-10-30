@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {parseFeed,selectStories,publicItem,collect,handleRequest,CRON} from "../news-collector/worker.mjs";
+import {parseFeed,selectStories,selectIndiaStories,publicItem,collect,handleRequest,CRON} from "../news-collector/worker.mjs";
 
 const NOW=new Date("2026-10-30T12:00:00Z").getTime();
 const source={name:"Example Technology",category:"technology",url:"https://publisher.example/feed"};
@@ -57,6 +57,32 @@ test("selection avoids duplicates, caps source and balances topics",()=>{
   assert.ok(new Set(picks.map(x=>x.source_url)).size===30);
   assert.ok(Math.max(...Object.values(Object.groupBy(picks,x=>x.publisher)).map(x=>x.length))<=4);
 });
+test("India feed is distinct and conservative about regional relevance",()=>{
+  const india=[
+    {...item("bengaluru-1","saas","Inc42 India Startups"),region:"india",
+      title:"AI startup announces enterprise funding in Bengaluru"},
+    {...item("mumbai-2","markets","Market Publisher"),region:"global",
+      title:"RBI updates technology guidelines for Indian banks"},
+    {...item("international","saas","YourStory India"),region:"global",
+      title:"Global software company discusses international launch"},
+    {...item("india-3","saas","ET Entrepreneur India Startups"),region:"india",
+      title:"Startup receives new enterprise investment"},
+  ];
+  const picked=selectIndiaStories(india);
+  assert.equal(picked.length,3);
+  assert.ok(picked.every(x=>x.region==="india" || /India|Indian|Bengaluru|RBI/i.test(x.title)));
+  assert.ok(picked.every(x=>x.title!=="Global software company discusses international launch"));
+});
+test("India-specific source flag and headline classification are reflected in public cards",async()=>{
+  const regional=await publicItem({...item("funding","saas","Inc42 India Startups"),region:"india",
+    title:"Startup raises seed funding for fintech product"});
+  const global=await publicItem({...item("global","technology","BBC Technology"),region:"global",
+    title:"International AI technology company launches new software"});
+  assert.equal(regional.region,"india");
+  assert.equal(global.region,"global");
+  assert.equal(regional.status,"unverified");
+});
+
 test("public item schema matches original dashboard contract and X manual-only",async()=>{
   const card=await publicItem(item("good"));
   assert.match(card.id,/^[0-9a-f]{24}$/);
@@ -84,7 +110,7 @@ test("cron is the only thing fetching RSS; visitors only read cache",async()=>{
   assert.ok(network>0 && network<=20);
   const r=await handleRequest(new Request("https://feed.example/feed"),{NEWS_CACHE:kv});
   assert.equal(r.status,503);
-  assert.equal(network,14);
+  assert.equal(network,18);
 });
 test("collector stores one safe shared snapshot and reader never starts collection",async()=>{
   const cache=new Map();const calls=[];
@@ -110,9 +136,11 @@ test("collector stores one safe shared snapshot and reader never starts collecti
   const data=await r.json();
   assert.equal(data.schema_version,1);
   assert.deepEqual(data.drafts,[]);
+  assert.ok(Array.isArray(data.india_news));
+  assert.ok(data.india_news.length<=15);
   assert.equal(data.news.length,out.count);
   assert.equal(calls.filter(x=>x==="get").length,1);
-  assert.equal(counter,14); // Cron fetches once per publisher; visitor never does.
+  assert.equal(counter,18); // One Cron fetch per configured publisher; visitors never do.
   assert.equal((await handleRequest(new Request("https://feed.example/health"),{NEWS_CACHE:kv})).status,200);
   assert.equal((await handleRequest(new Request("https://feed.example/feed",{method:"POST"}),{NEWS_CACHE:kv})).status,405);
 });

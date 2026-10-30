@@ -7,6 +7,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'config/sources.json'
       - 'dashboard/**'
       - 'newsbot/dashboard_export.py'
       - 'newsbot/news_quality.py'

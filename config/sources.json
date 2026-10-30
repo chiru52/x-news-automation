@@ -68,5 +68,27 @@
     "name": "Hacker News - Technology",
     "url": "https://news.ycombinator.com/rss",
     "category": "technology"
+  },
+  {
+    "name": "Inc42 India Startups",
+    "url": "https://inc42.com/startups/feed/",
+    "category": "saas",
+    "region": "india"
+  },
+  {
+    "name": "ET Entrepreneur India Startups",
+    "url": "https://entrepreneur.economictimes.indiatimes.com/rss/startups",
+    "category": "saas",
+    "region": "india"
+  },
+  {
+    "name": "ET Tech India",
+    "url": "https://economictimes.indiatimes.com/rssfeeds/13357270.cms",
+    "category": "technology"
+  },
+  {
+    "name": "YourStory India",
+    "url": "https://yourstory.com/feed",
+    "category": "saas"
   }
 ]

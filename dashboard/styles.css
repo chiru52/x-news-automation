@@ -92,3 +92,12 @@
 .load-more{background:#fff;border:1px solid #ddd4ed;border-radius:9px;color:#7147c7;padding:11px 18px;font-size:12px;font-weight:700}
 .load-more:hover,.load-more:focus-visible{background:#f1ecfc;border-color:#ae93e1}
 .more-counter{color:#9990a3;font-size:11px}
+
+
+/* India and copied-library navigation keeps the existing SignalDesk theme. */
+.copy-undo{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;background:#f4effc;border:1px solid #e4d8f4;border-radius:9px;color:#6d578b;font-size:11px;line-height:1.5;padding:10px 13px;margin-bottom:14px}
+.copy-undo[hidden]{display:none}
+.copy-undo button{background:#fff;color:#6742b6;border:1px solid #cebfe7;border-radius:7px;font-size:11px;font-weight:700;padding:7px 12px}
+.copy-undo button:hover,.copy-undo button:focus-visible{background:#e8ddfc;outline-offset:2px}
+.nav-item[data-view="india"] .nav-icon{font-size:15px}
+.nav-item[data-view="copied"] .nav-icon{color:#548b6b}
