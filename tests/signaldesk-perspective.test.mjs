@@ -32,6 +32,7 @@ test("specific financial figures need supporting source and manual review",()=>{
   assert.match(unsourced.message,/Add a supporting HTTPS source/);
   assert.equal(needsSourceForClaims("Nearly ₹1 crore over 30 years"),true);
   assert.equal(needsSourceForClaims("The market fell 2% yesterday"),true);
+  assert.equal(needsSourceForClaims("The market fell 2%."),true);
   assert.equal(needsSourceForClaims("Inflation reached 2.5%"),true);
   assert.equal(needsSourceForClaims("Rates are at 3 percent"),true);
   assert.equal(needsSourceForClaims("An unsourced opinion without numbers"),false);
