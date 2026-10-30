@@ -27,5 +27,11 @@ jobs:
         run: node --test tests/signaldesk-studio.test.mjs
       - name: Test disabled Cloudflare AI gateway, signed Access JWT and daily D1 quota offline
         run: node --test tests/signaldesk-ai-gateway.test.mjs
+      - name: Install pinned RSS XML parser for offline Worker tests
+        run: npm install --prefix news-collector --no-audit --no-fund
+      - name: Test shared Cloudflare Cron collector and read-only KV API offline
+        run: |
+          node --check news-collector/worker.mjs
+          node --test tests/signaldesk-news-collector.test.mjs
       - name: Test hosted Cloudflare Worker offline (no GitHub/Cloudflare calls)
         run: node --test tests/hosted-worker.test.mjs

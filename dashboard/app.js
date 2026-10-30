@@ -10,6 +10,58 @@ let visibleCount = 12;
 let loadedSnapshot = "";
 let feedCheckInProgress = false;
 const NEWS_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+let liveFeedUrl = null;
+let liveConfigChecked = false;
+function allowCollectorUrl(value) {
+  if (typeof value !== "string" || value.length > 260) return "";
+  try {
+    const url=new URL(value);
+    if (url.protocol!=="https:" || url.username || url.password || url.port ||
+        url.pathname!=="/feed" || url.search || url.hash ||
+        !/^signaldesk-news-feed\.[a-z0-9-]+\.workers\.dev$/.test(url.hostname))
+      return "";
+    return url.href;
+  } catch (_) { return ""; }
+}
+async function liveConfig() {
+  if (liveConfigChecked) return liveFeedUrl;
+  liveConfigChecked=true;
+  try {
+    const r=await fetch("./feed-config.json",{cache:"no-store"});
+    if (!r.ok) return null;
+    const config=await r.json();
+    if (config.schema_version===1) liveFeedUrl=allowCollectorUrl(config.live_feed_url);
+  } catch (_) { /* Daily static feed remains the fallback. */ }
+  return liveFeedUrl;
+}
+async function readFeedData() {
+  const r=await fetch("./data.json",{cache:"no-store"});
+  if (!r.ok) throw Error("Static feed unavailable");
+  const staticData=await r.json();
+  const endpoint=await liveConfig();
+  if (!endpoint) return {data:staticData,fromLive:false};
+  try {
+    const latest=await fetch(endpoint,{cache:"no-store",mode:"cors",credentials:"omit"});
+    if (!latest.ok) return {data:staticData,fromLive:false};
+    const dynamic=await latest.json();
+    const dynamicDate=new Date(dynamic.generated_at).getTime();
+    const staticDate=new Date(staticData.generated_at).getTime();
+    // Only accept a recent, bounded, schema-compatible shared cache snapshot.
+    if (dynamic.schema_version!==1 || !Array.isArray(dynamic.news) ||
+        dynamic.news.length<5 || dynamic.news.length>40 ||
+        !Number.isFinite(dynamicDate) || Date.now()-dynamicDate>90*60*1000 ||
+        dynamicDate>Date.now()+10*60*1000 ||
+        !(dynamicDate>staticDate)) return {data:staticData,fromLive:false};
+    return {data:{
+      schema_version:1,generated_at:dynamic.generated_at,
+      news:dynamic.news,drafts:staticData.drafts,
+      warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
+    },fromLive:true};
+  } catch (_) {
+    return {data:staticData,fromLive:false};
+  }
+}
+
 
 const STAGES = ["new","reviewing","ready","copied","archived"];
 const workflowKey = "signaldesk:workflow:v1";
@@ -488,14 +540,13 @@ async function initialize(background = false) {
   if (feedCheckInProgress) return;
   feedCheckInProgress = true;
   try {
-    const response = await fetch("./data.json", {cache: "no-store"});
-    if (!response.ok) throw new Error("HTTP " + response.status);
-    const data = await response.json();
+    const {data,fromLive} = await readFeedData();
     if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts) ||
         typeof data.generated_at !== "string" || Number.isNaN(new Date(data.generated_at).getTime()))
       throw new Error("Unsupported feed format");
     // An unchanged snapshot must not interrupt someone typing an edited post.
-    if (background && loadedSnapshot === data.generated_at) return;
+    if (background && loadedSnapshot &&
+        new Date(data.generated_at).getTime() <= new Date(loadedSnapshot).getTime()) return;
     const updated = [...data.drafts.map((x,i) => parseItem(x,"draft",i)),
                      ...data.news.map((x,i) => parseItem(x,"news",i))]
       .filter(Boolean).slice(0,300);
@@ -510,7 +561,11 @@ async function initialize(background = false) {
     $("updated-display").textContent = new Intl.DateTimeFormat(undefined, {
       month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit"
     }).format(date);
-    $("sync-indicator").textContent = "✓ Latest available snapshot";
+    $("sync-indicator").textContent = fromLive
+      ? "✓ Shared news cache updated" : "✓ Latest available snapshot";
+    $("refresh-note").textContent = fromLive
+      ? "A shared collector checks news about every 15 minutes. This page checks the public cache every 15 minutes; see Last refreshed for the actual update time."
+      : "This page checks for updates every 15 minutes. The latest available static snapshot is shown until the shared collector is active.";
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();

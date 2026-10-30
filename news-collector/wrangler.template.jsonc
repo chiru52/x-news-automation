@@ -1,0 +1,11 @@
+{
+  // Template only. Workflow injects a dedicated KV namespace ID after verifying permissions.
+  "name": "signaldesk-news-feed",
+  "main": "./worker.mjs",
+  "compatibility_date": "2026-10-30",
+  "workers_dev": true,
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "kv_namespaces": [
+    { "binding": "NEWS_CACHE", "id": "__SIGNALDESK_KV_NAMESPACE_ID__" }
+  ]
+}

@@ -74,6 +74,11 @@ jobs:
           print(f'Public feed verified: {len(data["news"])} news, {len(data["drafts"])} drafts')
           print('No private evidence, GitHub secrets, X token or publishing operation')
           PY
+      - name: Wire verified shared RSS feed (fallback to static when unavailable)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python -m news_collector.configure_live dist/signaldesk
       - name: Confirm Cloudflare Pages deployment credentials
         env:
           HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}

@@ -1,0 +1,80 @@
+name: Deploy SignalDesk shared 15-minute RSS collector (no AI or X)
+
+# Deploys only a separate read-only Cloudflare Worker and a dedicated KV cache.
+# Never modifies existing Page contents except dispatching the existing static
+# publish workflow after the Worker health endpoint is verified.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'news-collector/**'
+      - 'news_collector/**'
+      - '.github/workflows/deploy-news-collector.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: write
+
+concurrency:
+  group: signaldesk-worker-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLISH_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned RSS parser and run offline Worker tests
+        run: |
+          npm install --prefix news-collector --no-audit --no-fund
+          node --test tests/signaldesk-news-collector.test.mjs
+          node --check news-collector/worker.mjs
+      - name: Verify Cloudflare account credentials exist
+        env:
+          HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [[ "$HAS_TOKEN" != "true" || "$HAS_ACCOUNT" != "true" ]]; then
+            echo 'Cloudflare account ID/token missing; no Worker or KV change made'
+            exit 1
+          fi
+      - name: Provision or reuse ONLY dedicated SignalDesk KV namespace
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python news-collector/setup_cloudflare.py provision
+      - name: Deploy dedicated read-only Worker with 15-minute Cron
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: news-collector
+          command: deploy --config wrangler.generated.jsonc
+      - name: Verify newly deployed Worker health and URL
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python news-collector/setup_cloudflare.py discover
+      - name: Rebuild public Pages feed with verified shared collector
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run build-news-dashboard.yml --repo "$GITHUB_REPOSITORY" --ref main
+      - name: Summarize safety
+        run: |
+          echo '## SignalDesk shared collector installed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'One Cloudflare Cron Trigger every 15 minutes collects approved public RSS sources.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'One shared KV snapshot; browser visits never fetch RSS directly.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Pages rebuild requested to enable verified public read-only endpoint with static fallback.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No AI inference, X posting, GitHub Issue writes or unrelated DNS changes.' >> "$GITHUB_STEP_SUMMARY"

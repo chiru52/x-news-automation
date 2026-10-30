@@ -38,7 +38,10 @@ class SignalDeskInlineEditTests(unittest.TestCase):
         self.assertNotIn("api.x.com", source)
         self.assertNotIn("github.com/api", source)
         self.assertNotIn('method: "POST"', source)
-        self.assertNotIn("fetch(", source.replace('fetch("./data.json", {cache: "no-store"})', ""))
+        self.assertIn('fetch("./data.json",{cache:"no-store"})', source)
+        self.assertIn('fetch("./feed-config.json",{cache:"no-store"})', source)
+        self.assertIn('fetch(endpoint,{cache:"no-store",mode:"cors",credentials:"omit"})', source)
+        self.assertNotIn('method: "POST"', source)
         self.assertIn('postText.textContent = text', source)
 
     def test_local_editor_looks_consistent(self):
