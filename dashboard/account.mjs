@@ -20,7 +20,7 @@ function showMode(){
   for(const name of ["sign-in","sign-up","forgot"]){
     $("account-"+(name==="forgot"?"recover":name)).setAttribute("aria-current",name===mode?"page":"false");
   }
-  if(client) form.hidden=!$("account-signed-in").hidden && mode!=="update-password";
+  if(client) form.hidden=!$("account-signed-in").hidden && !(mode==="update-password" && recoveryAuthorized);
   if(mode==="update-password" && !recoveryAuthorized){form.hidden=true;message("Use your password-reset email link to update your password.");}
 }
 async function setup(){
@@ -40,12 +40,12 @@ async function setup(){
       const user=session?.user;
       $("account-signed-in").hidden=!user;
       if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
-      else {form.hidden=false;}
+      else {form.hidden=mode==="update-password";}
     });
     const {data:{user}}=await client.auth.getUser();
     $("account-signed-in").hidden=!user;
     if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
-    else {message("Sign in, register, or reset your password.");form.hidden=false;}
+    else {message("Sign in, register, or reset your password.");form.hidden=mode==="update-password";}
     showMode();
   }catch(err){client=null;form.hidden=true;message("Accounts are not enabled yet. Continue browsing SignalDesk as a guest.");}
 }
@@ -67,5 +67,5 @@ form.addEventListener("submit",async event=>{
   }catch(err){message(err?.message||"Account request failed.");}
   finally{submit.disabled=false;}
 });
-$("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();message(error?.message||"Signed out.");$("account-signed-in").hidden=true;form.hidden=false;});
+$("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();if(error){message(error.message);return;}recoveryAuthorized=false;message("Signed out.");$("account-signed-in").hidden=true;location.hash="sign-in";showMode();});
 showMode();setup();

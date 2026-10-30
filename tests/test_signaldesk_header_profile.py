@@ -42,4 +42,7 @@ class HeaderAccountTests(unittest.TestCase):
         self.assertIn('event==="PASSWORD_RECOVERY"',client)
         self.assertIn('mode==="update-password" && !recoveryAuthorized',client)
         self.assertIn('previousElementSibling.hidden=mode==="update-password"',client)
+        self.assertIn('else {form.hidden=mode==="update-password";}',client)
+        self.assertIn('if(error){message(error.message);return;}',client)
+        self.assertIn('recoveryAuthorized=false;message("Signed out.")',client)
 if __name__=="__main__": unittest.main()
