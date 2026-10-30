@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>SignalDesk — Accounts</title><link rel="stylesheet" href="./styles.css"></head>
+<body class="account-page"><main class="account-panel">
+<a class="account-back" href="./">← Back to SignalDesk</a>
+<div class="account-mark">S.</div>
+<h1 id="account-heading">Sign in to SignalDesk</h1>
+<p>Account sign-in and registration are not available yet. You can use SignalDesk without an account, and your personal drafts and saved items remain in this browser.</p>
+<div class="account-links"><a href="#sign-in" id="account-sign-in">Sign in</a><a href="#sign-up" id="account-sign-up">Create account</a></div>
+<p class="account-note">We won't ask for passwords until secure authentication is implemented. No automatic X posting.</p>
+</main><script>
+function showMode(){const signup=location.hash==="#sign-up";document.getElementById("account-heading").textContent=signup?"Create a SignalDesk account":"Sign in to SignalDesk";document.getElementById("account-sign-in").setAttribute("aria-current",signup?"false":"page");document.getElementById("account-sign-up").setAttribute("aria-current",signup?"page":"false");}
+addEventListener("hashchange",showMode);showMode();
+</script></body></html>

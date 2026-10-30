@@ -1092,3 +1092,18 @@ themeToggle.addEventListener("click",()=>{
   applyTheme(theme);
   try {localStorage.setItem("signaldesk:theme:v1",theme);} catch (_) {}
 });
+
+const profileToggle=$("profile-toggle"),profileMenu=$("profile-menu");
+function setProfileOpen(open) {
+  profileMenu.hidden=!open;
+  profileToggle.setAttribute("aria-expanded",String(open));
+}
+profileToggle.addEventListener("click",()=>setProfileOpen(profileMenu.hidden));
+document.addEventListener("click",(event)=>{
+  if(!event.target.closest(".profile-wrap")) setProfileOpen(false);
+});
+document.addEventListener("keydown",(event)=>{
+  if(event.key==="Escape" && !profileMenu.hidden) {
+    setProfileOpen(false);profileToggle.focus();
+  }
+});
