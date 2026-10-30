@@ -31,9 +31,9 @@ jobs:
           assert d['news'] == [] and d['drafts'] == []
           out=Path('dist/public-starter')
           out.mkdir(parents=True, exist_ok=True)
-          for name in ('index.html','styles.css','app.js','data.json','_headers'):
+          for name in ('index.html','styles.css','app.js','studio.mjs','data.json','_headers'):
               (out / name).write_bytes((Path('dashboard') / name).read_bytes())
-          assert len(list(out.iterdir())) == 5
+          assert len(list(out.iterdir())) == 6
           print('Verified: ONLY five static starter assets, zero private drafts.')
           PY
       - name: Verify Cloudflare account credentials are configured

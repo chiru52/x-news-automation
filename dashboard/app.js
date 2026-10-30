@@ -1,3 +1,4 @@
+import {postStarters, researchGuide, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -29,6 +30,27 @@ function trendingPicks() {
   return records.filter(item => item.kind === "news")
     .sort((a,b) => b.trend_score - a.trend_score || byFreshness(a,b))
     .slice(0,5);
+}
+
+const noteKey = "signaldesk:research-notes:v1";
+const researchNotes = new Map();
+try {
+  const raw = JSON.parse(localStorage.getItem(noteKey) || "{}");
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    for (const [id, note] of Object.entries(raw).slice(0,100)) {
+      if (id.length <= 140 && typeof note === "string" && note.length <= 1200) researchNotes.set(id, note);
+    }
+  }
+} catch (_) { /* Saved notes are optional and browser-only. */ }
+function saveResearchNote(id, note) {
+  if (!note.trim()) researchNotes.delete(id);
+  else {
+    researchNotes.delete(id);
+    researchNotes.set(id, note.slice(0,1200));
+    if (researchNotes.size > 100) researchNotes.delete(researchNotes.keys().next().value);
+  }
+  try { localStorage.setItem(noteKey, JSON.stringify(Object.fromEntries(researchNotes))); }
+  catch (_) { showNotice("Research notes could not be saved on this device. Copy your notes before leaving."); }
 }
 
 const savedKey = "signaldesk:saved:v1";
@@ -269,6 +291,72 @@ function card(item) {
     if (selectedView === "workflow" && selectedStage !== "all") render();
   }));
   refreshDraft();
+
+  // Phase 2: offline source-attributed writing starters and research prompts.
+  // These are NOT AI calls; no public browser token or paid backend is used.
+  const studioToggle = node.querySelector(".studio-open");
+  const researchToggle = node.querySelector(".research-open");
+  const studioPanel = node.querySelector(".studio-panel");
+  const researchPanel = node.querySelector(".research-panel");
+  const toneSelect = node.querySelector(".studio-tone");
+  const starterPreview = node.querySelector(".studio-preview");
+  const starterLength = node.querySelector(".studio-length");
+  const starterButton = node.querySelector(".studio-use");
+  const variants = postStarters(item);
+  function chooseStarter() {
+    const current = variants.find(variant => variant.tone === toneSelect.value);
+    const draft = current?.text || "";
+    starterPreview.textContent = draft || "No valid source URL available for writing starters.";
+    starterLength.textContent = "≈" + studioXCharacters(draft) + "/280 characters";
+    starterButton.disabled = !draft;
+  }
+  chooseStarter();
+  toneSelect.addEventListener("change", chooseStarter);
+  function closeToolPanels() {
+    studioPanel.hidden = true;
+    researchPanel.hidden = true;
+    studioToggle.setAttribute("aria-expanded", "false");
+    researchToggle.setAttribute("aria-expanded", "false");
+  }
+  studioToggle.addEventListener("click", () => {
+    const next = studioPanel.hidden;
+    closeToolPanels();
+    studioPanel.hidden = !next;
+    studioToggle.setAttribute("aria-expanded", String(next));
+  });
+  starterButton.addEventListener("click", () => {
+    const selected = variants.find(variant => variant.tone === toneSelect.value);
+    if (!selected?.text) return;
+    if (edits.has(item.id) && currentDraft() !== selected.text &&
+        !window.confirm("Replace your saved draft with this starter? Your existing local edit will be overwritten.")) return;
+    rememberEdit(item.id, selected.text, suggestion);
+    refreshDraft();
+    closeToolPanels();
+    showEditor(true);
+    showNotice("Starter loaded into your editor. Check every claim against the original source before copying.");
+  });
+
+  const guide = researchGuide(item);
+  node.querySelector(".research-headline").textContent = guide.heading;
+  node.querySelector(".research-publisher").textContent = "As reported by " + guide.publisher;
+  const researchLink = node.querySelector(".research-source");
+  if (guide.source_url) researchLink.href = guide.source_url;
+  else researchLink.hidden = true;
+  const questionList = node.querySelector(".research-questions");
+  questionList.replaceChildren(...guide.questions.map(question => {
+    const li = document.createElement("li");
+    li.textContent = question;
+    return li;
+  }));
+  const notes = node.querySelector(".research-notes");
+  notes.value = researchNotes.get(item.id) || "";
+  notes.addEventListener("input", () => saveResearchNote(item.id, notes.value));
+  researchToggle.addEventListener("click", () => {
+    const next = researchPanel.hidden;
+    closeToolPanels();
+    researchPanel.hidden = !next;
+    researchToggle.setAttribute("aria-expanded", String(next));
+  });
   const status = node.querySelector(".status-info");
   const stageSelect = node.querySelector(".workflow-select");
   stageSelect.value = workflowStage(item);

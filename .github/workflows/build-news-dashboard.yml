@@ -46,6 +46,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
           node --check dashboard/app.js
+          node --test tests/signaldesk-studio.test.mjs
       - name: Collect current RSS candidates (review and copy only)
         run: python -m newsbot --preview --output output/dashboard-news
       - name: Export only public-approved news and AI draft text

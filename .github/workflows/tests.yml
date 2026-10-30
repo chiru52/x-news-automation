@@ -23,5 +23,7 @@ jobs:
           node-version: '22'
       - name: Validate SignalDesk client JavaScript syntax offline
         run: node --check dashboard/app.js
+      - name: Test no-cost Post Studio and research tools offline
+        run: node --test tests/signaldesk-studio.test.mjs
       - name: Test hosted Cloudflare Worker offline (no GitHub/Cloudflare calls)
         run: node --test tests/hosted-worker.test.mjs

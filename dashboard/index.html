@@ -83,6 +83,32 @@
       <h3 class="card-title"></h3><p class="card-description"></p><p class="trend-reason" hidden></p>
       <div class="card-source"><span class="source-mark">↗</span><a class="source-link" target="_blank" rel="noopener noreferrer">Read original source</a><span class="source-publisher"></span></div>
       <div class="draft-panel"><div class="draft-heading"><span>✧ &nbsp; SUGGESTED X POST</span><span class="review-tag">REVIEW BEFORE SHARING</span></div><p class="draft-text"></p><div class="compose-panel" hidden><label class="compose-label">Edit your post <span>(saved only on this device)</span><textarea class="compose-input" rows="5" maxlength="1000" spellcheck="true" placeholder="Write your own take and verify the source before sharing"></textarea></label><div class="compose-actions"><button class="reset-edit" type="button">Reset to suggestion</button><span class="local-note">Edits stay in this browser</span></div></div><div class="draft-bottom"><span class="char-count"></span><div class="draft-actions"><button class="edit-button" type="button" aria-expanded="false">Edit draft</button><button class="copy-button" type="button" aria-label="Copy suggested X post">▣ <span>Copy post</span></button></div></div></div>
+      <div class="studio-launchers" role="group" aria-label="Editorial tools">
+        <button class="studio-open" type="button" aria-expanded="false">✧ Post Studio</button>
+        <button class="research-open" type="button" aria-expanded="false">◇ Why it matters</button>
+      </div>
+      <section class="studio-panel" aria-label="Post writing studio" hidden>
+        <div class="studio-panel-heading"><strong>Post Studio</strong><span>No-cost writing starters · not AI-generated</span></div>
+        <label class="studio-tone-label">Choose writing style
+          <select class="studio-tone"><option value="brief">News brief</option><option value="professional">Professional</option><option value="analytical">Analytical</option><option value="discussion">Discussion</option></select>
+        </label>
+        <p class="studio-intro">These drafts use only the publisher headline and source URL. Verify the actual reporting before copying.</p>
+        <p class="studio-preview" aria-live="polite"></p>
+        <div class="studio-actions"><span class="studio-length"></span><button class="studio-use" type="button">Use this draft</button></div>
+      </section>
+      <section class="research-panel" aria-label="Why this story matters research guide" hidden>
+        <div class="studio-panel-heading"><strong>Why it matters</strong><span>Research guide · not an AI summary</span></div>
+        <p class="research-limit">Only the publisher headline and source URL are available. The full article has not been analyzed.</p>
+        <p class="research-headline"></p>
+        <p class="research-publisher"></p>
+        <a class="research-source" target="_blank" rel="noopener noreferrer">Check the original article</a>
+        <p class="research-subtitle">Questions worth checking</p>
+        <ul class="research-questions"></ul>
+        <label class="research-note-label">Your research notes (only on this device)
+          <textarea class="research-notes" rows="3" maxlength="1200" placeholder="Write verified facts or your own takeaways after reading the original article…"></textarea>
+        </label>
+        <p class="research-caution">Nothing here verifies claims or publishes to X.</p>
+      </section>
       <div class="card-footer">
         <div class="workflow-control"><label class="workflow-label">My status
           <select class="workflow-select" aria-label="Personal content workflow status">

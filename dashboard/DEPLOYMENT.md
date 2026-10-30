@@ -1,5 +1,20 @@
 # SignalDesk — public Cloudflare news dashboard
 
+## Phase 2 — Post Studio and Why It Matters (no-cost foundation)
+
+The site now includes two additional tools within each story card:
+
+- **Post Studio:** Four editorial writing starters (News brief, Professional, Analytical and Discussion) generated deterministically from the **attributed headline and source URL**, not from an AI provider. Select **Use this draft** to load it into the existing local editor. The browser asks before overwriting an existing local edit. Copying remains manual and never sends to X.
+- **Why it matters:** A clearly labeled research guide showing the original publisher headline, safe original HTTPS link, category-specific verification questions, and notes you can save in **localStorage** on that browser/device. This is **not** an AI summary and does **not** analyze full-text article bodies.
+
+No AI credits or inference calls are consumed by these features. No existing article evidence or private GitHub data is added to the public JSON. Notes are **not synchronized**, so avoid using a shared browser for sensitive research.
+
+### Enabling a real AI-assisted Post Studio later
+
+Do **not** add a paid model key to public static JavaScript or to the public JSON. A separate server-side, authenticated and rate-limited inference gateway is required. Before activation, the gateway must have default-deny behavior, a provider/model allowlist, bounded output/input tokens, per-user and global rate limits, a hard daily budget plus concurrent-request guard, abuse monitoring, and explicit deployment approval for the desired provider and estimated costs. Summaries must cite independently retrieved article evidence or clearly say the article is unavailable. Never describe headline-only output as fact checked, source-verified, or AI-generated.
+
+
+
 SignalDesk is a public, read-only collection of news suggestions and AI-written post drafts. Visitors can read source links and copy post text, then manually post on X if they wish. **This site never posts to X, uses X tokens, or verifies the article's claims.**
 
 ## Current project
