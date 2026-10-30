@@ -3,6 +3,7 @@ import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
+import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -11,6 +12,7 @@ const CATEGORIES = {
 };
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
 let reviewOpen=false,reviewLeftId="",reviewRightId="";
+let topicWriterOpen=false;
 let visibleCount = 12;
 let historyOpen = false, historyItems = [], historyTotal = 0;
 let historyPage = 0, historyHasMore = false, historyRequest = 0;
@@ -525,6 +527,7 @@ function updateMobileMenuLabel(view){
 }
 function setView(view) {
   reviewOpen=false;
+  topicWriterOpen=false;
   exitArchive();
   selectedView = view;
   updateMobileMenuLabel(view);
@@ -720,6 +723,9 @@ function card(item) {
   addReview.addEventListener("click",()=>{
     if(workflowStage(item)==="new")setWorkflowStage(item,"reviewing");
     openReviewDesk(item.id);
+  });
+  node.querySelector(".studio-topic").addEventListener("click",()=>{
+    openTopicWriterFromStory(item);
   });
   const studioToggle = node.querySelector(".studio-open");
   const researchToggle = node.querySelector(".research-open");
@@ -919,18 +925,22 @@ function card(item) {
 }
 function render() {
   updateCounts();
-  const inReview=selectedView==="workflow"&&reviewOpen;
+  const inTopic=selectedView==="workflow"&&topicWriterOpen;
+  const inReview=selectedView==="workflow"&&reviewOpen&&!inTopic;
+  $("topic-writer").hidden=!inTopic;
   $("review-desk").hidden=!inReview;
-  $("cards").hidden=inReview;
+  $("cards").hidden=inReview||inTopic;
+  $("topic-writer-toggle").setAttribute("aria-expanded",String(inTopic));
+  $("topic-writer-toggle").textContent=inTopic?"← Back to article cards":"✎ Topic Writer";
   $("review-desk-toggle").textContent=inReview?"← Back to article cards":"↔ Review desk";
   $("review-desk-toggle").setAttribute("aria-expanded",String(inReview));
-  document.querySelector(".toolbar").classList.toggle("review-mode",inReview);
-  if(inReview){
+  document.querySelector(".toolbar").classList.toggle("review-mode",inReview||inTopic);
+  if(inTopic||inReview){
     $("more-container").hidden=true;
     $("empty").hidden=true;
     $("clear-filters").hidden=true;
-    $("result-count").textContent="Editorial review";
-    renderReviewDesk();
+    $("result-count").textContent=inTopic?"Topic Writer":"Editorial review";
+    if(inReview)renderReviewDesk();
     return;
   }
   if(archiveMode()) {
@@ -1109,6 +1119,7 @@ async function initialize(background = false) {
 // In-page comparison, not a separate menu or an X publishing workflow.
 function openReviewDesk(itemId=""){
   if(selectedView!=="workflow")setView("workflow");
+  topicWriterOpen=false;
   reviewOpen=true;
   if(itemId)reviewLeftId=itemId;
   render();
@@ -1213,6 +1224,118 @@ function renderReviewDesk(){
     updateMeter();
   }
 }
+// No AI, network or account access: one locally retained user-authored topic draft.
+const topicStorageKey="signaldesk:topic-writer:v1";
+const topicSubject=$("topic-writer-subject"),topicAngle=$("topic-writer-angle");
+const topicInsight=$("topic-writer-insight"),topicSource=$("topic-writer-source");
+const topicDraft=$("topic-writer-draft"),topicReviewed=$("topic-writer-reviewed");
+const topicCopy=$("topic-writer-copy"),topicStatus=$("topic-writer-status");
+let topicDraftSourceUrl="";
+function saveTopicDraft(){
+  try {
+    localStorage.setItem(topicStorageKey,JSON.stringify({
+      topic:topicSubject.value.slice(0,90),angle:topicAngle.value,
+      observation:topicInsight.value.slice(0,500),
+      source:topicSource.value.slice(0,900),
+      text:topicDraft.value.slice(0,1000)
+    }));
+  } catch(_) {topicStatus.textContent="Browser storage is unavailable. Copy your draft before leaving."; }
+}
+function updateTopicControls(){
+  const review=reviewTopicDraft(topicDraft.value,{sourceUrl:topicDraftSourceUrl});
+  $("topic-writer-length").textContent="≈"+review.count+"/280 X characters";
+  $("topic-writer-length").classList.toggle("over",review.count>280);
+  topicCopy.disabled=!review.valid||!topicReviewed.checked;
+  topicStatus.textContent=review.valid
+    ?(topicReviewed.checked?"Ready to copy manually after your review.":"Review the source and wording before copying.")
+    :review.message;
+}
+try {
+  const stored=JSON.parse(localStorage.getItem(topicStorageKey)||"null");
+  if(stored&&typeof stored==="object"&&!Array.isArray(stored)){
+    topicSubject.value=typeof stored.topic==="string"?stored.topic.slice(0,90):"";
+    if(["observation","implications","connecting","question","short"].includes(stored.angle))
+      topicAngle.value=stored.angle;
+    topicInsight.value=typeof stored.observation==="string"?stored.observation.slice(0,500):"";
+    topicSource.value=typeof stored.source==="string"?stored.source.slice(0,900):"";
+    topicDraft.value=typeof stored.text==="string"?stored.text.slice(0,1000):"";
+    topicDraftSourceUrl=topicSource.value.trim();
+    updateTopicControls();
+  }
+}catch(_){/* Optional browser-local drafts. */}
+$("topic-writer-build").addEventListener("click",()=>{
+  const result=composeTopicDraft({
+    topic:topicSubject.value,angle:topicAngle.value,
+    observation:topicInsight.value,sourceUrl:topicSource.value
+  });
+  if(!result.text){topicStatus.textContent=result.message;return;}
+  if(topicDraft.value.trim()&&topicDraft.value!==result.text&&
+    !window.confirm("Replace your current topic draft with a new writing starter? Your previous edits will be overwritten."))return;
+  topicDraft.value=result.text;
+  topicDraftSourceUrl=topicSource.value.trim();
+  topicReviewed.checked=false;
+  saveTopicDraft();
+  updateTopicControls();
+});
+topicDraft.addEventListener("input",()=>{
+  topicReviewed.checked=false;
+  saveTopicDraft();updateTopicControls();
+});
+for(const control of [topicSubject,topicAngle,topicInsight,topicSource]){
+  control.addEventListener("input",()=>{
+    topicReviewed.checked=false;
+    topicDraftSourceUrl=topicSource.value.trim();
+    saveTopicDraft();updateTopicControls();
+  });
+}
+topicReviewed.addEventListener("change",updateTopicControls);
+topicCopy.addEventListener("click",()=>{
+  if(!topicReviewed.checked||
+    !reviewTopicDraft(topicDraft.value,{sourceUrl:topicDraftSourceUrl}).valid)return;
+  handleCopy(topicDraft.value.trim(),topicCopy,()=>{
+    showNotice("Copied your personal topic draft. Paste into X and review before publishing.");
+  });
+});
+$("topic-writer-clear").addEventListener("click",()=>{
+  if(topicDraft.value.trim()&&!window.confirm("Clear your locally saved topic draft?"))return;
+  topicSubject.value="";topicAngle.value="observation";
+  topicInsight.value="";topicSource.value="";topicDraft.value="";
+  topicDraftSourceUrl="";topicReviewed.checked=false;
+  try{localStorage.removeItem(topicStorageKey);}catch(_){}
+  updateTopicControls();
+});
+function openTopicWriter(){
+  if(selectedView!=="workflow")setView("workflow");
+  topicWriterOpen=true;reviewOpen=false;
+  render();
+}
+function closeTopicWriter(){
+  topicWriterOpen=false;render();
+}
+function openTopicWriterFromStory(item){
+  if(topicDraft.value.trim()&&!window.confirm(
+    "Replace your locally saved Topic Writer draft with a starter based on this article?"))return;
+  topicSubject.value=clean(item.title,90);
+  topicAngle.value="implications";
+  topicInsight.value="";
+  topicSource.value=safeSource(item.source_url);
+  const starter=composeTopicDraft({
+    topic:topicSubject.value,angle:topicAngle.value,
+    observation:topicInsight.value,sourceUrl:topicSource.value
+  });
+  topicDraft.value=starter.text||"";
+  topicDraftSourceUrl=topicSource.value;
+  topicReviewed.checked=false;
+  saveTopicDraft();updateTopicControls();
+  openTopicWriter();
+}
+
+$("topic-writer-toggle").addEventListener("click",()=>{
+  if(topicWriterOpen)closeTopicWriter();
+  else openTopicWriter();
+});
+$("topic-writer-close").addEventListener("click",closeTopicWriter);
+
 $("review-desk-toggle").addEventListener("click",()=>{
   if(reviewOpen)closeReviewDesk();
   else openReviewDesk();
@@ -1234,6 +1357,7 @@ document.querySelectorAll("[data-stage]").forEach(button =>
   button.addEventListener("click", () => {
     selectedStage = button.dataset.stage;
     reviewOpen=false;
+    topicWriterOpen=false;
     visibleCount = 12;
     document.querySelectorAll("[data-stage]").forEach(other => {
       const active = other.dataset.stage === selectedStage;
