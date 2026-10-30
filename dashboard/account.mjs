@@ -24,6 +24,7 @@ function showMode(){
   if(mode==="update-password" && !recoveryAuthorized){form.hidden=true;message("Use your password-reset email link to update your password.");}
 }
 async function setup(){
+  let phase="configuration";
   try{
     const response=await fetch("./auth-config.json?auth=84",{cache:"no-store"});
     if(!response.ok) throw Error("Config unavailable");
@@ -33,7 +34,9 @@ async function setup(){
     if(u.protocol!=="https:" || !/^[a-z0-9-]+\.supabase\.co$/.test(u.hostname) || u.pathname!=="/" ||
        typeof config.publishable_key!=="string" || !config.publishable_key.startsWith("sb_publishable_"))
       throw Error("Invalid account configuration");
+    phase="authentication library";
     const {createClient}=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0/+esm");
+    phase="Supabase initialization";
     client=createClient(u.href,config.publishable_key,{auth:{detectSessionInUrl:true,flowType:"pkce",persistSession:true,autoRefreshToken:true}});
     client.auth.onAuthStateChange((event,session)=>{
       if(event==="PASSWORD_RECOVERY"){recoveryAuthorized=true;location.hash="update-password";showMode();}
@@ -42,12 +45,13 @@ async function setup(){
       if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
       else {form.hidden=mode==="update-password";}
     });
+    phase="Supabase session check";
     const {data:{user}}=await client.auth.getUser();
     $("account-signed-in").hidden=!user;
     if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
     else {message("Sign in, register, or reset your password.");form.hidden=mode==="update-password";}
     showMode();
-  }catch(err){client=null;form.hidden=true;message(err?.message==="Accounts are not enabled yet."?"Accounts are not enabled yet. Continue browsing SignalDesk as a guest.":"Account connection unavailable. Please refresh or try again later; news remains available without signing in.");}
+  }catch(err){client=null;form.hidden=true;message(err?.message==="Accounts are not enabled yet."?"Accounts are not enabled yet. Continue browsing SignalDesk as a guest.":"Account connection unavailable ("+phase+"). News remains available without signing in.");}
 }
 addEventListener("hashchange",showMode);
 form.addEventListener("submit",async event=>{
