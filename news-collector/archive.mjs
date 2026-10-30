@@ -95,10 +95,30 @@ export function queryArchive(buckets, params) {
     a.source_url.localeCompare(b.source_url));
   const publishers=[...new Set(buckets.flatMap(bucket=>
     Array.isArray(bucket?.items)?bucket.items.map(x=>x.publisher).filter(x=>typeof x==="string" && x.length<=100):[]))].sort().slice(0,100);
+  // Independent of query filters and pagination; count unique public URLs.
+  const unique=new Map();
+  const savedDates=[];
+  for(const bucket of buckets) {
+    if(!bucket || bucket.schema_version!==1 || !params.dates.includes(bucket.date) ||
+       !Array.isArray(bucket.items) || bucket.items.length>MAX_PER_DAY) continue;
+    if(bucket.items.some(safeHistoryItem)) savedDates.push(bucket.date);
+    for(const item of bucket.items) {
+      if(safeHistoryItem(item) && !unique.has(item.source_url))
+        unique.set(item.source_url,item);
+    }
+  }
+  const archived=[...unique.values()];
+  const stats={
+    articles:archived.length,
+    global:archived.filter(x=>x.region==="global").length,
+    india:archived.filter(x=>x.region==="india").length,
+    earliest_date:savedDates.length ? [...savedDates].sort()[0] : null,
+    latest_date:savedDates.length ? [...savedDates].sort().at(-1) : null
+  };
   const offset=params.page*ARCHIVE_PAGE_SIZE;
   return {schema_version:1,archive:true,days:params.days,date:params.date,
     available_days:buckets.filter(x=>Array.isArray(x?.items)&&x.items.length>0).length,
     total:all.length,page:params.page,page_size:ARCHIVE_PAGE_SIZE,
     has_more:offset+ARCHIVE_PAGE_SIZE<all.length,
-    publishers,news:all.slice(offset,offset+ARCHIVE_PAGE_SIZE)};
+    publishers,stats,news:all.slice(offset,offset+ARCHIVE_PAGE_SIZE)};
 }

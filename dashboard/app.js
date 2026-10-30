@@ -38,6 +38,7 @@ async function loadHistory(page=0) {
   if(!archiveMode()) return;
   const requestId=++historyRequest;
   $("archive-status").textContent="Searching saved public news…";
+  $("archive-statistics").hidden=true;
   $("archive-search").disabled=true;
   const endpoint=archiveEndpoint(liveFeedUrl);
   const options={
@@ -63,6 +64,19 @@ async function loadHistory(page=0) {
     if(!archiveResponse(data)) throw Error("Invalid archive result");
     if(requestId!==historyRequest || !archiveMode()) return;
     historyItems=data.news.map((item,i)=>parseItem(item,"news",i)).filter(Boolean);
+    const stats=data.stats;
+    if(!stats || !Number.isInteger(stats.articles) || !Number.isInteger(stats.global) ||
+       !Number.isInteger(stats.india) || stats.articles<0 || stats.global<0 ||
+       stats.india<0 || stats.global+stats.india!==stats.articles ||
+       !(stats.earliest_date===null || /^\\d{4}-\\d{2}-\\d{2}$/.test(stats.earliest_date)) ||
+       !(stats.latest_date===null || /^\\d{4}-\\d{2}-\\d{2}$/.test(stats.latest_date)))
+      throw Error("Invalid archive statistics");
+    $("archive-stat-total").textContent=stats.articles.toLocaleString();
+    $("archive-stat-global").textContent=stats.global.toLocaleString();
+    $("archive-stat-india").textContent=stats.india.toLocaleString();
+    $("archive-stat-dates").textContent=stats.earliest_date ?
+      stats.earliest_date+(stats.latest_date===stats.earliest_date?"":" – "+stats.latest_date) : "No saved days";
+    $("archive-statistics").hidden=false;
     historyTotal=data.total;
     historyPage=data.page;
     historyHasMore=data.has_more;

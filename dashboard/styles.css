@@ -138,3 +138,10 @@
 
 /* Archive is the last workspace destination, visually separated from daily feeds. */
 .nav-item.nav-archive{margin-top:12px;border-top:1px solid #eae4ee;padding-top:16px}
+
+.archive-statistics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.archive-statistics>div{padding:13px;border:1px solid #ece5f2;border-radius:10px;background:#faf8fd;min-width:0}
+.archive-statistics span{display:block;color:#83798f;font-size:11px;margin-bottom:6px}
+.archive-statistics strong{display:block;color:#30263f;font-size:16px;overflow-wrap:anywhere}
+.archive-statistics[hidden]{display:none}
+@media(max-width:850px){.archive-statistics{grid-template-columns:repeat(2,minmax(0,1fr))}}
