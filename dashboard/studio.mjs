@@ -56,21 +56,76 @@ function prepareText(lines, url) {
   }
   return shortened + "\n\n" + link;
 }
+function conversationalHeadline(title, category) {
+  // Only a narrow, verifiable funding headline is paraphrased. Everything
+  // else remains an attributed headline, never a fabricated article summary.
+  const raise = /^(.+?)\s+(?:raises?|secures?)\s+([$€£₹]\s?\d[\d,.]*(?:[KMB]|\s?(?:million|billion))?)(?:\s+(Pre[- ]?Series\s?[A-Z]|Series\s?[A-Z]|Pre[- ]?Seed|Seed))?\b/i.exec(title);
+  if (category === "saas" && raise) {
+    const stage = raise[3] ? " in a " + raise[3] + " round" : "";
+    return raise[1].trim() + " reportedly raised " + raise[2] + stage + ".";
+  }
+  return title.replace(/^(?:Stock Market|Market Outlook)\s*:\s*/i, "").trim();
+}
+function conversationalAngles(item) {
+  const title = cleanText(item.title, MAX_HEADLINE);
+  if (item.category === "saas" && /\b(?:raises?|secures?)\b/i.test(title) && /[$€£₹]\s?\d/.test(title)) {
+    return {
+      brief: "I'm curious where the team takes the business from here.",
+      professional: "The amount is one part of the story. What matters next is how it gets used.",
+      analytical: "What will that capital actually help the company build?",
+      discussion: "Funding is the headline, but execution is the real test. What do you think?"
+    };
+  }
+  if (item.category === "markets" && (title.endsWith("?") || /\b(?:will|could|might|forecast)\b/i.test(title))) {
+    return {
+      brief: "I'd rather check the latest numbers than guess from a headline.",
+      professional: "It's a question, not a confirmed market direction.",
+      analytical: "Which data would you check before taking a view?",
+      discussion: "Would you make a call from this headline, or wait for actual trading data?"
+    };
+  }
+  if (item.category === "markets" && /earnings/i.test(title)) {
+    return {
+      brief: "I'd look at the actual results before drawing conclusions.",
+      professional: "What's behind the earnings misses matters more than the initial reaction.",
+      analytical: "What do the underlying earnings figures show compared with expectations?",
+      discussion: "How much should one set of earnings change the bigger picture?"
+    };
+  }
+  if (item.category === "saas") return {
+    brief: "I'm curious how this affects the people who use the product.",
+    professional: "I'd look beyond the announcement to see what customers can actually do.",
+    analytical: "What changes for customers, and which details are still unconfirmed?",
+    discussion: "Useful progress or just a good headline? What do you think?"
+  };
+  if (item.category === "markets") return {
+    brief: "I'd check the actual numbers before deciding what this means.",
+    professional: "The underlying figures and timing are more useful than the headline alone.",
+    analytical: "What does the source data confirm, and what's still interpretation?",
+    discussion: "Does this change your view, or is it too early to tell?"
+  };
+  return {
+    brief: "I'm curious what this means for people using the technology.",
+    professional: "The interesting part is what changes in practice, beyond the announcement.",
+    analytical: "What changes in practice? I'd look for details or a real demonstration.",
+    discussion: "Would this make a difference in your day-to-day work? What do you think?"
+  };
+}
 export function postStarters(item) {
   const url = safeArticleUrl(item?.source_url);
   const title = cleanText(item?.title, MAX_HEADLINE);
-  const publisher = cleanText(item?.publisher, 90);
   if (!title || !url) return [];
-  const attribution = publisher ? "Reported by " + publisher + ":" : "Reported headline:";
+  const lead = conversationalHeadline(title, item?.category);
+  const angles = conversationalAngles({...item, title});
   const starters = [
-    {tone:"brief", label:"News brief", description:"Simple, attributed update",
-     lines:[attribution + " " + title]},
-    {tone:"professional", label:"Professional", description:"Factual style with no added claims",
-     lines:["In the news: " + title, publisher ? "Source: " + publisher : "Review the reporting."]},
-    {tone:"analytical", label:"Analytical", description:"Adds a question, not an unsupported conclusion",
-     lines:["Worth examining: " + title, "What changes in practice?"]},
-    {tone:"discussion", label:"Discussion", description:"Invite opinions without asserting new facts",
-     lines:[title, "What do you think?"]}
+    {tone:"brief", label:"Conversational", description:"Easy, natural explanation",
+     lines:[lead, angles.brief]},
+    {tone:"professional", label:"Professional", description:"Clear, grounded perspective",
+     lines:[lead, angles.professional]},
+    {tone:"analytical", label:"Analytical", description:"A useful question without invented facts",
+     lines:[lead, angles.analytical]},
+    {tone:"discussion", label:"Discussion", description:"Invite a genuine conversation",
+     lines:[lead, angles.discussion]}
   ];
   return starters.map(draft => ({
     tone: draft.tone,

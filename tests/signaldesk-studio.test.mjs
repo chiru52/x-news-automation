@@ -22,6 +22,42 @@ test("four distinct headline-attributed writing starters, no network or API", ()
   assert.ok(variants.find(x => x.tone === "discussion").text.includes("What do you think"));
 });
 
+test("human funding drafts paraphrase only the stated amount and round", () => {
+  const story = {
+    title:"ALPHA10X Raises $5M Pre-Series A",
+    category:"saas", publisher:"The SaaS News",
+    source_url:"https://www.thesaasnews.com/news/alpha10x-raises-5m"
+  };
+  const variants = postStarters(story);
+  for (const variant of variants) {
+    assert.match(variant.text, /ALPHA10X reportedly raised \$5M in a Pre-Series A round/);
+    assert.ok(variant.text.endsWith(story.source_url));
+    assert.doesNotMatch(variant.text, /Read at |In the news:|Reported by /);
+    assert.ok(approximateXCharacters(variant.text) <= 280);
+  }
+  assert.match(variants[0].text, /curious where the team/);
+  assert.match(variants[2].text, /capital/);
+});
+
+test("market predictions stay questions instead of guaranteed results", () => {
+  const story = {...base, category:"markets",
+    title:"Stock Market: Will S&P 500 Open Up or Down Today?"};
+  const variants = postStarters(story);
+  for (const variant of variants) {
+    assert.ok(variant.text.includes("Will S&P 500 Open Up or Down Today?"));
+    assert.doesNotMatch(variant.text, /definitely rises|will open higher|buy now/i);
+  }
+  assert.match(variants[0].text, /latest numbers/);
+});
+
+test("earnings context is observational, not invented financial figures", () => {
+  const variants = postStarters({...base, category:"markets",
+    title:"Tech firms take fresh hit as earnings misses fan AI fears"});
+  assert.ok(variants[0].text.includes("actual results"));
+  assert.ok(variants[2].text.includes("underlying earnings figures"));
+  assert.ok(!variants[0].text.includes("$10 billion"));
+});
+
 test("newly written starters never claim unverified outcomes or fake AI generation", () => {
   const variants = postStarters(base);
   const text = variants.map(v=>v.text).join("\n");

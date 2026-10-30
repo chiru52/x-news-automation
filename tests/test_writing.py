@@ -23,13 +23,51 @@ class DraftSuggestionTests(unittest.TestCase):
         item = story(summary="ARTICLE SUMMARY: The model invented 99 new features.")
         suggestion = suggest_post(item)
         self.assertIn(item.title, suggestion["text"])
-        self.assertIn("Read at example.org:", suggestion["text"])
+        self.assertNotIn("Read at ", suggestion["text"])
+        self.assertIn("I", suggestion["text"].split("\n\n")[1])
         self.assertIn(item.link, suggestion["text"])
         self.assertNotIn("99 new features", suggestion["text"])
         self.assertFalse(suggestion["fact_checked"])
         self.assertFalse(suggestion["publishable"])
         self.assertFalse(suggestion["editor_approved"])
         self.assertFalse(suggestion["source_article_read"])
+
+    def test_funding_headline_becomes_natural_attributed_explanation(self):
+        result = suggest_post(story("ALPHA10X Raises $5M Pre-Series A",
+                                    category="saas",
+                                    link="https://www.thesaasnews.com/news/alpha10x"))
+        self.assertIn("ALPHA10X reportedly raised $5M in a Pre-Series A round", result["text"])
+        self.assertIn("what the team builds next", result["text"])
+        self.assertTrue(result["text"].endswith("https://www.thesaasnews.com/news/alpha10x"))
+        self.assertNotIn("Read at ", result["text"])
+        self.assertFalse(result["fact_checked"])
+
+    def test_market_question_remains_a_question_not_a_predicted_result(self):
+        result = suggest_post(story("Stock Market: Will S&P 500 Open Up or Down Today?",
+                                    category="markets"))
+        self.assertIn("Will S&P 500 Open Up or Down Today?", result["text"])
+        self.assertIn("open question", result["text"])
+        self.assertNotIn("will rise", result["text"].lower())
+        self.assertNotIn("will fall", result["text"].lower())
+
+    def test_earnings_uses_human_context_without_inventing_figures(self):
+        title = "Tech firms take fresh hit as earnings misses fan AI fears"
+        result = suggest_post(story(title, category="markets",
+                                    summary="Invented losses of 99 billion dollars"))
+        self.assertIn(title, result["text"])
+        self.assertIn("look at the actual results", result["text"])
+        self.assertNotIn("99 billion", result["text"])
+
+    def test_human_voice_is_deterministic_and_varies_across_categories(self):
+        title = "New product launches in the enterprise software market"
+        a = suggest_post(story(title, category="technology"))
+        b = suggest_post(story(title, category="technology"))
+        c = suggest_post(story(title, category="saas"))
+        self.assertEqual(a["text"], b["text"])
+        self.assertNotEqual(a["text"], c["text"])
+        self.assertNotIn("Read at ", a["text"])
+        self.assertIn("https://example.org/news", a["text"])
+        self.assertLessEqual(approximate_x_length(a["text"]), 270)
 
     def test_numbers_and_market_sensitive_claims_are_flagged(self):
         result = suggest_post(story("Nvidia shares rise 12% on $4B forecast",
@@ -66,7 +104,8 @@ class DraftSuggestionTests(unittest.TestCase):
                      link="https://stocktwits.com/news-articles/markets/example",
                      source="Yahoo Finance - Market Indices")
         suggestion = suggest_post(item)
-        self.assertIn("Read at stocktwits.com:", suggestion["text"])
+        self.assertIn("https://stocktwits.com/news-articles/markets/example", suggestion["text"])
+        self.assertNotIn("Read at ", suggestion["text"])
         self.assertNotIn("Via Yahoo Finance", suggestion["text"])
         self.assertEqual(suggestion["rss_feed_name"], "Yahoo Finance - Market Indices")
         self.assertEqual(suggestion["linked_article_site"], "stocktwits.com")
@@ -103,7 +142,8 @@ class DraftSuggestionTests(unittest.TestCase):
             render_outputs([story()], out, NOW, [], preview_only=True)
             data = json.loads((out / "review_queue.json").read_text(encoding="utf-8"))
             selected = data["articles"][0]
-            self.assertIn("Read at example.org:", selected["suggested_post"])
+            self.assertNotIn("Read at ", selected["suggested_post"])
+            self.assertIn("I", selected["suggested_post"])
             self.assertIn("[Write one verified insight", selected["draft"])
             self.assertFalse(selected["writing"]["fact_checked"])
             self.assertFalse(selected["publishable"])

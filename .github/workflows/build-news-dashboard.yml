@@ -13,6 +13,7 @@ on:
       - 'newsbot/trend_signals.py'
       - 'newsbot/__main__.py'
       - 'newsbot/core.py'
+      - 'newsbot/writing.py'
       - '.github/workflows/build-news-dashboard.yml'
   workflow_dispatch:
   schedule:
@@ -45,6 +46,7 @@ jobs:
       - name: Test public feed allowlist and no-posting safeguards
         run: |
           python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
+          python -m unittest discover -s tests -p 'test_writing.py' -v
           node --check dashboard/app.js
           node --test tests/signaldesk-studio.test.mjs
       - name: Collect current RSS candidates (review and copy only)
