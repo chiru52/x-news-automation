@@ -28,6 +28,12 @@ class HeaderAccountTests(unittest.TestCase):
         self.assertIn('id="account-workspace" hidden',html)
         self.assertIn('id="manage-profile-form"',html)
         self.assertIn('id="manage-password-form"',html)
+        self.assertIn('id="cloud-backup-save"',html)
+        self.assertIn('id="cloud-backup-restore"',html)
+        self.assertIn('signaldesk_personal_backups',js)
+        self.assertIn('collectBrowserBackup(localStorage)',js)
+        self.assertIn('restoreBrowserBackup(localStorage,payload)',js)
+        self.assertIn('window.confirm(',js)
         for field in ("manage-current-password","manage-new-password","manage-confirm-password"):
             self.assertIn(f'id="{field}"',html)
         self.assertNotIn('id="manage-preferences-form"',html)

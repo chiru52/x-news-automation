@@ -2,6 +2,7 @@ import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as s
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
+import {collectBrowserBackup, validateBackup, restoreBrowserBackup} from "./cloud-sync.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -1189,6 +1190,61 @@ async function updateOptionalAccountProfile(){
         $("manage-current-password").value="";
         $("manage-status").textContent="Password could not be updated. Check your current password and try again.";
       }finally{button.disabled=false;}
+    });
+    const cloudSave=$("cloud-backup-save");
+    const cloudRestore=$("cloud-backup-restore");
+    const cloudStatus=$("cloud-backup-status");
+    const disableBackupControls=disabled=>{cloudSave.disabled=disabled;cloudRestore.disabled=disabled;};
+    async function verifiedAccount(){
+      const {data,error}=await auth.auth.getUser();
+      if(error||!data?.user?.id||data.user.id!==currentAccount?.id)
+        throw Error("Your sign-in expired. Please sign in again.");
+      return data.user.id;
+    }
+    cloudSave.addEventListener("click",async()=>{
+      disableBackupControls(true);
+      cloudStatus.textContent="Checking private cloud backup…";
+      try{
+        const userId=await verifiedAccount();
+        const payload=collectBrowserBackup(localStorage);
+        const {data:previous,error:lookupError}=await auth
+          .from("signaldesk_personal_backups").select("updated_at")
+          .eq("user_id",userId).maybeSingle();
+        if(lookupError)throw lookupError;
+        if(previous && !window.confirm("Replace your existing cloud backup with this browser's current data? Other devices will not update automatically.")){
+          cloudStatus.textContent="Backup cancelled. No data was uploaded.";
+          return;
+        }
+        const {error}=await auth.from("signaldesk_personal_backups")
+          .upsert({user_id:userId,payload,updated_at:new Date().toISOString()},{onConflict:"user_id"});
+        if(error)throw error;
+        cloudStatus.textContent="Cloud backup saved. Open another device and choose Restore to this browser.";
+      }catch(error){
+        cloudStatus.textContent=error?.message?.startsWith("Browser data is too large")?error.message:
+          "Could not back up this browser. Your local work is unchanged.";
+      }finally{disableBackupControls(false);}
+    });
+    cloudRestore.addEventListener("click",async()=>{
+      disableBackupControls(true);
+      cloudStatus.textContent="Checking your private cloud backup…";
+      try{
+        const userId=await verifiedAccount();
+        const {data,error}=await auth.from("signaldesk_personal_backups")
+          .select("payload,updated_at").eq("user_id",userId).maybeSingle();
+        if(error)throw error;
+        if(!data){cloudStatus.textContent="No cloud backup yet. Back up a browser first.";return;}
+        const payload=validateBackup(data.payload);
+        if(!window.confirm("Replace the saved items, notes, drafts and workflow statuses on THIS browser with your cloud backup from "+
+          new Date(data.updated_at).toLocaleString()+"? Local changes not in that backup will be lost.")){
+          cloudStatus.textContent="Restore cancelled. Your local work is unchanged.";
+          return;
+        }
+        restoreBrowserBackup(localStorage,payload);
+        cloudStatus.textContent="Restored successfully. Reloading news and workflow…";
+        window.location.reload();
+      }catch(_error){
+        cloudStatus.textContent="Restore failed. Your existing browser data is unchanged.";
+      }finally{disableBackupControls(false);}
     });
     signOut.addEventListener("click",async()=>{
       signOut.disabled=true;accountStatus.hidden=false;accountStatus.textContent="Signing out…";

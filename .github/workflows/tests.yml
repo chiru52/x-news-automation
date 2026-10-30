@@ -23,6 +23,10 @@ jobs:
           node-version: '22'
       - name: Validate SignalDesk client JavaScript syntax offline
         run: node --check dashboard/app.js
+      - name: Test private cloud backup and restore offline
+        run: |
+          node --check dashboard/cloud-sync.mjs
+          node --test tests/signaldesk-cloud-backup.test.mjs
       - name: Test browser refresh clock alignment offline
         run: node --test tests/signaldesk-refresh-clock.test.mjs
       - name: Test Global/India/Trending news sections offline

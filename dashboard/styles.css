@@ -386,3 +386,22 @@
 .account-settings #account-password-form button:disabled{opacity:.65;cursor:wait}
 #account-settings-status{min-height:18px}
 .manage-account-grid input[type="password"]{min-width:0}
+
+
+/* Optional private account backup. No automatic synchronization for guests. */
+.cloud-backup-panel{margin-top:25px;padding:22px;border:1px solid var(--line);
+  border-radius:14px;background:var(--white)}
+.cloud-backup-panel h2{margin:0 0 7px;font-size:19px}
+.cloud-backup-panel>p{font-size:13px;color:var(--muted);line-height:1.6}
+.cloud-backup-actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:18px}
+.cloud-backup-actions button{padding:11px 16px;min-height:42px;cursor:pointer;
+  font:inherit;font-weight:650;border-radius:9px;border:1px solid var(--purple)}
+#cloud-backup-save{background:var(--purple);color:#fff}
+#cloud-backup-restore{background:var(--white);color:var(--purple)}
+.cloud-backup-actions button:disabled{cursor:wait;opacity:.6}
+#cloud-backup-status{min-height:20px}
+@media(max-width:600px){
+  .cloud-backup-panel{padding:16px}
+  .cloud-backup-actions{display:grid;grid-template-columns:1fr}
+  .cloud-backup-actions button{width:100%}
+}
