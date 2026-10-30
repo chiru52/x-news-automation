@@ -25,6 +25,13 @@ class HistoryUITests(unittest.TestCase):
         self.assertIn('function archiveMode() {return selectedView === "archive" && historyOpen;}',self.js)
         self.assertIn('"archive-controls").hidden = !archiveMode()',self.js)
 
+    def test_archive_optional_stats_never_block_article_results(self):
+        self.assertIn("const validStats=stats",self.js)
+        self.assertIn('if(validStats)',self.js)
+        self.assertIn('$("archive-statistics").hidden=true',self.js)
+        self.assertNotIn('throw Error("Invalid archive statistics")',self.js)
+        self.assertIn(r'/^\d{4}-\d{2}-\d{2}$/.test(stats.earliest_date)',self.js)
+
     def test_archive_clear_filters_resets_all_controls_without_navigation(self):
         self.assertIn('id="archive-clear-filters"', self.page)
         section=self.js.split('$("archive-clear-filters").addEventListener("click",()=>{',1)[1].split('\n});',1)[0]
