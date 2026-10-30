@@ -9,6 +9,7 @@ import { XMLParser } from "fast-xml-parser";
 import feeds from "../config/sources.json" with {type:"json"};
 import {ARCHIVE_TTL_SECONDS, archiveDate, historyKey, mergeDailyArchive, historyParams, queryArchive} from "./archive.mjs";
 import {sameNewsEvent, editorialSignals} from "./intelligence.mjs";
+import {recoverRecentStories,coverageSummary} from "./source-reliability.mjs";
 
 export const CRON = "*/15 * * * *";
 const MAX_AGE_MS = 36 * 60 * 60 * 1000;
@@ -90,6 +91,11 @@ function atomLink(entry) {
 export function parseFeed(xml, feed, nowMs=Date.now()) {
   if (typeof xml !== "string" || xml.length > MAX_FEED_BYTES * 1.2) throw Error("Invalid feed");
   const root=XML.parse(xml);
+  // A 200 response containing HTML (or malformed markup) is not a healthy feed.
+  if(/<!DOCTYPE|<!ENTITY/i.test(xml) ||
+     !(root?.rss?.channel && typeof root.rss.channel==="object" ||
+       root?.feed && typeof root.feed==="object"))
+    throw Error("Invalid RSS or Atom document");
   const raw = root?.rss?.channel?.item ?? root?.feed?.entry ?? [];
   const entries=(Array.isArray(raw) ? raw : [raw]).slice(0,MAX_ITEMS_PER_FEED);
   const result=[];
@@ -188,7 +194,7 @@ export function selectStories(stories) {
   return result;
 }
 async function collectOne(feed, fetcher, nowMs) {
-  if (!SAFE_CATEGORIES.includes(feed.category) || !validUrl(feed.url)) return {articles:[],error:true};
+  if (!SAFE_CATEGORIES.includes(feed.category) || !validUrl(feed.url)) return {articles:[],error:true,feed};
   try {
     const response=await fetcher(feed.url,{headers:{"user-agent":"SignalDeskRSSReader/1.0"},
       signal:AbortSignal.timeout(FETCH_TIMEOUT_MS)});
@@ -196,8 +202,8 @@ async function collectOne(feed, fetcher, nowMs) {
       throw Error("Feed unavailable");
     const raw=await response.text();
     if (new TextEncoder().encode(raw).length>MAX_FEED_BYTES) throw Error("Feed too large");
-    return {articles:parseFeed(raw,feed,nowMs),error:false};
-  } catch { return {articles:[],error:true}; }
+    return {articles:parseFeed(raw,feed,nowMs),error:false,feed};
+  } catch { return {articles:[],error:true,feed}; }
 }
 export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   if (!env?.NEWS_CACHE?.put) throw Error("Shared KV binding missing");
@@ -206,15 +212,32 @@ export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   for(let i=0;i<sources.length;i+=MAX_CONCURRENT) {
     results.push(...await Promise.all(sources.slice(i,i+MAX_CONCURRENT).map(s=>collectOne(s,fetcher,nowMs))));
   }
-  const allArticles=results.flatMap(x=>x.articles);
+  const freshArticles=results.flatMap(x=>x.articles);
+  // Never refresh a snapshot on cached stories alone. At least five truly new
+  // eligible headlines must arrive before a fresh snapshot is published.
+  const freshSelected=selectStories(freshArticles);
+  if(freshSelected.length < MIN_STORIES)
+    return {ok:false,reason:"insufficient_new_stories",count:freshSelected.length};
+  const failedFeeds=results.filter(x=>x.error).map(x=>x.feed);
+  let carried=[];
+  if(failedFeeds.length && env.NEWS_CACHE.get){
+    try {
+      const previous=await env.NEWS_CACHE.get(SNAPSHOT_KEY);
+      carried=recoverRecentStories(previous?JSON.parse(previous):null,failedFeeds,nowMs);
+    } catch { /* Fallback is optional; never prevent fresh news updates. */ }
+  }
+  const allArticles=[...freshArticles,...carried];
   const selected=selectStories(allArticles);
   const indiaSelected=selectIndiaStories(allArticles);
-  // A failing RSS network never overwrites a healthy, previous public cache.
-  if (selected.length < MIN_STORIES) return {ok:false,reason:"insufficient_new_stories",count:selected.length};
   const news=await Promise.all(selected.map(article=>publicItem(article,allArticles,nowMs)));
   const india_news=await Promise.all(indiaSelected.map(article=>publicItem(article,allArticles,nowMs)));
+  const retainedNews=selected.filter(article=>article.carried_from_previous).length;
+  const retainedIndia=indiaSelected.filter(article=>article.carried_from_previous).length;
+  const warnings=[];
+  if(failedFeeds.length)warnings.push("some_feed_sources_unavailable");
+  if(retainedNews||retainedIndia)warnings.push("recent_cached_stories_retained");
   const data={schema_version:1,generated_at:new Date(nowMs).toISOString(),news,india_news,drafts:[],
-    warnings:results.some(x=>x.error)?["some_feed_sources_unavailable"]:[]};
+    warnings,coverage:coverageSummary(sources,results,retainedNews,retainedIndia)};
   await env.NEWS_CACHE.put(SNAPSHOT_KEY,JSON.stringify(data));
   // Optional archive is bounded to one day-key per Cron. Failure cannot
   // corrupt or interrupt the working live-feed update.

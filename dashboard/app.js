@@ -169,6 +169,20 @@ async function liveConfig() {
   } catch (_) { /* Daily static feed remains the fallback. */ }
   return liveFeedUrl;
 }
+function boundedFeedCoverage(value) {
+  // Public aggregate counts only. Ignore malformed or future schema extensions.
+  if(!value||typeof value!=="object"||Array.isArray(value))return null;
+  const fields=["sources_checked","sources_failed","sources_with_recent_stories",
+    "india_sources_failed","retained_news","retained_india"];
+  if(fields.some(field=>!Number.isInteger(value[field])||value[field]<0||
+    value[field]>40))return null;
+  if(!value.sources_checked||value.sources_checked>20||
+    value.sources_failed>value.sources_checked||
+    value.sources_with_recent_stories>value.sources_checked-value.sources_failed||
+    value.india_sources_failed>value.sources_failed||
+    value.retained_news>30||value.retained_india>15)return null;
+  return Object.fromEntries(fields.map(field=>[field,value[field]]));
+}
 async function readFeedData() {
   const r=await fetch("./data.json",{cache:"no-store"});
   if (!r.ok) throw Error("Static feed unavailable");
@@ -193,6 +207,7 @@ async function readFeedData() {
       news:dynamic.news,
       india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 15 ? dynamic.india_news : [],
       drafts:staticData.drafts,
+      coverage:boundedFeedCoverage(dynamic.coverage),
       warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
     },fromLive:true};
   } catch (_) {
@@ -1064,9 +1079,18 @@ async function initialize(background = false) {
       month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit"
     }).format(date);
 
-    $("refresh-note").textContent = fromLive
+    const coverage=fromLive?boundedFeedCoverage(data.coverage):null;
+    const coverageText=coverage
+      ? " · "+coverage.sources_with_recent_stories+"/"+coverage.sources_checked+
+        " feeds supplied recent stories"+
+        (coverage.sources_failed?" · "+coverage.sources_failed+" unavailable":"")+
+        (coverage.retained_news||coverage.retained_india
+          ?" · recent headlines retained during outages":"")
+      : "";
+    $("refresh-note").textContent = (fromLive
       ? "News is collected approximately every 15 minutes. Last refreshed shows the news generation time."
-      : "Showing the latest available news snapshot. Last refreshed shows when it was generated.";
+      : "Showing the latest available news snapshot. Last refreshed shows when it was generated.")+
+      coverageText;
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();

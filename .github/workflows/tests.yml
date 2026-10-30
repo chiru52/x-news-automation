@@ -45,6 +45,10 @@ jobs:
         run: node --test tests/signaldesk-ai-gateway.test.mjs
       - name: Install pinned RSS XML parser for offline Worker tests
         run: npm install --prefix news-collector --no-audit --no-fund
+      - name: Test bounded source recovery and feed coverage diagnostics offline
+        run: |
+          node --check news-collector/source-reliability.mjs
+          node --test tests/signaldesk-source-reliability.test.mjs
       - name: Test shared Cloudflare Cron collector and read-only KV API offline
         run: |
           node --check news-collector/worker.mjs

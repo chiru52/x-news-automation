@@ -42,6 +42,8 @@ jobs:
           node --test tests/signaldesk-news-collector.test.mjs
           node --test tests/signaldesk-news-intelligence.test.mjs
           node --check news-collector/intelligence.mjs
+          node --check news-collector/source-reliability.mjs
+          node --test tests/signaldesk-source-reliability.test.mjs
           node --check news-collector/worker.mjs
       - name: Verify Cloudflare account credentials exist
         env:
