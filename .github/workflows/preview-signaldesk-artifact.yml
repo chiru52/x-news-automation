@@ -1,0 +1,62 @@
+name: Build SignalDesk preview artifact (no deployment)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preview:
+    if: github.repository == 'chiru52/x-news-automation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLISH_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate dashboard assets and writing safeguards
+        run: |
+          python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
+          python -m unittest discover -s tests -p 'test_signaldesk_topic_writer_ui.py' -v
+          node --check dashboard/app.js
+          node --check dashboard/perspective.mjs
+          node --test tests/signaldesk-perspective.test.mjs
+      - name: Generate review-only RSS preview
+        run: python -m newsbot --preview --dashboard-limit 30 --output output/dashboard-news
+      - name: Create public-only preview bundle without private GitHub issue access
+        run: |
+          printf '[]\n' > /tmp/signaldesk-empty-issues.json
+          python -m newsbot.dashboard_export --queue output/dashboard-news/review_queue.json --issues-file /tmp/signaldesk-empty-issues.json --output dist/signaldesk
+          python -m news_collector.configure_live dist/signaldesk
+      - name: Verify output and Topic Writer assets
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from newsbot.dashboard_export import validate_public_bundle
+          root = Path('dist/signaldesk')
+          data = json.loads((root/'data.json').read_text(encoding='utf-8'))
+          validate_public_bundle(data)
+          for name in ('index.html','app.js','perspective.mjs','styles.css','feed-config.json','_headers'):
+              if not (root/name).is_file():
+                  raise RuntimeError(f'Missing preview file: {name}')
+          if 'topic-writer-toggle' not in (root/'index.html').read_text(encoding='utf-8'):
+              raise RuntimeError('Topic Writer UI missing')
+          print('Validated preview bundle; no private GitHub issues exported')
+          PY
+      - name: Upload preview-only artifact (never deploy)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signaldesk-preview-${{ github.run_id }}
+          path: dist/signaldesk/
+          if-no-files-found: error
+          retention-days: 7
