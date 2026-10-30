@@ -7,6 +7,30 @@ const CATEGORIES = {
 let records = [], selectedView = "all", selectedCategory = "all", query = "";
 const savedKey = "signaldesk:saved:v1";
 let saved = new Set();
+const editsKey = "signaldesk:edits:v1";
+const edits = new Map();
+try {
+  const raw = JSON.parse(localStorage.getItem(editsKey) || "{}");
+  if (raw && typeof raw === "object" && !Array.isArray(raw)) {
+    for (const [id, value] of Object.entries(raw).slice(0, 100)) {
+      if (id.length <= 140 && typeof value === "string" && value.length <= 1000) edits.set(id, value);
+    }
+  }
+} catch (_) { /* Browser storage is optional. */ }
+function persistEdits() {
+  try { localStorage.setItem(editsKey, JSON.stringify(Object.fromEntries(edits))); }
+  catch (_) { showNotice("Your browser couldn't save this edit locally. Copy it before leaving the page."); }
+}
+function rememberEdit(id, content, original) {
+  if (content === original) edits.delete(id);
+  else {
+    edits.delete(id);
+    edits.set(id, content);
+    if (edits.size > 100) edits.delete(edits.keys().next().value);
+  }
+  persistEdits();
+}
+
 try {
   const parsed = JSON.parse(localStorage.getItem(savedKey) || "[]");
   if (Array.isArray(parsed)) saved = new Set(parsed.filter(x => typeof x === "string").slice(0, 300));
@@ -125,15 +149,49 @@ function card(item) {
   } else {
     node.querySelector(".card-source").hidden = true;
   }
-  const draft = clean(item.post, 1000).trim();
-  node.querySelector(".draft-text").textContent = draft || "No suggested post is available for this item.";
-  const len = draft.length;
-  const char = node.querySelector(".char-count");
-  char.textContent = draft ? len + " characters · Verify before copying" : "No draft";
-  if (len > 280) char.classList.add("over");
+  const suggestion = clean(item.post, 1000).trim();
+  const postText = node.querySelector(".draft-text");
+  const chars = node.querySelector(".char-count");
   const copy = node.querySelector(".copy-button");
-  copy.disabled = !draft;
-  copy.addEventListener("click", () => handleCopy(draft, copy));
+  const editButton = node.querySelector(".edit-button");
+  const composer = node.querySelector(".compose-panel");
+  const editor = node.querySelector(".compose-input");
+  const reset = node.querySelector(".reset-edit");
+  const tag = node.querySelector(".review-tag");
+  let editing = false;
+  const currentDraft = () => edits.has(item.id) ? edits.get(item.id) : suggestion;
+  function refreshDraft() {
+    const text = currentDraft();
+    postText.textContent = text || "No draft available. Use Edit draft to write one.";
+    if (!editing) editor.value = text;
+    chars.textContent = text.length + " characters" +
+      (text.length > 280 ? " · Over 280; X may shorten URLs" : " · Verify before sharing");
+    chars.classList.toggle("over", text.length > 280);
+    copy.disabled = !text.trim();
+    tag.textContent = edits.has(item.id) ? "LOCALLY EDITED · VERIFY" : "REVIEW BEFORE SHARING";
+    reset.disabled = !edits.has(item.id);
+  }
+  function showEditor(open) {
+    editing = open;
+    composer.hidden = !open;
+    postText.hidden = open;
+    editButton.textContent = open ? "Done editing" : "Edit draft";
+    editButton.setAttribute("aria-expanded", String(open));
+    if (open) { editor.value = currentDraft(); editor.focus(); }
+  }
+  editor.addEventListener("input", () => {
+    rememberEdit(item.id, editor.value.slice(0, 1000), suggestion);
+    refreshDraft();
+  });
+  reset.addEventListener("click", () => {
+    rememberEdit(item.id, suggestion, suggestion);
+    editor.value = suggestion;
+    refreshDraft();
+    editor.focus();
+  });
+  editButton.addEventListener("click", () => showEditor(!editing));
+  copy.addEventListener("click", () => handleCopy(currentDraft().trim(), copy));
+  refreshDraft();
   const status = node.querySelector(".status-info");
   if (item.kind === "draft") {
     status.textContent = item.status === "reviewed" ? "Editorial review completed" : "Not fact-checked";
