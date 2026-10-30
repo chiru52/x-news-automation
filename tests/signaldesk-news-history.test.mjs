@@ -139,3 +139,14 @@ test("archive sorting applies before pagination and rejects invalid sort values"
   const url=archiveQuery(endpoint,{days:7,date:null,region:"all",publisher:"",category:"all",q:"",page:0,sort:"oldest"});
   assert.equal(new URL(url).searchParams.get("sort"),"oldest");
 });
+
+test("archive statistics count distinct unfiltered articles and dates independent of pagination",()=>{
+  const recent=mergeDailyArchive(null,[item(91,"india"),item(92,"global")],NOW);
+  const older=mergeDailyArchive(null,[item(91,"india"),item(93,"global","Other", "markets",NOW-86400000)],NOW-86400000);
+  const params=historyParams(new URL("https://worker.example/archive?region=india&q=launch"),NOW);
+  const out=queryArchive([recent,older],params);
+  assert.equal(out.total,1);
+  assert.deepEqual(out.stats,{articles:3,global:2,india:1,
+    earliest_date:"2026-10-29",latest_date:"2026-10-30"});
+  assert.equal(queryArchive([] ,params).stats.earliest_date,null);
+});
