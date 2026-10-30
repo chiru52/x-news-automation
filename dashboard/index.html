@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
+  <meta name="color-scheme" content="light dark">
   <meta name="robots" content="index, follow">
   <title>SignalDesk — Your AI news workspace</title>
   <meta name="description" content="Public AI news dashboard: browse sources and copy suggested X posts. No automatic posting.">
@@ -33,13 +33,12 @@
     <div class="workspace">
       <header class="topbar">
         <div class="mobile-brand"><span class="brand-mark">S<span class="brand-dot">.</span></span><strong>signaldesk</strong></div>
-        <div class="crumb"><span>Workspace</span><span class="slash">/</span><strong>News feed</strong></div>
-        <div class="top-right"><span id="sync-indicator" class="sync-indicator"><span class="pulse"></span> Reading feed</span><span class="avatar" aria-label="SignalDesk">SD</span></div>
+        <div class="top-right"><span class="header-refreshed"><span>Last refreshed</span><strong id="updated-display">—</strong></span><button type="button" id="theme-toggle" class="theme-toggle" aria-label="Switch to dark theme" aria-pressed="false" title="Toggle light and dark theme"><span class="theme-sun" aria-hidden="true">☀</span><span class="theme-moon" aria-hidden="true">☾</span></button></div>
       </header>
       <main class="content">
         <section class="intro">
           <div class="eyebrow"><span class="eyebrow-line"></span> YOUR DAILY INTELLIGENCE</div>
-          <div class="intro-heading"><div><h1>The signal, <em>without</em> the noise.</h1><p>Discover what's important. Shape your point of view. Share only when you're ready.</p></div><div class="today-box"><span>LAST REFRESHED</span><strong id="updated-display">—</strong><small id="last-checked-display" class="last-checked-display">Browser check pending</small></div></div>
+          <div class="intro-heading"><div><h1>The signal, <em>without</em> the noise.</h1><p>Discover what's important. Shape your point of view. Share only when you're ready.</p></div></div>
         </section>
         <section class="metrics" aria-label="Feed overview">
           <div class="metric"><span class="metric-icon lilac">▤</span><div><span id="count-news-label">News stories</span><strong id="count-news">—</strong></div></div>
@@ -47,7 +46,7 @@
           <div class="metric"><span class="metric-icon mint">✓</span><div><span id="count-ready-label">Ready to copy</span><strong id="count-ready">—</strong></div></div>
         </section>
         <section class="feed-section">
-          <div class="section-title"><div><span class="section-kicker">EDITORIAL FEED</span><h2 id="feed-title">Explore the latest</h2><p id="feed-description">Explore global and India news together. Trending stories are included, without duplicates.</p><p id="refresh-note" class="refresh-note"><span aria-hidden="true">↻</span> News is collected approximately every 15 minutes. This browser checks shortly afterward; Last refreshed shows when the news was generated.</p></div><div class="results" id="result-count" aria-live="polite">—</div></div>
+          <div class="section-title"><div><span class="section-kicker">EDITORIAL FEED</span><h2 id="feed-title">Explore the latest</h2><p id="feed-description">Explore global and India news together. Trending stories are included, without duplicates.</p><p id="refresh-note" class="refresh-note"><span aria-hidden="true">↻</span> News is collected approximately every 15 minutes. Last refreshed shows when the news was generated.</p></div><div class="results" id="result-count" aria-live="polite">—</div></div>
           <div class="toolbar">
             <div class="search-wrap"><span aria-hidden="true">⌕</span><label class="sr-only" for="search-input">Search articles and drafts</label><input id="search-input" type="search" placeholder="Search stories, companies, topics..." autocomplete="off"></div>
             <div id="workflow-filters" class="workflow-filters" role="group" aria-label="Filter personal workflow status" hidden>
