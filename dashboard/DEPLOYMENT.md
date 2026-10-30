@@ -1,5 +1,18 @@
 # SignalDesk — public Cloudflare news dashboard
 
+## News History — rolling 30-day public archive
+
+**All Stories → Browse news history (30 days)** opens a read-only archive explorer without adding an eighth sidebar item. Choose Last 7 days, Last 30 days, or a single UTC date, and filter by India/Global, publisher, news category and keyword. Search is initiated explicitly (button or Enter), and the response returns up to 60 articles per page.
+
+Every successful 15-minute RSS collection writes one additional UTC daily KV bucket, key prefix `signaldesk:news:archive:v1:`, containing deduplicated public RSS headlines only (up to 120 URLs per day). No GitHub issues, user edits, passwords, personal information, private drafts, or full articles enter this storage. The live KV snapshot is written independently before archiving; archive storage failure does not interrupt live news.
+
+The Worker exposes only a read-only GET /archive endpoint. It reads up to 30 daily KV keys, rejects dates outside the rolling 30-day interval, and applies keyword, source, region and category filters before paginating results. Each day bucket has a 32-day expiration TTL. Dates older than 30 days are not accessible via the API.
+
+**History starts when this collector version is deployed and a successful scheduled run writes its first bucket.** The feature cannot backfill 30 days of old stories from previous live snapshots. The UI clearly explains an empty history.
+
+Cost estimate: up to 96 extra KV writes/day, plus existing 96 live snapshot writes/day, about 192 writes/day in total if all scheduled runs succeed. 7-day searches require up to seven KV reads, and 30-day searches up to 30 KV reads. These are account-wide Cloudflare quota resources; monitor usage. Browsers never poll the archive in the background. No paid AI or X posting.
+
+
 ## Navigation: seven distinct sections
 
 The sidebar has one simple menu with precisely seven choices: **All Stories,

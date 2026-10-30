@@ -7,6 +7,7 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import feeds from "../config/sources.json" with {type:"json"};
+import {ARCHIVE_TTL_SECONDS, archiveDate, historyKey, mergeDailyArchive, historyParams, queryArchive} from "./archive.mjs";
 
 export const CRON = "*/15 * * * *";
 const MAX_AGE_MS = 36 * 60 * 60 * 1000;
@@ -223,7 +224,19 @@ export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   const data={schema_version:1,generated_at:new Date(nowMs).toISOString(),news,india_news,drafts:[],
     warnings:results.some(x=>x.error)?["some_feed_sources_unavailable"]:[]};
   await env.NEWS_CACHE.put(SNAPSHOT_KEY,JSON.stringify(data));
-  return {ok:true,count:news.length,failed_sources:results.filter(x=>x.error).length};
+  // Optional archive is bounded to one day-key per Cron. Failure cannot
+  // corrupt or interrupt the working live-feed update.
+  let archive_written=false;
+  if(env.NEWS_CACHE.get) {
+    try {
+      const day=archiveDate(nowMs), key=historyKey(day);
+      const previous=await env.NEWS_CACHE.get(key,"json");
+      const merged=mergeDailyArchive(previous,[...india_news,...news],nowMs);
+      await env.NEWS_CACHE.put(key,JSON.stringify(merged),{expirationTtl:ARCHIVE_TTL_SECONDS});
+      archive_written=true;
+    } catch { /* Keep live RSS available even when history KV fails. */ }
+  }
+  return {ok:true,count:news.length,archive_written,failed_sources:results.filter(x=>x.error).length};
 }
 export async function handleRequest(request,env) {
   const u=new URL(request.url);
@@ -231,6 +244,19 @@ export async function handleRequest(request,env) {
     return res(405,{error:"Read-only endpoint"});
   if (u.pathname==="/health")
     return res(200,{status:"read_only",x_posting_enabled:false,ai_generation_enabled:false});
+  if (u.pathname==="/archive") {
+    if (!env?.NEWS_CACHE?.get) return res(503,{error:"Archive cache not configured"});
+    const params=historyParams(u);
+    if(!params) return res(400,{error:"Invalid archive filters or date"});
+    try {
+      // Max 30 day-key reads, all public RSS data, no upstream RSS fetch.
+      const buckets=await Promise.all(params.dates.map(async day=>{
+        try {return await env.NEWS_CACHE.get(historyKey(day),"json");}
+        catch {return null;}
+      }));
+      return res(200,queryArchive(buckets,params));
+    } catch {return res(503,{error:"Archive temporarily unavailable"});}
+  }
   if (u.pathname!=="/feed") return res(404,{error:"Not found"});
   if (!env?.NEWS_CACHE?.get) return res(503,{error:"Feed cache not configured"});
   try {

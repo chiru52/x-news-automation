@@ -65,6 +65,19 @@
               <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
             </div>
           </div>
+          <div id="archive-entry" class="archive-entry"><button type="button" id="archive-toggle" class="secondary-action" aria-expanded="false">▤ Browse news history (30 days)</button><span class="archive-entry-note">Public RSS headlines saved since archive activation, not a full-article archive.</span></div>
+          <section id="archive-controls" class="archive-controls" aria-label="News history filters" hidden>
+            <div class="archive-controls-head"><div><strong>News history</strong><p>Browse up to 30 days of public articles, starting when the archive was activated.</p></div><button type="button" id="archive-close" class="secondary-action">Back to latest news</button></div>
+            <div class="archive-filter-grid">
+              <label>Period<select id="archive-days"><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select></label>
+              <label>Specific date (optional)<input id="archive-date" type="date" aria-label="Specific UTC archive date"/></label>
+              <label>Region<select id="archive-region"><option value="all">Global + India</option><option value="global">Global only</option><option value="india">India only</option></select></label>
+              <label>Publisher<select id="archive-publisher"><option value="">All publishers</option></select></label>
+            </div>
+            <div class="archive-submit"><button type="button" id="archive-search" class="load-more">Search history</button><span>Use the search box above for company or keyword searches. Press Search history to apply.</span></div>
+            <p class="archive-status" id="archive-status" role="status" aria-live="polite">Choose a period to browse saved headlines.</p>
+            <div id="archive-pagination" class="archive-pagination" hidden><button type="button" id="archive-prev" class="secondary-action">Previous</button><span id="archive-page-label"></span><button type="button" id="archive-next" class="secondary-action">Next</button></div>
+          </section>
           <p id="feed-disclaimer" class="feed-disclaimer" hidden>Trending is an editorial ranking of the current RSS feed, not X popularity, verified facts, or independent source confirmation.</p>
           <div id="alert" role="status" class="notice" hidden></div>
           <div id="copy-undo" class="copy-undo" role="status" hidden><span id="copy-undo-message"></span><div class="copy-undo-actions"><button id="view-copied" type="button">View copied articles</button><button id="undo-copy" type="button">Undo</button></div></div>

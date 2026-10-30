@@ -113,3 +113,25 @@
 .empty-actions{margin-top:16px}
 .copy-undo-actions button:first-child{background:#7048c8;color:#fff;border-color:#7048c8}
 .copy-undo-actions button:first-child:hover,.copy-undo-actions button:first-child:focus-visible{background:#5939a4}
+
+
+/* News History is a sub-view of All Stories, not an eighth sidebar menu. */
+.archive-entry{display:flex;flex-wrap:wrap;align-items:center;gap:12px;margin:0 0 14px}
+.archive-entry-note{font-size:11px;color:#9b95a5;line-height:1.55}
+.archive-controls{margin:0 0 17px;padding:17px 18px;border:1px solid #e9e0f1;border-radius:14px;background:#fff;box-shadow:0 4px 18px rgba(73,52,110,.035)}
+.archive-controls-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.archive-controls-head strong{font-size:15px;color:#292435}
+.archive-controls-head p{margin:6px 0 0;font-size:11px;color:#9790a0;line-height:1.6}
+.archive-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.archive-filter-grid label{display:flex;flex-direction:column;gap:5px;font-size:11px;font-weight:600;color:#787185}
+.archive-filter-grid select,.archive-filter-grid input{width:100%;min-width:0;border:1px solid #e2dae9;border-radius:8px;background:#fff;color:#494155;padding:9px 8px;font-size:12px}
+.archive-filter-grid select:focus-visible,.archive-filter-grid input:focus-visible{outline:2px solid #9d76e5;outline-offset:2px}
+.archive-submit{display:flex;align-items:center;gap:13px;flex-wrap:wrap;margin-top:13px}
+.archive-submit span{color:#9b93a5;font-size:11px}
+.archive-status{color:#7d7191;font-size:11px;line-height:1.6;margin:12px 0 0}
+.archive-pagination{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:14px}
+.archive-pagination span{font-size:11px;color:#868093}
+.archive-pagination button:disabled{cursor:default;opacity:.4}
+.archive-entry[hidden],.archive-controls[hidden],.archive-pagination[hidden]{display:none}
+@media(max-width:850px){.archive-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:440px){.archive-filter-grid{grid-template-columns:1fr}.archive-controls{padding:13px}}

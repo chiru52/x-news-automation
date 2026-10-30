@@ -52,6 +52,8 @@ jobs:
           python -m unittest discover -s tests -p 'test_signaldesk_rss_context.py' -v
           node --check dashboard/app.js
           node --test tests/signaldesk-refresh-clock.test.mjs
+          npm install --prefix news-collector --no-audit --no-fund
+          node --test tests/signaldesk-news-history.test.mjs
           node --test tests/signaldesk-news-sections.test.mjs
           node --test tests/signaldesk-studio.test.mjs
       - name: Collect current RSS candidates (review and copy only)

@@ -1,6 +1,7 @@
 import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
+import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -9,6 +10,88 @@ const CATEGORIES = {
 };
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
 let visibleCount = 12;
+let historyOpen = false, historyItems = [], historyTotal = 0;
+let historyPage = 0, historyHasMore = false, historyRequest = 0;
+function archiveMode() {return selectedView === "all" && historyOpen;}
+function trackHistoryItem(item) {
+  // Copied archive cards need to appear in the existing personal library.
+  // Keep this historical item out of the current live news metrics.
+  if(archiveMode() && !records.some(value=>value.id===item.id))
+    records.push({...item,history_only:true});
+}
+
+function setArchiveVisibility() {
+  $("archive-entry").hidden = selectedView !== "all" || historyOpen;
+  $("archive-controls").hidden = !archiveMode();
+  $("archive-toggle").setAttribute("aria-expanded", String(archiveMode()));
+}
+function exitArchive() {
+  historyOpen = false;
+  historyRequest++;
+  historyItems = [];
+  historyTotal = 0;
+  historyPage = 0;
+  historyHasMore = false;
+  setArchiveVisibility();
+}
+async function loadHistory(page=0) {
+  if(!archiveMode()) return;
+  const requestId=++historyRequest;
+  $("archive-status").textContent="Searching saved public news…";
+  $("archive-search").disabled=true;
+  const endpoint=archiveEndpoint(liveFeedUrl);
+  const options={
+    days:Number($("archive-days").value),
+    date:$("archive-date").value || null,
+    region:$("archive-region").value,
+    publisher:$("archive-publisher").value,
+    category:selectedCategory,
+    q:$("search-input").value.trim().slice(0,100),
+    page
+  };
+  const url=archiveQuery(endpoint,options);
+  if(!url) {
+    $("archive-search").disabled=false;
+    $("archive-status").textContent="History is not available from this news source.";
+    return;
+  }
+  try {
+    const response=await fetch(url,{cache:"no-store",credentials:"omit",mode:"cors"});
+    if(!response.ok) throw Error("News history HTTP "+response.status);
+    const data=await response.json();
+    if(!archiveResponse(data)) throw Error("Invalid archive result");
+    if(requestId!==historyRequest || !archiveMode()) return;
+    historyItems=data.news.map((item,i)=>parseItem(item,"news",i)).filter(Boolean);
+    historyTotal=data.total;
+    historyPage=data.page;
+    historyHasMore=data.has_more;
+    const publisherSelect=$("archive-publisher");
+    const selected=publisherSelect.value;
+    publisherSelect.replaceChildren(new Option("All publishers",""),
+      ...data.publishers.map(name=>new Option(name,name)));
+    if([...publisherSelect.options].some(option=>option.value===selected))
+      publisherSelect.value=selected;
+    $("archive-status").textContent= data.available_days===0
+      ? "History is building from today. Previous days cannot be backfilled automatically."
+      : data.total+" matching articles across "+data.available_days+
+        " saved UTC day(s). Public RSS headlines only; verify publishers.";
+    $("archive-pagination").hidden=!(data.total>60);
+    $("archive-page-label").textContent="Page "+(historyPage+1)+" · "+historyTotal+" matches";
+    $("archive-prev").disabled=historyPage===0;
+    $("archive-next").disabled=!historyHasMore;
+    visibleCount=60;
+    render();
+  } catch (_) {
+    if(requestId!==historyRequest || !archiveMode()) return;
+    historyItems=[];historyTotal=0;historyHasMore=false;
+    $("archive-pagination").hidden=true;
+    $("archive-status").textContent="News history is temporarily unavailable. Latest news remains accessible.";
+    render();
+  } finally {
+    if(requestId===historyRequest) $("archive-search").disabled=false;
+  }
+}
+
 let loadedSnapshot = "";
 let feedCheckInProgress = false;
 let lastFeedCheckAt = 0;
@@ -220,6 +303,41 @@ function safeSource(value) {
     return url.protocol === "https:" && !url.username && !url.password ? url.href : "";
   } catch (_) { return ""; }
 }
+// Historical bookmarked headlines stay accessible in Saved for Later on
+// this browser even after the rolling 30-day public archive moves on.
+const savedHistoryKey="signaldesk:saved-history:v1";
+const savedHistory=new Map();
+try {
+  const entries=JSON.parse(localStorage.getItem(savedHistoryKey)||"[]");
+  if(Array.isArray(entries)) for(const entry of entries.slice(-100)) {
+    if(entry && /^news:[a-f0-9]{24}$/.test(entry.id) &&
+       typeof entry.title==="string" && safeSource(entry.source_url))
+      savedHistory.set(entry.id,entry);
+  }
+} catch (_) { /* Local storage is optional. */ }
+function rememberSavedHistory(item) {
+  if(archiveMode() && saved.has(item.id)) {
+    trackHistoryItem(item);
+    savedHistory.delete(item.id);
+    savedHistory.set(item.id,{
+      id:item.id,title:item.title,description:item.description,
+      source_url:item.source_url,publisher:item.publisher,category:item.category,
+      region:item.region,post:item.post,source_preview:item.source_preview,
+      context_status:item.context_status,status:item.status,
+      published_at:item.published_at,trend_score:item.trend_score,
+      trend_reason:item.trend_reason,coverage_feeds:item.coverage_feeds
+    });
+    if(savedHistory.size>100) savedHistory.delete(savedHistory.keys().next().value);
+  } else if(!saved.has(item.id)) savedHistory.delete(item.id);
+  try {localStorage.setItem(savedHistoryKey,JSON.stringify([...savedHistory.values()]));}
+  catch (_) {showNotice("This browser could not save the archived article locally.");}
+}
+function readSavedHistory() {
+  return [...savedHistory.values()].map((entry,i)=>{
+    const parsed=parseItem({...entry,id:entry.id.slice(5)},"news",i);
+    return parsed && saved.has(parsed.id) ? {...parsed,history_only:true} : null;
+  }).filter(Boolean);
+}
 function approximateXLength(value) {
   // Heuristic only. X generally counts HTTP(S) links as shortened t.co URLs
   // (~23 characters); emoji and premium-account limits can differ.
@@ -330,9 +448,19 @@ function updateCounts() {
     workflowStage(item) === "copied").length;
   $("nav-saved-count").textContent = records.filter(item =>
     saved.has(item.id) && !["copied","archived"].includes(workflowStage(item))).length;
+  if(archiveMode()) {
+    $("count-news-label").textContent="Historical matches";
+    $("count-trending-label").textContent="On this page";
+    $("count-ready-label").textContent="Ready on this page";
+    $("count-news").textContent=historyTotal;
+    $("count-trending").textContent=historyItems.length;
+    $("count-ready").textContent=historyItems.filter(item=>workflowStage(item)==="ready").length;
+  }
 }
 function setView(view) {
+  exitArchive();
   selectedView = view;
+  setArchiveVisibility();
   // Navigation means a fresh section; old searches should not make it
   // unexpectedly appear empty after switching Global ↔ India.
   $("search-input").value = "";
@@ -382,7 +510,8 @@ function setCategory(category) {
     btn.classList.toggle("active", active);
     btn.setAttribute("aria-pressed", String(active));
   });
-  render();
+  if(archiveMode()) loadHistory(0);
+  else render();
 }
 function persistSaved() {
   try { localStorage.setItem(savedKey, JSON.stringify(Array.from(saved).slice(0, 300))); }
@@ -392,6 +521,7 @@ function persistSaved() {
 function handleSaved(item, button) {
   if (saved.has(item.id)) saved.delete(item.id);
   else saved.add(item.id);
+  rememberSavedHistory(item);
   persistSaved();
   const on = saved.has(item.id);
   button.setAttribute("aria-pressed", String(on));
@@ -488,6 +618,7 @@ function card(item) {
   editButton.addEventListener("click", () => showEditor(!editing));
   copy.addEventListener("click", () => handleCopy(currentDraft().trim(), copy, () => {
     const previousStage = workflowStage(item);
+    trackHistoryItem(item);
     setWorkflowStage(item, "copied");
     rememberCopied(item);
     showCopyUndo(item, previousStage);
@@ -606,6 +737,7 @@ function card(item) {
   stageSelect.addEventListener("change", () => {
     const stage = stageSelect.value;
     const previousStage = workflowStage(item);
+    trackHistoryItem(item);
     setWorkflowStage(item, stage);
     if (stage === "copied") rememberCopied(item);
     else if (copiedLibrary.has(item.id)) {
@@ -637,6 +769,20 @@ function card(item) {
 }
 function render() {
   updateCounts();
+  if(archiveMode()) {
+    $("feed-title").textContent="News history";
+    $("feed-description").textContent="Browse archived public headlines from the last 7–30 days. Collection started when history was enabled.";
+    $("result-count").textContent=historyTotal+" historical matches";
+    $("cards").replaceChildren(...historyItems.map(card));
+    $("cards").setAttribute("aria-busy","false");
+    $("more-container").hidden=true;
+    $("empty").hidden=historyItems.length>0;
+    $("empty-title").textContent="No archived stories match";
+    $("empty-text").textContent="Try a wider period, another region, or clear your keyword and publisher filters. The archive only contains stories collected since activation.";
+    $("empty-view-copied").hidden=true;
+    $("clear-filters").hidden=true;
+    return;
+  }
   const trendIds = new Set(trendingPicks().map(item => item.id));
   let list = records.filter(item => {
     // All / Trending / Global / India are news-only. Prepared drafts live
@@ -758,6 +904,12 @@ async function initialize(background = false) {
         seen.add(copy.id);
       }
     }
+    for(const bookmarked of readSavedHistory()) {
+      if(!seen.has(bookmarked.id)){
+        records.push(bookmarked);
+        seen.add(bookmarked.id);
+      }
+    }
     loadedSnapshot = data.generated_at;
     const date = new Date(data.generated_at);
     $("updated-display").textContent = new Intl.DateTimeFormat(undefined, {
@@ -804,8 +956,43 @@ document.querySelectorAll("[data-stage]").forEach(button =>
 $("search-input").addEventListener("input", event => {
   query = event.target.value.trim().toLocaleLowerCase().slice(0,100);
   visibleCount = 12;
+  if(archiveMode()) {
+    $("archive-status").textContent="Press Search history to apply the keyword.";
+    return;
+  }
   render();
 });
+$("search-input").addEventListener("keydown", event=>{
+  if(event.key==="Enter" && archiveMode()) {event.preventDefault();loadHistory(0);}
+});
+$("archive-toggle").addEventListener("click",()=>{
+  const now=Date.now();
+  const today=new Date(now).toISOString().slice(0,10);
+  const oldest=new Date(now-29*86400000).toISOString().slice(0,10);
+  $("archive-date").min=oldest;
+  $("archive-date").max=today;
+  historyOpen=true;
+  visibleCount=60;
+  setArchiveVisibility();
+  render();
+  loadHistory(0);
+});
+$("archive-close").addEventListener("click",()=>{
+  exitArchive();
+  $("feed-title").textContent="All stories";
+  $("feed-description").textContent="Global and India news together, including trending stories. Each article appears only once.";
+  render();
+});
+$("archive-search").addEventListener("click",()=>loadHistory(0));
+$("archive-days").addEventListener("change",()=>{
+  $("archive-date").value="";
+  loadHistory(0);
+});
+$("archive-date").addEventListener("change",()=>loadHistory(0));
+$("archive-region").addEventListener("change",()=>loadHistory(0));
+$("archive-publisher").addEventListener("change",()=>loadHistory(0));
+$("archive-prev").addEventListener("click",()=>loadHistory(Math.max(0,historyPage-1)));
+$("archive-next").addEventListener("click",()=>{if(historyHasMore)loadHistory(historyPage+1);});
 $("clear-filters").addEventListener("click", () => {
   // Clear only the active filters. Never switch India News to All Stories.
   $("search-input").value = "";

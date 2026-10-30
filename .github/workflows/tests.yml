@@ -36,6 +36,7 @@ jobs:
       - name: Test shared Cloudflare Cron collector and read-only KV API offline
         run: |
           node --check news-collector/worker.mjs
+          node --test tests/signaldesk-news-history.test.mjs
           node --test tests/signaldesk-news-collector.test.mjs
       - name: Test hosted Cloudflare Worker offline (no GitHub/Cloudflare calls)
         run: node --test tests/hosted-worker.test.mjs

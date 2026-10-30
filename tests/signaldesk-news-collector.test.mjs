@@ -135,7 +135,7 @@ test("collector stores one safe shared snapshot and reader never starts collecti
   const out=await collect({NEWS_CACHE:kv},{fetcher,nowMs:Date.now()});
   assert.equal(out.ok,true);
   assert.ok(out.count>=5 && out.count<=30);
-  assert.equal(calls.filter(x=>x==="put").length,1);
+  assert.equal(calls.filter(x=>x==="put").length,2); // one live snapshot and one daily archive bucket
   const r=await handleRequest(new Request("https://feed.example/feed"),{NEWS_CACHE:kv});
   assert.equal(r.status,200);
   const data=await r.json();
@@ -144,7 +144,7 @@ test("collector stores one safe shared snapshot and reader never starts collecti
   assert.ok(Array.isArray(data.india_news));
   assert.ok(data.india_news.length<=15);
   assert.equal(data.news.length,out.count);
-  assert.equal(calls.filter(x=>x==="get").length,1);
+  assert.equal(calls.filter(x=>x==="get").length,2); // archive merge read and visitor live feed read
   assert.equal(counter,18); // One Cron fetch per configured publisher; visitors never do.
   assert.equal((await handleRequest(new Request("https://feed.example/health"),{NEWS_CACHE:kv})).status,200);
   assert.equal((await handleRequest(new Request("https://feed.example/feed",{method:"POST"}),{NEWS_CACHE:kv})).status,405);
