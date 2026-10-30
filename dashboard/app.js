@@ -1115,6 +1115,7 @@ async function updateOptionalAccountProfile(){
   const signUp=profileMenu.querySelector('a[href="./account.html#sign-up"]');
   const manage=$("profile-account-link");
   const greeting=$("profile-greeting"),manageNav=$("nav-manage-account");
+  let currentAccount=null;
   const signOut=$("profile-sign-out"),accountStatus=$("profile-account-status");
   try{
     const response=await fetch("./auth-config.json",{cache:"no-store"});
@@ -1129,7 +1130,10 @@ async function updateOptionalAccountProfile(){
       auth:{detectSessionInUrl:false,flowType:"pkce",persistSession:true,autoRefreshToken:true}
     });
     const renderSession=(user)=>{
-      const signedIn=!!user;
+      const signedIn=!!user;currentAccount=user||null;
+      if(signedIn){$("manage-email").textContent=user.email||"Signed-in account";$("manage-created").textContent=user.created_at?"Account created: "+new Date(user.created_at).toLocaleDateString():"";$("manage-name").value=String(user.user_metadata?.display_name||"").slice(0,80);}
+      $("manage-theme").value=document.documentElement.dataset.theme==="dark"?"dark":"light";
+      $("manage-region").value=localStorage.getItem("signaldesk:preferred-view:v1")||"all";
       title.textContent=signedIn?"Signed in to SignalDesk":"Browsing as guest";
       description.textContent=signedIn?"Account: "+(user.email||"Signed-in user")+" · Your saved items remain in this browser until cloud sync is enabled.":"Your saved items stay in this browser. Sign-in is optional.";
       signIn.hidden=signedIn;signUp.hidden=signedIn;manage.hidden=!signedIn;signOut.hidden=!signedIn;
@@ -1139,6 +1143,29 @@ async function updateOptionalAccountProfile(){
       if(!signedIn && document.querySelector(".content").classList.contains("account-open"))closeAccountWorkspace();
       profileToggle.setAttribute("aria-label",signedIn?"Account menu, signed in":"Account menu, guest");
     };
+    $("manage-profile-form").addEventListener("submit",async event=>{
+      event.preventDefault();if(!currentAccount)return;
+      const button=event.currentTarget.querySelector("button");button.disabled=true;
+      try{const name=$("manage-name").value.trim();if(!name)throw Error("Name required");
+        const {data,error}=await auth.auth.updateUser({data:{display_name:name}});
+        if(error)throw error;renderSession(data.user);$("manage-status").textContent="Profile saved.";
+      }catch(_){$("manage-status").textContent="Unable to save profile. Please try again."}finally{button.disabled=false}
+    });
+    $("manage-reset").addEventListener("click",async()=>{
+      if(!currentAccount?.email)return;
+      const button=$("manage-reset");button.disabled=true;
+      try{const {error}=await auth.auth.resetPasswordForEmail(currentAccount.email,{redirectTo:location.origin+"/account.html#update-password"});
+        if(error)throw error;$("manage-status").textContent="Password reset email requested. Check your inbox.";
+      }catch(_){$("manage-status").textContent="Password reset email could not be sent."}finally{button.disabled=false}
+    });
+    $("manage-preferences-form").addEventListener("submit",event=>{
+      event.preventDefault();if(!currentAccount)return;
+      try{const theme=$("manage-theme").value,view=$("manage-region").value;
+        if(!["light","dark"].includes(theme)||!["all","trending","global","india"].includes(view))return;
+        localStorage.setItem("signaldesk:theme:v1",theme);localStorage.setItem("signaldesk:preferred-view:v1",view);
+        applyTheme(theme);$("manage-status").textContent="Preferences saved in this browser.";
+      }catch(_){$("manage-status").textContent="Preferences could not be saved."}
+    });
     signOut.addEventListener("click",async()=>{
       signOut.disabled=true;accountStatus.hidden=false;accountStatus.textContent="Signing out…";
       try{
@@ -1155,6 +1182,7 @@ async function updateOptionalAccountProfile(){
 }
 function openAccountWorkspace(){
   const workspace=$("account-workspace"),content=document.querySelector(".content");
+  if($("nav-manage-account").hidden)return;
   content.classList.add("account-open");workspace.hidden=false;
   $("nav-manage-account").classList.add("active");
   setProfileOpen(false);

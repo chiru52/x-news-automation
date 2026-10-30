@@ -263,3 +263,18 @@
 .account-embedded .account-showcase,.account-embedded .account-back,.account-embedded .account-mark{display:none!important}
 @media(max-width:800px){.account-layout{display:block}.account-showcase{margin-top:25px;min-height:440px;padding:35px}.account-page{padding:16px}.account-embedded{padding:0!important}}
 @media(prefers-reduced-motion:reduce){.showcase-story,.showcase-orb{animation:none!important}}
+
+/* Single adaptive theme symbol. Moon prompts dark mode; sun prompts light mode. */
+.theme-toggle .theme-moon{display:block!important;opacity:1!important}
+.theme-toggle .theme-sun{display:none!important}
+[data-theme="dark"] .theme-toggle .theme-moon{display:none!important}
+[data-theme="dark"] .theme-toggle .theme-sun{display:block!important;opacity:1!important}
+/* Dashboard-native account settings; no embedded frame or cross-site auth. */
+.manage-account-panel{background:var(--white);border:1px solid var(--line);border-radius:18px;padding:30px;box-shadow:var(--shadow)}
+.manage-account-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:36px}
+.manage-account-grid section{min-width:0}.manage-account-grid h2{font-size:19px;margin:6px 0 10px}.manage-account-grid p,.manage-local-note{color:var(--muted);font-size:13px}
+.manage-account-grid form{display:grid;gap:11px;margin:18px 0}.manage-account-grid label{font-size:13px;font-weight:650}
+.manage-account-grid input,.manage-account-grid select{width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--white);color:var(--ink)}
+.manage-account-grid button{border:0;border-radius:9px;background:var(--purple);color:#fff;padding:12px 16px;font-weight:700;cursor:pointer}
+.manage-account-grid button:disabled{opacity:.65;cursor:wait}#manage-status{font-size:13px;color:var(--purple)}
+@media(max-width:750px){.manage-account-panel{padding:20px}.manage-account-grid{grid-template-columns:1fr;gap:20px}}
