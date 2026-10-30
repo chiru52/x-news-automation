@@ -113,14 +113,7 @@ let lastFeedCheckAt = 0;
 // Spread client cache reads across ~45 seconds so multiple visitors do not
 // hit the same shared feed endpoint simultaneously.
 const feedCheckJitterMs = Math.floor(Math.random() * 45000);
-function showBrowserCheckStatus(ok) {
-  const label = $("last-checked-display");
-  if (!label) return;
-  const now = new Intl.DateTimeFormat(undefined, {
-    hour:"2-digit", minute:"2-digit"
-  }).format(new Date());
-  label.textContent = (ok ? "Browser checked " : "Browser check failed ") + now;
-}
+
 function isIndiaNews(item) { return isIndiaArticle(item); }
 let copyUndo = null;
 function showCopyUndo(item, previousStage, fromClipboard = true) {
@@ -907,7 +900,6 @@ async function initialize(background = false) {
     if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts) ||
         typeof data.generated_at !== "string" || Number.isNaN(new Date(data.generated_at).getTime()))
       throw new Error("Unsupported feed format");
-    showBrowserCheckStatus(true);
     // An unchanged snapshot must not interrupt someone typing an edited post.
     if (background && loadedSnapshot &&
         new Date(data.generated_at).getTime() <= new Date(loadedSnapshot).getTime()) return;
@@ -938,23 +930,19 @@ async function initialize(background = false) {
     $("updated-display").textContent = new Intl.DateTimeFormat(undefined, {
       month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit"
     }).format(date);
-    $("sync-indicator").textContent = fromLive
-      ? "✓ Shared news cache updated" : "✓ Latest available snapshot";
+
     $("refresh-note").textContent = fromLive
-      ? "News is collected approximately every 15 minutes. This browser checks shortly afterward. Last refreshed is news generation time; Browser checked shows the actual check time."
-      : "Showing the latest static snapshot while the shared collector is unavailable or older. Browser checks run after scheduled news collection and when this tab becomes active." ;
+      ? "News is collected approximately every 15 minutes. Last refreshed shows the news generation time."
+      : "Showing the latest available news snapshot. Last refreshed shows when it was generated.";
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();
   } catch (_) {
-    showBrowserCheckStatus(false);
     if (!records.length) {
-      $("sync-indicator").textContent = "Feed unavailable";
       showNotice("The news feed could not be loaded. Please check the most recent GitHub dashboard build.");
       updateCounts();
       render();
     } else {
-      $("sync-indicator").textContent = "Last available snapshot";
       showNotice("The latest feed check failed. Existing news remains available; we'll check again later.");
     }
   } finally {
@@ -1086,3 +1074,21 @@ document.addEventListener("visibilitychange", () => {
       shouldCheckAfterReturn(Date.now(), lastFeedCheckAt)) initialize(true);
 });
 
+
+// Browser-local appearance preference; no network requests or publishing actions.
+const themeToggle=$("theme-toggle");
+function applyTheme(mode){
+  const dark=mode==="dark";
+  document.documentElement.dataset.theme=dark ? "dark" : "light";
+  themeToggle.setAttribute("aria-pressed",String(dark));
+  themeToggle.setAttribute("aria-label",dark ? "Switch to light theme" : "Switch to dark theme");
+  themeToggle.title=dark ? "Switch to light theme" : "Switch to dark theme";
+}
+let theme="light";
+try { theme=localStorage.getItem("signaldesk:theme:v1")==="dark" ? "dark":"light"; } catch (_) {}
+applyTheme(theme);
+themeToggle.addEventListener("click",()=>{
+  theme=document.documentElement.dataset.theme==="dark" ? "light" : "dark";
+  applyTheme(theme);
+  try {localStorage.setItem("signaldesk:theme:v1",theme);} catch (_) {}
+});
