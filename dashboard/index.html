@@ -63,6 +63,7 @@
               <button type="button" data-stage="copied" class="stage-filter" aria-pressed="false">Copied</button>
               <button type="button" data-stage="archived" class="stage-filter" aria-pressed="false">Archived</button>
               <button type="button" id="review-desk-toggle" class="review-desk-toggle" aria-expanded="false" aria-controls="review-desk">↔ Review desk</button>
+              <button type="button" id="topic-writer-toggle" class="review-desk-toggle" aria-expanded="false" aria-controls="topic-writer">✎ Topic Writer</button>
             </div>
             <div class="filters" role="group" aria-label="Filter category">
               <button data-filter="all" class="filter active" aria-pressed="true">All topics</button>
@@ -71,6 +72,46 @@
               <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
             </div>
           </div>
+          <section id="topic-writer" class="topic-writer" aria-labelledby="topic-writer-heading" hidden>
+            <div class="review-desk-head">
+              <div><span class="section-kicker">MY WORKFLOW · PERSONAL WRITING</span><h3 id="topic-writer-heading">Topic &amp; Perspective Writer</h3>
+                <p>Write about broader topics, markets, technology or everyday observations in your own voice. These are writing structures, not AI-written analysis or verified news.</p>
+              </div>
+              <button type="button" id="topic-writer-close" class="secondary-action">Back to workflow</button>
+            </div>
+            <div class="topic-writer-grid">
+              <div class="topic-writer-form">
+                <label for="topic-writer-subject">What's on your mind?</label>
+                <input id="topic-writer-subject" type="text" maxlength="90" placeholder="e.g. rising oil prices, AI spending, everyday investing" autocomplete="off"/>
+                <label for="topic-writer-angle">Writing approach</label>
+                <select id="topic-writer-angle">
+                  <option value="observation">Personal observation</option>
+                  <option value="implications">Why it might matter</option>
+                  <option value="connecting">Connect the bigger picture</option>
+                  <option value="question">Start with a question</option>
+                  <option value="short">Short and direct</option>
+                </select>
+                <label for="topic-writer-insight">Your insight or observation</label>
+                <textarea id="topic-writer-insight" rows="5" maxlength="500" placeholder="What did you notice? What's your takeaway? Use your own words and avoid unverified claims."></textarea>
+                <label for="topic-writer-source">Supporting article (optional for personal opinions)</label>
+                <input id="topic-writer-source" type="url" maxlength="900" placeholder="https://publisher.example/article" inputmode="url"/>
+                <button type="button" id="topic-writer-build">Create writing starter</button>
+                <p class="topic-writer-note">If you include numbers, prices or other factual claims, add a reliable source and check the actual report. This doesn't automatically research articles.</p>
+              </div>
+              <div class="topic-writer-preview">
+                <label for="topic-writer-draft">Edit your X post</label>
+                <textarea id="topic-writer-draft" maxlength="1000" rows="11" placeholder="Your draft will appear here. You can rewrite any part before copying."></textarea>
+                <div class="review-meter"><span id="topic-writer-length" aria-live="polite">≈0/280 X characters</span><span>Saved on this device</span></div>
+                <p id="topic-writer-status" role="status" aria-live="polite">Write a topic and your observation to begin.</p>
+                <label class="review-confirm-label"><input id="topic-writer-reviewed" type="checkbox"/> I reviewed the wording and verified any factual statements before copying.</label>
+                <div class="topic-writer-actions">
+                  <button type="button" id="topic-writer-clear">Clear draft</button>
+                  <button type="button" id="topic-writer-copy" disabled><span>Copy for X</span></button>
+                </div>
+                <p class="review-disclaimer">Personal opinions do not require a link. Specific numerical claims should be sourced. Nothing is posted or scheduled automatically.</p>
+              </div>
+            </div>
+          </section>
           <section id="review-desk" class="review-desk" aria-label="Editorial review desk" hidden>
             <div class="review-desk-head"><div><span class="section-kicker">MY WORKFLOW</span><h3>Editorial Review Desk</h3><p>Compare two drafts, refine the wording and review the original sources before copying anything to X.</p></div><button type="button" id="review-desk-back" class="secondary-action">Back to workflow</button></div>
             <p id="review-desk-summary" class="review-desk-summary" aria-live="polite"></p>
@@ -164,7 +205,7 @@
           </label>
           <p class="studio-intro">Source-grounded writing starters from the publisher headline. Verify the reporting before copying.</p>
           <p class="studio-preview" aria-live="polite"></p>
-          <div class="studio-actions"><span class="studio-length"></span><button class="studio-use" type="button">Edit this post</button></div>
+          <div class="studio-actions"><span class="studio-length"></span><button class="studio-use" type="button">Edit this post</button><button class="studio-topic" type="button">Write a broader take</button></div>
         </div>
         <div class="studio-thread" hidden>
           <p class="studio-intro">An editable three-part outline using only the headline, questions and original source link. No claim has been independently verified.</p>

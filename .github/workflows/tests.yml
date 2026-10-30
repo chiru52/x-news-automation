@@ -2,6 +2,7 @@ name: Unit tests (no network or publishing)
 
 on:
   push:
+    branches: [main]
   pull_request:
 
 permissions:
@@ -37,6 +38,10 @@ jobs:
           node --test tests/signaldesk-news-intelligence.test.mjs
       - name: Test no-cost Post Studio and research tools offline
         run: node --test tests/signaldesk-studio.test.mjs
+      - name: Test personal-topic perspective writing offline
+        run: |
+          node --check dashboard/perspective.mjs
+          node --test tests/signaldesk-perspective.test.mjs
       - name: Test draft comparison and editorial review desk offline
         run: |
           node --check dashboard/review-desk.mjs

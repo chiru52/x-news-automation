@@ -22,6 +22,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.repository == 'varadachiru/x-news-automation'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:

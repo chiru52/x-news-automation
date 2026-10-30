@@ -31,6 +31,7 @@ concurrency:
 
 jobs:
   build-and-deploy:
+    if: github.repository == 'varadachiru/x-news-automation'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -60,6 +61,8 @@ jobs:
           node --test tests/signaldesk-news-intelligence.test.mjs
           node --check news-collector/intelligence.mjs
           node --test tests/signaldesk-studio.test.mjs
+          node --check dashboard/perspective.mjs
+          node --test tests/signaldesk-perspective.test.mjs
           node --check dashboard/review-desk.mjs
           node --test tests/signaldesk-review-desk.test.mjs
       - name: Collect current RSS candidates (review and copy only)

@@ -480,3 +480,36 @@
 @media(max-width:900px){.review-grid{grid-template-columns:1fr}.review-desk-head{padding:18px}}
 @media(max-width:600px){.review-column{padding:15px}.review-desk-head{flex-direction:column;gap:13px}
   .review-text{font-size:16px;min-height:160px}.review-actions button{flex:1 0 auto}}
+
+
+/* Topic & Perspective Writer: separate user-written general topics from news facts. */
+.topic-writer{margin:8px 0 28px;min-width:0}
+.topic-writer-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;margin-top:16px}
+.topic-writer-form,.topic-writer-preview{min-width:0;padding:22px;border:1px solid var(--line);
+  background:var(--white);border-radius:15px;box-shadow:var(--shadow)}
+.topic-writer label:not(.review-confirm-label){display:block;color:var(--ink);font-size:12px;
+  font-weight:700;margin:0 0 8px}
+.topic-writer-form input,.topic-writer-form select,.topic-writer-form textarea,
+.topic-writer-preview textarea{box-sizing:border-box;width:100%;min-width:0;padding:12px;
+  border:1px solid var(--line);border-radius:9px;color:var(--ink);background:var(--white);
+  font-size:14px;line-height:1.6;margin-bottom:18px}
+.topic-writer-form textarea,.topic-writer-preview textarea{resize:vertical;min-height:118px}
+.topic-writer-preview textarea{min-height:280px}
+.topic-writer button{font:inherit;font-weight:700;border-radius:9px;
+  min-height:42px;padding:10px 16px;cursor:pointer}
+#topic-writer-build,#topic-writer-copy{color:#fff;background:var(--purple);border:1px solid var(--purple)}
+#topic-writer-copy:disabled{opacity:.45;cursor:not-allowed}
+#topic-writer-clear{background:var(--white);border:1px solid var(--line);color:var(--ink)}
+.topic-writer-note,.topic-writer #topic-writer-status{color:var(--muted);font-size:12px;line-height:1.65}
+.topic-writer-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}
+.topic-writer-actions button{flex:1 1 120px}
+.topic-writer #topic-writer-length{font-size:12px;color:var(--muted)}
+.topic-writer #topic-writer-length.over{color:#c24134;font-weight:700}
+.topic-writer .review-confirm-label{margin:12px 0;color:var(--ink)}
+.topic-writer input:focus-visible,.topic-writer textarea:focus-visible,
+.topic-writer select:focus-visible,.topic-writer button:focus-visible{
+  outline:2px solid var(--purple);outline-offset:2px}
+@media(max-width:900px){.topic-writer-grid{grid-template-columns:1fr}}
+@media(max-width:600px){.topic-writer-form,.topic-writer-preview{padding:16px}
+  .topic-writer-form input,.topic-writer-form select,.topic-writer-form textarea,
+  .topic-writer-preview textarea{font-size:16px}}
