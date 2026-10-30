@@ -24,9 +24,22 @@ def safe_probe(route):
         headers={"User-Agent": "SignalDesk-ReadOnly-HealthDiagnostic/1.0",
                  "Accept": "application/json"})
     opener = urllib.request.build_opener(NoRedirect())
+    feed_summary = None
     try:
         with opener.open(request, timeout=12) as response:
             status, headers = response.status, response.headers
+            if route == "/feed" and status == 200:
+                # This endpoint contains PUBLIC news only. Report counts and
+                # timestamp, never article text or response headers with secrets.
+                payload = response.read(160001)
+                if len(payload) <= 160000:
+                    doc = json.loads(payload)
+                    if isinstance(doc, dict) and isinstance(doc.get("news"), list):
+                        feed_summary = {
+                            "story_count": len(doc["news"]),
+                            "snapshot_timestamp": str(doc.get("generated_at", ""))[:40],
+                            "contains_private_drafts": bool(doc.get("drafts")),
+                        }
     except urllib.error.HTTPError as error:
         status, headers = error.code, error.headers
     except urllib.error.URLError:
@@ -43,7 +56,9 @@ def safe_probe(route):
         parsed=urllib.parse.urlsplit(urllib.parse.urljoin("https://"+HOST, target))
         fields["redirect_host"]=parsed.hostname
         fields["redirect_to_access"]=parsed.path.startswith("/cdn-cgi/access/")
-    # No headers that could contain secrets are printed.
+    if feed_summary:
+        fields["public_feed_summary"] = feed_summary
+    # No headers or response bodies that could contain secrets are printed.
     print(route + ": " + json.dumps(fields))
 
 

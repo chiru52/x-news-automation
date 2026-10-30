@@ -1,5 +1,28 @@
 # SignalDesk — public Cloudflare news dashboard
 
+## Shared collector recovery / current deployment troubleshooting
+
+The dedicated Cloudflare Worker `signaldesk-news-feed` and KV namespace were
+created successfully, but GitHub deployment workflow health checks initially
+received HTTP 403. A later read-only diagnostic verified `/health` returns
+HTTP 200 and found no matching Cloudflare Access application. This makes the
+earlier 403 appear transient; it should not be treated as evidence that the
+Worker was never uploaded. The `/feed` endpoint may still return HTTP 503
+until the first scheduled collection saves at least five eligible articles.
+
+The public Pages builder checks a verified Worker health endpoint and exposes
+its URL through an exact-origin Content Security Policy when reachable. Browsers
+continue using the daily static news snapshot and manual-copy workflow whenever
+the scheduled cache has not been populated or is stale. The public site never
+requests upstream RSS per user, invokes paid AI, or posts to X.
+
+Diagnostics: `.github/workflows/diagnose-news-collector.yml` is read-only and
+reports HTTP status and sanitized public feed metadata, never secret headers or
+article bodies. The configured Cron schedule is `*/15 * * * *` in UTC, but
+Cloudflare propagation may delay first collection. If the cache stays empty,
+inspect Worker Cron and KV bindings rather than changing account-wide Access.
+
+
 ## Phase 2B — Source-specific RSS context (without paid AI)
 
 The **Why it matters** panel now shows a short (up to 170 characters) sanitized excerpt of the public RSS feed's description **when provided**. It is labelled **"From the RSS preview (unverified)"**. A syndicated RSS description is not proof of publisher authorship, not the full article, and not an AI-generated or independently verified summary.
