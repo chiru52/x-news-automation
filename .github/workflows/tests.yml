@@ -37,6 +37,10 @@ jobs:
           node --test tests/signaldesk-news-intelligence.test.mjs
       - name: Test no-cost Post Studio and research tools offline
         run: node --test tests/signaldesk-studio.test.mjs
+      - name: Test draft comparison and editorial review desk offline
+        run: |
+          node --check dashboard/review-desk.mjs
+          node --test tests/signaldesk-review-desk.test.mjs
       - name: Test disabled Cloudflare AI gateway, signed Access JWT and daily D1 quota offline
         run: node --test tests/signaldesk-ai-gateway.test.mjs
       - name: Install pinned RSS XML parser for offline Worker tests

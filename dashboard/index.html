@@ -62,6 +62,7 @@
               <button type="button" data-stage="ready" class="stage-filter" aria-pressed="false">Ready</button>
               <button type="button" data-stage="copied" class="stage-filter" aria-pressed="false">Copied</button>
               <button type="button" data-stage="archived" class="stage-filter" aria-pressed="false">Archived</button>
+              <button type="button" id="review-desk-toggle" class="review-desk-toggle" aria-expanded="false" aria-controls="review-desk">↔ Review desk</button>
             </div>
             <div class="filters" role="group" aria-label="Filter category">
               <button data-filter="all" class="filter active" aria-pressed="true">All topics</button>
@@ -70,6 +71,50 @@
               <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
             </div>
           </div>
+          <section id="review-desk" class="review-desk" aria-label="Editorial review desk" hidden>
+            <div class="review-desk-head"><div><span class="section-kicker">MY WORKFLOW</span><h3>Editorial Review Desk</h3><p>Compare two drafts, refine the wording and review the original sources before copying anything to X.</p></div><button type="button" id="review-desk-back" class="secondary-action">Back to workflow</button></div>
+            <p id="review-desk-summary" class="review-desk-summary" aria-live="polite"></p>
+            <p id="review-desk-empty" class="review-desk-empty" hidden>No drafts in review yet. Open a news article and choose <strong>Add to review</strong>, or prepare an editorial draft.</p>
+            <div class="review-grid">
+            <article class="review-column" data-review-side="left">
+              <label class="review-select-label" for="review-select-left">Draft 1
+                <select id="review-select-left" class="review-select" aria-label="Choose draft 1 to review"></select>
+              </label>
+              <div class="review-editor" id="review-editor-left" hidden>
+                <h4 class="review-title"></h4>
+                <p class="review-publisher"></p>
+                <a class="review-source" rel="noopener noreferrer" target="_blank">Read original report</a>
+                <span class="review-stage"></span>
+                <label class="review-text-label" for="review-text-left">Editable X post
+                  <textarea id="review-text-left" class="review-text" rows="7" maxlength="1000" spellcheck="true"></textarea>
+                </label>
+                <div class="review-meter"><span class="review-length" aria-live="polite">≈0/280</span><span class="review-draft-state">Stored in this browser</span></div>
+                <label class="review-confirm-label"><input class="review-verified" type="checkbox"/> I checked the original source and this draft's claims.</label>
+                <p class="review-validation" role="status" aria-live="polite"></p>
+                <div class="review-actions"><button type="button" class="review-reset">Reset draft</button><button type="button" class="review-ready" disabled>Mark ready</button><button type="button" class="review-copy" disabled><span>Copy post</span></button></div>
+              </div>
+            </article>
+            <article class="review-column" data-review-side="right">
+              <label class="review-select-label" for="review-select-right">Draft 2
+                <select id="review-select-right" class="review-select" aria-label="Choose draft 2 to review"></select>
+              </label>
+              <div class="review-editor" id="review-editor-right" hidden>
+                <h4 class="review-title"></h4>
+                <p class="review-publisher"></p>
+                <a class="review-source" rel="noopener noreferrer" target="_blank">Read original report</a>
+                <span class="review-stage"></span>
+                <label class="review-text-label" for="review-text-right">Editable X post
+                  <textarea id="review-text-right" class="review-text" rows="7" maxlength="1000" spellcheck="true"></textarea>
+                </label>
+                <div class="review-meter"><span class="review-length" aria-live="polite">≈0/280</span><span class="review-draft-state">Stored in this browser</span></div>
+                <label class="review-confirm-label"><input class="review-verified" type="checkbox"/> I checked the original source and this draft's claims.</label>
+                <p class="review-validation" role="status" aria-live="polite"></p>
+                <div class="review-actions"><button type="button" class="review-reset">Reset draft</button><button type="button" class="review-ready" disabled>Mark ready</button><button type="button" class="review-copy" disabled><span>Copy post</span></button></div>
+              </div>
+            </article>
+            </div>
+            <p class="review-disclaimer">Review status is personal and stored only in this browser. SignalDesk does not fact-check these articles or publish to X.</p>
+          </section>
           <div id="archive-entry" class="archive-entry" hidden><button type="button" id="archive-toggle" class="secondary-action" aria-expanded="false">▤ Browse news history (30 days)</button><span class="archive-entry-note">Public RSS headlines saved since archive activation, not a full-article archive.</span></div>
           <section id="archive-controls" class="archive-controls" aria-label="News history filters" hidden>
             <div class="archive-controls-head"><div><strong>News Archive</strong><p>Browse up to 30 days of public articles, starting when the archive was activated.</p></div><button type="button" id="archive-close" class="secondary-action">Back to latest news</button></div>
@@ -104,6 +149,7 @@
       <div class="draft-panel"><div class="draft-heading"><span>✧ &nbsp; SUGGESTED X POST</span><span class="review-tag">REVIEW BEFORE SHARING</span></div><p class="draft-text"></p><div class="compose-panel" hidden><label class="compose-label">Edit your post <span>(saved only on this device)</span><textarea class="compose-input" rows="5" maxlength="1000" spellcheck="true" placeholder="Write your own take and verify the source before sharing"></textarea></label><div class="compose-actions"><button class="reset-edit" type="button">Reset to suggestion</button><span class="local-note">Edits stay in this browser</span></div></div><div class="draft-bottom"><span class="char-count"></span><div class="draft-actions"><button class="edit-button" type="button" aria-expanded="false">Edit draft</button><button class="copy-button" type="button" aria-label="Copy suggested X post">▣ <span>Copy post</span></button></div></div></div>
       <div class="studio-launchers" role="group" aria-label="Editorial tools">
         <button class="studio-open" type="button" aria-expanded="false">✧ Post Studio</button>
+        <button class="review-add" type="button">↔ Add to review</button>
         <button class="research-open" type="button" aria-expanded="false">◇ Why it matters</button>
       </div>
       <section class="studio-panel" aria-label="Post writing studio" hidden>

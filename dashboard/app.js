@@ -2,6 +2,7 @@ import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
+import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -9,6 +10,7 @@ const CATEGORIES = {
   markets: {label: "Markets & finance", cls: "markets"}
 };
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
+let reviewOpen=false,reviewLeftId="",reviewRightId="";
 let visibleCount = 12;
 let historyOpen = false, historyItems = [], historyTotal = 0;
 let historyPage = 0, historyHasMore = false, historyRequest = 0;
@@ -507,6 +509,7 @@ function updateMobileMenuLabel(view){
   $("mobile-current-view").textContent=titles[view]||"All stories";
 }
 function setView(view) {
+  reviewOpen=false;
   exitArchive();
   selectedView = view;
   updateMobileMenuLabel(view);
@@ -696,6 +699,13 @@ function card(item) {
 
   // Phase 2: offline source-attributed writing starters and research prompts.
   // These are NOT AI calls; no public browser token or paid backend is used.
+  const addReview=node.querySelector(".review-add");
+  addReview.hidden=archiveMode()||item.history_only||["copied","archived"].includes(workflowStage(item));
+  addReview.textContent=workflowStage(item)==="new"?"↔ Add to review":"↔ Open review desk";
+  addReview.addEventListener("click",()=>{
+    if(workflowStage(item)==="new")setWorkflowStage(item,"reviewing");
+    openReviewDesk(item.id);
+  });
   const studioToggle = node.querySelector(".studio-open");
   const researchToggle = node.querySelector(".research-open");
   const studioPanel = node.querySelector(".studio-panel");
@@ -894,6 +904,20 @@ function card(item) {
 }
 function render() {
   updateCounts();
+  const inReview=selectedView==="workflow"&&reviewOpen;
+  $("review-desk").hidden=!inReview;
+  $("cards").hidden=inReview;
+  $("review-desk-toggle").textContent=inReview?"← Back to article cards":"↔ Review desk";
+  $("review-desk-toggle").setAttribute("aria-expanded",String(inReview));
+  document.querySelector(".toolbar").classList.toggle("review-mode",inReview);
+  if(inReview){
+    $("more-container").hidden=true;
+    $("empty").hidden=true;
+    $("clear-filters").hidden=true;
+    $("result-count").textContent="Editorial review";
+    renderReviewDesk();
+    return;
+  }
   if(archiveMode()) {
     $("feed-title").textContent="News Archive";
     $("feed-description").textContent="Browse archived public headlines from the last 7–30 days. Collection started when history was enabled.";
@@ -1058,6 +1082,126 @@ async function initialize(background = false) {
     feedCheckInProgress = false;
   }
 }
+// In-page comparison, not a separate menu or an X publishing workflow.
+function openReviewDesk(itemId=""){
+  if(selectedView!=="workflow")setView("workflow");
+  reviewOpen=true;
+  if(itemId)reviewLeftId=itemId;
+  render();
+}
+function closeReviewDesk(){
+  reviewOpen=false;
+  render();
+}
+function renderReviewDesk(){
+  const candidates=reviewCandidates(records,workflowStage,edits,threadEdits);
+  const available=new Map(candidates.map(item=>[item.id,item]));
+  if(!available.has(reviewLeftId))reviewLeftId=candidates[0]?.id||"";
+  if(!available.has(reviewRightId)||reviewRightId===reviewLeftId)
+    reviewRightId=candidates.find(item=>item.id!==reviewLeftId)?.id||"";
+  const counts=reviewCounts(candidates,workflowStage);
+  $("review-desk-summary").textContent=counts.total+" draft"+(counts.total===1?"":"s")+
+    " in your review queue · "+counts.reviewing+" reviewing · "+counts.ready+" ready";
+  $("review-desk-empty").hidden=candidates.length>0;
+  const selection=["left","right"];
+  for(const side of selection){
+    const selectionBox=$("review-select-"+side);
+    const currentId=side==="left"?reviewLeftId:reviewRightId;
+    selectionBox.replaceChildren();
+    const empty=document.createElement("option");
+    empty.value="";
+    empty.textContent=candidates.length?"Choose a draft":"No drafts yet";
+    selectionBox.append(empty);
+    for(const item of candidates){
+      if(item.id===(side==="left"?reviewRightId:reviewLeftId))continue;
+      const option=document.createElement("option");
+      option.value=item.id;
+      option.textContent=(workflowStage(item)==="ready"?"✓ Ready · ":
+        workflowStage(item)==="reviewing"?"Reviewing · ":"Prepared · ")+clean(item.title,95);
+      selectionBox.append(option);
+    }
+    selectionBox.value=currentId;
+    const panel=$("review-editor-"+side);
+    const item=available.get(currentId);
+    panel.hidden=!item;
+    if(!item)continue;
+    panel.querySelector(".review-title").textContent=item.title;
+    panel.querySelector(".review-publisher").textContent=item.publisher||"Original publisher";
+    panel.querySelector(".review-stage").textContent=workflowStage(item)==="ready"
+      ?"Ready · self-reviewed":workflowStage(item)==="reviewing"?"Reviewing":"Prepared draft";
+    const source=panel.querySelector(".review-source");
+    source.href=safeSource(item.source_url);
+    const textarea=panel.querySelector(".review-text");
+    const original=clean(item.post,1000).trim();
+    textarea.value=edits.has(item.id)?edits.get(item.id):original;
+    const length=panel.querySelector(".review-length");
+    const checkbox=panel.querySelector(".review-verified");
+    const warning=panel.querySelector(".review-validation");
+    const ready=panel.querySelector(".review-ready");
+    const copy=panel.querySelector(".review-copy");
+    const updateMeter=()=>{
+      const outcome=reviewPost(textarea.value,item.source_url);
+      const characters=studioXCharacters(textarea.value);
+      length.textContent="≈"+characters+"/280 X characters";
+      length.classList.toggle("over",characters>280);
+      warning.textContent=outcome.valid
+        ?(checkbox.checked?"Source review acknowledged. Copying remains manual.":"Check the source and confirm before marking ready or copying.")
+        :outcome.message;
+      ready.disabled=!checkbox.checked||!outcome.valid||workflowStage(item)==="ready";
+      copy.disabled=!checkbox.checked||!outcome.valid;
+    };
+    checkbox.checked=false;
+    textarea.oninput=()=>{
+      rememberEdit(item.id,textarea.value.slice(0,1000),original);
+      checkbox.checked=false;
+      panel.querySelector(".review-draft-state").textContent="Draft saved in this browser";
+      updateMeter();
+    };
+    checkbox.onchange=updateMeter;
+    panel.querySelector(".review-reset").onclick=()=>{
+      if(edits.has(item.id)&&!window.confirm("Discard this browser's edit and restore the original suggestion?"))return;
+      textarea.value=original;
+      rememberEdit(item.id,original,original);
+      checkbox.checked=false;
+      panel.querySelector(".review-draft-state").textContent="Original suggestion restored";
+      updateMeter();
+    };
+    ready.onclick=()=>{
+      if(!checkbox.checked||!reviewPost(textarea.value,item.source_url).valid)return;
+      setWorkflowStage(item,"ready");
+      panel.querySelector(".review-stage").textContent="Ready · self-reviewed";
+      const current=reviewCounts(candidates,workflowStage);
+      $("review-desk-summary").textContent=current.total+" drafts in your review queue · "+
+        current.reviewing+" reviewing · "+current.ready+" ready";
+      updateMeter();
+    };
+    copy.onclick=()=>{
+      if(!checkbox.checked||!reviewPost(textarea.value,item.source_url).valid)return;
+      const previousStage=workflowStage(item);
+      handleCopy(textarea.value.trim(),copy,()=>{
+        trackHistoryItem(item);
+        setWorkflowStage(item,"copied");
+        rememberCopied(item);
+        showCopyUndo(item,previousStage);
+        render();
+      });
+    };
+    updateMeter();
+  }
+}
+$("review-desk-toggle").addEventListener("click",()=>{
+  if(reviewOpen)closeReviewDesk();
+  else openReviewDesk();
+});
+$("review-desk-back").addEventListener("click",closeReviewDesk);
+for(const side of ["left","right"]){
+  $("review-select-"+side).addEventListener("change",event=>{
+    if(side==="left")reviewLeftId=event.target.value;
+    else reviewRightId=event.target.value;
+    renderReviewDesk();
+  });
+}
+
 document.querySelectorAll("[data-view]").forEach(button =>
   button.addEventListener("click", () => setView(button.dataset.view)));
 document.querySelectorAll("[data-filter]").forEach(button =>
@@ -1065,6 +1209,7 @@ document.querySelectorAll("[data-filter]").forEach(button =>
 document.querySelectorAll("[data-stage]").forEach(button =>
   button.addEventListener("click", () => {
     selectedStage = button.dataset.stage;
+    reviewOpen=false;
     visibleCount = 12;
     document.querySelectorAll("[data-stage]").forEach(other => {
       const active = other.dataset.stage === selectedStage;

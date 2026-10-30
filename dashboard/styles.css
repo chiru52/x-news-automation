@@ -426,3 +426,57 @@
   .studio-thread-part{padding:10px}
   .studio-thread-input{font-size:16px}
 }
+
+
+/* Editorial Review Desk — entirely within My Workflow, no extra sidebar item. */
+.review-desk{margin:8px 0 26px;min-width:0}
+.review-desk-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;padding:22px 25px;
+  border:1px solid var(--line);border-radius:15px;background:var(--white)}
+.review-desk-head h3{font-family:Georgia,serif;font-size:24px;line-height:1.25;margin:6px 0;color:var(--ink)}
+.review-desk-head p{font-size:12px;color:var(--muted);line-height:1.6;margin:4px 0 0;max-width:680px}
+.review-desk-head button{flex:0 0 auto}
+.review-desk-toggle{padding:9px 13px;border:1px solid var(--purple);background:var(--purple);
+  color:white;border-radius:9px;font-size:11px;font-weight:700;cursor:pointer}
+.review-desk-toggle[aria-expanded="true"]{background:var(--white);color:var(--purple)}
+.review-desk-toggle:focus-visible,.review-actions button:focus-visible,
+.review-select:focus-visible,.review-text:focus-visible{outline:2px solid var(--purple);outline-offset:3px}
+.toolbar.review-mode .search-wrap,.toolbar.review-mode .filters,.toolbar.review-mode [data-stage]{display:none}
+.review-desk-summary{color:var(--muted);font-size:12px;margin:17px 0}
+.review-desk-empty{padding:28px 18px;background:var(--white);color:var(--muted);
+  border:1px dashed var(--line);border-radius:12px;font-size:13px}
+.review-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.review-column{background:var(--white);border:1px solid var(--line);border-radius:14px;
+  padding:19px;min-width:0;box-shadow:var(--shadow)}
+.review-select-label{display:block;font-size:12px;font-weight:700;color:var(--muted)}
+.review-select{display:block;width:100%;min-width:0;margin:7px 0 16px;
+  border:1px solid var(--line);border-radius:8px;background:var(--white);
+  color:var(--ink);padding:12px;font-size:13px}
+.review-title{font-family:Georgia,serif;font-size:17px;color:var(--ink);line-height:1.4;margin:0 0 7px}
+.review-publisher{font-size:12px;color:var(--muted);margin:0 0 7px}
+.review-source{font-size:12px;font-weight:700;color:var(--purple);display:inline-block;margin:0 0 12px}
+.review-stage{display:block;font-size:11px;color:var(--muted);margin:0 0 16px}
+.review-text-label{display:block;font-weight:700;color:var(--ink);font-size:12px}
+.review-text{box-sizing:border-box;display:block;width:100%;min-width:0;min-height:195px;
+  padding:12px;margin-top:8px;background:var(--white);color:var(--ink);
+  border:1px solid var(--line);border-radius:10px;font-size:14px;line-height:1.65;
+  resize:vertical;overflow-wrap:anywhere}
+.review-meter{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:9px 0 14px}
+.review-length,.review-draft-state{font-size:11px;color:var(--muted)}
+.review-length.over{color:#c24134;font-weight:700}
+.review-confirm-label{display:flex;align-items:flex-start;gap:10px;font-size:12px;
+  color:var(--ink);line-height:1.5;cursor:pointer}
+.review-confirm-label input{accent-color:var(--purple);margin-top:3px}
+.review-validation{min-height:18px;font-size:11px;color:var(--muted);line-height:1.5}
+.review-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-start}
+.review-actions button{border:1px solid var(--line);background:var(--white);color:var(--ink);
+  border-radius:8px;font-size:11px;font-weight:700;min-height:39px;padding:9px 12px;cursor:pointer}
+.review-actions .review-ready{color:var(--purple);border-color:var(--purple)}
+.review-actions .review-copy{background:var(--purple);color:white;border-color:var(--purple)}
+.review-actions button:disabled{opacity:.48;cursor:not-allowed}
+.review-disclaimer{font-size:11px;color:var(--muted);line-height:1.55;margin:17px 0}
+.review-add{padding:8px 11px;border:1px solid var(--purple);background:var(--white);
+  color:var(--purple);font-size:11px;font-weight:700;border-radius:8px;cursor:pointer}
+.review-add:hover{background:var(--purple-light)}
+@media(max-width:900px){.review-grid{grid-template-columns:1fr}.review-desk-head{padding:18px}}
+@media(max-width:600px){.review-column{padding:15px}.review-desk-head{flex-direction:column;gap:13px}
+  .review-text{font-size:16px;min-height:160px}.review-actions button{flex:1 0 auto}}
