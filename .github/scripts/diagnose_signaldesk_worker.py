@@ -25,9 +25,23 @@ def safe_probe(route):
                  "Accept": "application/json"})
     opener = urllib.request.build_opener(NoRedirect())
     feed_summary = None
+    archive_summary = None
     try:
         with opener.open(request, timeout=12) as response:
             status, headers = response.status, response.headers
+            if route.startswith("/archive?") and status == 200:
+                payload = response.read(250001)
+                if len(payload) <= 250000:
+                    doc = json.loads(payload)
+                    if isinstance(doc, dict) and doc.get("archive") is True and isinstance(doc.get("news"), list):
+                        archive_summary = {
+                            "schema_version": doc.get("schema_version"),
+                            "available_days": doc.get("available_days"),
+                            "matching_articles": doc.get("total"),
+                            "page_size": doc.get("page_size"),
+                            "has_more": doc.get("has_more"),
+                            "published_articles_on_page": len(doc["news"]),
+                        }
             if route == "/feed" and status == 200:
                 # This endpoint contains PUBLIC news only. Report counts and
                 # timestamp, never article text or response headers with secrets.
@@ -59,6 +73,8 @@ def safe_probe(route):
         fields["redirect_to_access"]=parsed.path.startswith("/cdn-cgi/access/")
     if feed_summary:
         fields["public_feed_summary"] = feed_summary
+    if archive_summary:
+        fields["public_archive_summary"] = archive_summary
     # No headers or response bodies that could contain secrets are printed.
     print(route + ": " + json.dumps(fields))
 
@@ -112,7 +128,7 @@ def check_access_apps():
 
 def main():
     print("SignalDesk Worker public endpoint diagnosis: READ ONLY")
-    for path in ("/health","/feed"):
+    for path in ("/health","/feed","/archive?days=7"):
         safe_probe(path)
     check_access_apps()
     print("No Cloudflare settings were changed.")
