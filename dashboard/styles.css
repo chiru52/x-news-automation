@@ -105,3 +105,11 @@
 
 /* Separate collection time from browser check time without changing layout. */
 .today-box .last-checked-display{display:block;margin-top:5px;font-size:10px;line-height:1.45;letter-spacing:0;color:#9792a1;font-weight:400;text-transform:none}
+
+
+/* Keep copied-article actions clear on narrow screens and empty India feed. */
+.copy-undo-actions,.empty-actions{display:flex;justify-content:center;align-items:center;gap:10px;flex-wrap:wrap}
+.copy-undo-actions{margin-left:auto}
+.empty-actions{margin-top:16px}
+.copy-undo-actions button:first-child{background:#7048c8;color:#fff;border-color:#7048c8}
+.copy-undo-actions button:first-child:hover,.copy-undo-actions button:first-child:focus-visible{background:#5939a4}

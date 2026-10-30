@@ -29,14 +29,23 @@ function isIndiaNews(item) {
     INDIA_FOCUSED_PUBLISHERS.has(item.publisher) || INDIA_TERMS.test(item.title));
 }
 let copyUndo = null;
-function showCopyUndo(item, previousStage) {
-  copyUndo = {id:item.id, previousStage};
-  $("copy-undo-message").textContent = "Copied to clipboard. Moved out of your main feed — not posted to X.";
+function showCopyUndo(item, previousStage, fromClipboard = true) {
+  copyUndo = {id:item.id, previousStage, returnView:selectedView};
+  $("copy-undo-message").textContent = fromClipboard
+    ? "Copied to clipboard and moved to Copied Articles. Nothing was posted to X."
+    : "Marked as Copied and moved to Copied Articles. Clipboard unchanged; nothing posted to X.";
   $("copy-undo").hidden = false;
 }
 function hideCopyUndo() {
   copyUndo = null;
   $("copy-undo").hidden = true;
+}
+function openCopiedLibrary() {
+  // A search entered in India must not make the newly copied article vanish
+  // again when navigating to the Copied Articles library.
+  $("search-input").value = "";
+  query = "";
+  setView("copied");
 }
 
 let liveFeedUrl = null;
@@ -548,6 +557,7 @@ function card(item) {
   updateStageNote(stageSelect.value);
   stageSelect.addEventListener("change", () => {
     const stage = stageSelect.value;
+    const previousStage = workflowStage(item);
     setWorkflowStage(item, stage);
     if (stage === "copied") rememberCopied(item);
     else if (copiedLibrary.has(item.id)) {
@@ -556,6 +566,14 @@ function card(item) {
       catch (_) { /* Optional browser storage. */ }
     }
     updateStageNote(stage);
+    // Choosing Copied from a dropdown is a status change, NOT a clipboard
+    // operation. Navigate to where that article is stored instead of leaving
+    // the user on a suddenly empty India / All Stories screen.
+    if (stage === "copied" && selectedView !== "copied" && selectedView !== "workflow") {
+      showCopyUndo(item, previousStage, false);
+      openCopiedLibrary();
+      return;
+    }
     if (stage === "ready") showNotice("Ready is your personal mark. Check the source and claims before publishing manually.");
     if (selectedView === "workflow" && selectedStage !== "all" ||
         ["all","trending","india","drafts","saved"].includes(selectedView) && ["copied","archived"].includes(stage) ||
@@ -609,10 +627,25 @@ function render() {
   $("more-counter").textContent = Math.min(list.length, visibleCount) + " of " + list.length + " shown";
   $("load-more").textContent = "Show " + Math.min(12, remaining) + " more";
   $("empty").hidden = list.length > 0;
-  $("empty-title").textContent = !records.length ? "Your workspace is ready" : selectedView === "india" ? "No India stories in this snapshot" : "No matching stories";
+  const filtersActive = !!query || selectedCategory !== "all" ||
+    (selectedView === "workflow" && selectedStage !== "all");
+  const copiedIndiaCount = records.filter(item =>
+    isIndiaNews(item) && workflowStage(item) === "copied").length;
+  $("clear-filters").hidden = !filtersActive;
+  $("empty-view-copied").hidden = selectedView !== "india" || copiedIndiaCount === 0;
+  $("empty-view-copied").textContent = "View copied articles (" + copiedIndiaCount + ")";
+  $("empty-title").textContent = !records.length
+    ? "Your workspace is ready"
+    : selectedView === "india"
+      ? (filtersActive ? "No India stories match these filters" : "No available India stories")
+      : "No matching stories";
   $("empty-text").textContent = !records.length
     ? "Build the news dashboard data in GitHub Actions to display collected news and drafts here."
-    : selectedView === "india" ? "India-focused reporting appears as the shared collector finds eligible stories. Check again after the next news update." : "Try another topic or search term.";
+    : selectedView === "india"
+      ? (copiedIndiaCount
+        ? "Your copied India articles are safe in Copied Articles. New India stories will appear when available."
+        : "India-focused reporting appears as the shared collector finds eligible stories. Check again after the next news update.")
+      : "Try another topic or search term.";
 }
 function parseItem(item, kind, index) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return null;
@@ -719,13 +752,27 @@ $("search-input").addEventListener("input", event => {
   render();
 });
 $("clear-filters").addEventListener("click", () => {
+  // Clear only the active filters. Never switch India News to All Stories.
   $("search-input").value = "";
   query = "";
-  setView("all");
+  selectedCategory = "all";
+  selectedStage = "all";
+  visibleCount = 12;
+  document.querySelectorAll("[data-filter]").forEach(button => {
+    button.classList.toggle("active", button.dataset.filter === "all");
+    button.setAttribute("aria-pressed", String(button.dataset.filter === "all"));
+  });
+  document.querySelectorAll("[data-stage]").forEach(button => {
+    button.classList.toggle("active", button.dataset.stage === "all");
+    button.setAttribute("aria-pressed", String(button.dataset.stage === "all"));
+  });
+  render();
 });
+$("view-copied").addEventListener("click", openCopiedLibrary);
+$("empty-view-copied").addEventListener("click", openCopiedLibrary);
 $("undo-copy").addEventListener("click", () => {
   if (!copyUndo) return;
-  const {id,previousStage} = copyUndo;
+  const {id,previousStage,returnView} = copyUndo;
   const item = records.find(value => value.id === id);
   hideCopyUndo();
   if (!item) return;
@@ -733,7 +780,10 @@ $("undo-copy").addEventListener("click", () => {
   copiedLibrary.delete(item.id);
   try { localStorage.setItem(copiedLibraryKey, JSON.stringify([...copiedLibrary.values()])); }
   catch (_) { /* Workflow status remains the source of truth. */ }
-  render();
+  if (returnView && returnView !== selectedView) {
+    // Restore the original workspace after Undo, including India News.
+    setView(returnView);
+  } else render();
 });
 $("load-more").addEventListener("click", () => {
   visibleCount += 12;

@@ -72,10 +72,10 @@
           </div>
           <p id="feed-disclaimer" class="feed-disclaimer" hidden>Trending is an editorial ranking of the current RSS feed, not X popularity, verified facts, or independent source confirmation.</p>
           <div id="alert" role="status" class="notice" hidden></div>
-          <div id="copy-undo" class="copy-undo" role="status" hidden><span id="copy-undo-message"></span><button id="undo-copy" type="button">Undo</button></div>
+          <div id="copy-undo" class="copy-undo" role="status" hidden><span id="copy-undo-message"></span><div class="copy-undo-actions"><button id="view-copied" type="button">View copied articles</button><button id="undo-copy" type="button">Undo</button></div></div>
           <div id="cards" class="cards" aria-live="polite" aria-busy="true"></div>
           <div id="more-container" class="more-container" hidden><button id="load-more" type="button" class="load-more">Show more stories</button><span id="more-counter" class="more-counter"></span></div>
-          <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><button type="button" id="clear-filters" class="secondary-action">Clear filters</button></div>
+          <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><div class="empty-actions"><button type="button" id="clear-filters" class="secondary-action" hidden>Clear filters</button><button type="button" id="empty-view-copied" class="secondary-action" hidden>View copied articles</button></div></div>
         </section>
         <footer class="footer"><span>SignalDesk — Built for thoughtful sharing</span><span>Suggested posts are unverified. Check sources before copying. No X integration.</span></footer>
       </main>
