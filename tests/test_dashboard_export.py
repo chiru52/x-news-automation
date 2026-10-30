@@ -56,6 +56,27 @@ class DashboardExportTests(unittest.TestCase):
         self.assertTrue(result[0]["id"])
         self.assertFalse(any("GH_TOKEN" in str(v) for v in result[0].values()))
 
+    def test_news_export_removes_syndicated_repeats(self):
+        q = queue()
+        first = dict(q["articles"][0])
+        another = dict(first)
+        another["link"] = first["link"] + "?utm_source=another_feed"
+        another["source"] = "Syndicated copy"
+        third = dict(first)
+        third["title"] = "Different story from the same newspaper"
+        third["link"] = "https://publisher.example/other-story"
+        q["articles"] = [first, another, third]
+        export = read_news(q)
+        self.assertEqual(len(export), 2)
+        self.assertEqual(export[0]["publisher"], "Publisher")
+
+    def test_export_repeated_ai_draft_prefers_newest_issue(self):
+        high = issue(number=30)
+        low = issue(number=12)
+        drafts = read_drafts([low, high])
+        self.assertEqual([d["id"] for d in drafts], ["30"])
+        self.assertEqual(drafts[0]["status"], "pending")
+
     def test_private_issue_uses_only_safe_edited_text(self):
         result = read_drafts([issue()])
         self.assertEqual(len(result), 1)

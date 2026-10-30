@@ -43,6 +43,32 @@ function safeSource(value) {
     return url.protocol === "https:" && !url.username && !url.password ? url.href : "";
   } catch (_) { return ""; }
 }
+function approximateXLength(value) {
+  // Heuristic only. X generally counts HTTP(S) links as shortened t.co URLs
+  // (~23 characters); emoji and premium-account limits can differ.
+  return clean(value, 1000).replace(/https?:\/\/[^\s]+/gi, "x".repeat(23)).length;
+}
+function canonicalStoryUrl(value) {
+  const safe = safeSource(value);
+  if (!safe) return "";
+  try {
+    const url = new URL(safe);
+    for (const key of [...url.searchParams.keys()]) {
+      if (/^utm_/i.test(key) || ["fbclid","gclid","mc_cid","mc_eid"].includes(key.toLowerCase()))
+        url.searchParams.delete(key);
+    }
+    url.hash = "";
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
+    return url.toString();
+  } catch (_) { return ""; }
+}
+function storyTimestamp(item) {
+  const d = new Date(item.published_at || item.updated_at);
+  return Number.isFinite(d.getTime()) ? d.getTime() : 0;
+}
+function byFreshness(a,b) {
+  return storyTimestamp(b) - storyTimestamp(a) || a.index - b.index;
+}
 function formatDate(value, {short = false} = {}) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "Date unknown";
@@ -164,9 +190,9 @@ function card(item) {
     const text = currentDraft();
     postText.textContent = text || "No draft available. Use Edit draft to write one.";
     if (!editing) editor.value = text;
-    chars.textContent = text.length + " characters" +
-      (text.length > 280 ? " · Over 280; X may shorten URLs" : " · Verify before sharing");
-    chars.classList.toggle("over", text.length > 280);
+    const estimate = approximateXLength(text);
+    chars.textContent = "≈" + estimate + "/280 X characters (links shortened) · Verify first";
+    chars.classList.toggle("over", estimate > 280);
     copy.disabled = !text.trim();
     tag.textContent = edits.has(item.id) ? "LOCALLY EDITED · VERIFY" : "REVIEW BEFORE SHARING";
     reset.disabled = !edits.has(item.id);
@@ -205,7 +231,7 @@ function card(item) {
   return node;
 }
 function render() {
-  const list = records.filter(item => {
+  let list = records.filter(item => {
     if (selectedView === "drafts" && item.kind !== "draft") return false;
     if (selectedView === "saved" && !saved.has(item.id)) return false;
     if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
@@ -213,6 +239,18 @@ function render() {
       .some(t => clean(t).toLocaleLowerCase().includes(query))) return false;
     return true;
   });
+  // New stories should be visible first; AI drafts remain in their own tab.
+  // Remove only repeated publisher URLs in All, retaining the newest item.
+  list.sort(byFreshness);
+  if (selectedView === "all") {
+    const used = new Set();
+    list = list.filter(item => {
+      const url = canonicalStoryUrl(item.source_url);
+      if (!url || used.has(url)) return !url;
+      used.add(url);
+      return true;
+    });
+  }
   $("result-count").textContent = list.length + (list.length === 1 ? " story" : " stories");
   const target = $("cards");
   target.replaceChildren(...list.map(card));

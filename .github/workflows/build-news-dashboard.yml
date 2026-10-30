@@ -9,6 +9,7 @@ on:
     paths:
       - 'dashboard/**'
       - 'newsbot/dashboard_export.py'
+      - 'newsbot/news_quality.py'
       - '.github/workflows/build-news-dashboard.yml'
   workflow_dispatch:
   schedule:

@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .editorial_inbox import IssueValidationError, parse_issue
+from .news_quality import unique_stories
 
 REPO = "varadachiru/x-news-automation"
 ROOT = Path(__file__).resolve().parents[1]
@@ -82,7 +83,7 @@ def read_news(queue: dict) -> list[dict]:
             "published_at": clean(article.get("published_at"), 50),
             "status": "unverified",
         })
-    return out
+    return unique_stories(out)
 
 
 def read_drafts(issues: list[dict]) -> list[dict]:
@@ -124,7 +125,7 @@ def read_drafts(issues: list[dict]) -> list[dict]:
             "updated_at": clean(issue.get("updated_at") or issue.get("updatedAt"), 50),
             "status": parsed["status"],
         })
-    return sorted(out, key=lambda x: int(x["id"]), reverse=True)
+    return unique_stories(sorted(out, key=lambda x: int(x["id"]), reverse=True))
 
 
 def fetch_private_issues() -> list[dict]:
