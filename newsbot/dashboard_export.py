@@ -67,7 +67,8 @@ def bounded_trend(value: object) -> dict:
             type(count) is not int or not 1 <= count <= 20 or
             reason not in ("Headline relevance and recency",
                            "Fresh headline about a reported development",
-                           f"Headline relevance and {count} matching RSS feeds")):
+                           f"Headline relevance and {count} matching RSS feeds",
+                           f"Headline relevance and {count} matching publishers")):
         raise ValueError("Unexpected or unsafe editorial signal metadata")
     return {"score": score, "coverage_feeds": count, "reason": reason}
 

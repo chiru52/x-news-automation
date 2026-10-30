@@ -8,6 +8,7 @@
 import { XMLParser } from "fast-xml-parser";
 import feeds from "../config/sources.json" with {type:"json"};
 import {ARCHIVE_TTL_SECONDS, archiveDate, historyKey, mergeDailyArchive, historyParams, queryArchive} from "./archive.mjs";
+import {sameNewsEvent, editorialSignals} from "./intelligence.mjs";
 
 export const CRON = "*/15 * * * *";
 const MAX_AGE_MS = 36 * 60 * 60 * 1000;
@@ -25,6 +26,7 @@ const SAFE_CATEGORIES = ["technology", "saas", "markets"];
 const WORDS = /(ai|artificial intelligence|technology|software|startup|saas|enterprise|cloud|launch|product|funding|invest|revenue|earnings|market|shares|stocks|business|security|developer|openai|anthropic|nvidia|microsoft|google|apple|finance|bank|economy|nifty|sensex|rbi|sebi|ipo|nse|bse|rupee|bengaluru|mumbai|indian)/i;
 const SPAM = /\b(subscribe now|sponsored|advertisement|coupon|giveaway|deal of the day|best discounts)\b/i;
 const INDIA_MARKERS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi|fintech india)\b/i;
+const INDIA_PREVIEW_CONTEXT = /\b(?:in india|across india|india-based|indian startup|indian government|reserve bank of india|india\x27s market|indian stock market)\b/i;
 function isIndiaStory(article) {
   // A country-specific source may supply stories without naming India in the
   // headline. Generic Indian technology publishers are NOT proof of relevance.
@@ -101,19 +103,13 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
         SPAM.test(title) || !WORDS.test(title)) continue;
     const preview=plain(entry.description ?? entry.summary ?? "",170);
     result.push({
-      title, source_url:link, publisher:feed.name,
+      title, source_url:link, publisher:feed.name, feed_url:feed.url,
       category:feed.category, published_at:new Date(date).toISOString(),
       source_preview:preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
-      region:feed.region === "india" || INDIA_MARKERS.test(title) ? "india" : "global",
+      region:feed.region === "india" || INDIA_MARKERS.test(title) || INDIA_PREVIEW_CONTEXT.test(preview) ? "india" : "global",
     });
   }
   return result;
-}
-function sourceKey(article) {
-  return article.source_url;
-}
-function titleKey(article) {
-  return article.title.toLowerCase().replace(/[^a-z0-9]/g,"");
 }
 function approximateXLength(text) {
   return String(text).replace(/https?:\/\/[^\s]+/gi,"x".repeat(23)).length;
@@ -133,12 +129,10 @@ function makePost(item) {
   const title=item.title.length > allowed ? item.title.slice(0,allowed-1).trimEnd()+"…" : item.title;
   return title+"\n\n"+thought+"\n\n"+item.source_url;
 }
-export async function publicItem(article) {
+export async function publicItem(article, allArticles=[article], nowMs=Date.now()) {
   const buf=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(article.source_url));
   const id=[...new Uint8Array(buf)].slice(0,12).map(v=>v.toString(16).padStart(2,"0")).join("");
-  const ageH=(Date.now()-new Date(article.published_at).getTime())/3_600_000;
-  const concrete=/launch|release|earnings|funding|raises|acquir|security|regulat/i.test(article.title);
-  const score=Math.max(0,Math.min(100,Math.round(68-Math.max(0,ageH)*1.2+(concrete?12:0)-(article.title.endsWith("?")?16:0))));
+  const signals=editorialSignals(article,allArticles,nowMs);
   const post=makePost(article);
   return {
     id,title:article.title,description:"Publisher report. Verify all claims before sharing.",
@@ -147,22 +141,20 @@ export async function publicItem(article) {
     publisher:article.publisher,source_url:article.source_url,post,
     category:article.category,region:isIndiaStory(article) ? "india" : "global",
     published_at:article.published_at,status:"unverified",
-    trend_score:score,coverage_feeds:1,trend_reason:concrete
-      ? "Fresh headline about a reported development" : "Headline relevance and recency",
+    trend_score:signals.score,coverage_feeds:signals.coverage_feeds,
+    trend_reason:signals.reason,
   };
 }
 export function selectIndiaStories(stories) {
-  const seenUrls = new Set(), seenTitles = new Set(), perSource = new Map();
+  const perSource = new Map();
   const selected=[];
   const candidates=stories.filter(isIndiaStory).sort((a,b)=>
     new Date(b.published_at)-new Date(a.published_at));
   for(const story of candidates){
     if(!SAFE_CATEGORIES.includes(story.category)) continue;
-    const url=sourceKey(story), title=titleKey(story);
-    if(seenUrls.has(url)||seenTitles.has(title)) continue;
+    if(selected.some(previous=>sameNewsEvent(previous,story))) continue;
     if((perSource.get(story.publisher)||0)>=5) continue;
     selected.push(story);
-    seenUrls.add(url);seenTitles.add(title);
     perSource.set(story.publisher,(perSource.get(story.publisher)||0)+1);
     if(selected.length>=MAX_INDIA_STORIES) break;
   }
@@ -171,14 +163,14 @@ export function selectIndiaStories(stories) {
 export function selectStories(stories) {
   const filtered=stories.slice().sort((a,b)=>
     new Date(b.published_at)-new Date(a.published_at));
-  const seenUrls=new Set(),seenTitles=new Set(),sourceCounts=new Map();
+  const sourceCounts=new Map(),accepted=[];
   const buckets=Object.fromEntries(SAFE_CATEGORIES.map(c=>[c,[]]));
   for (const story of filtered) {
     if (!SAFE_CATEGORIES.includes(story.category)) continue;
-    if (seenUrls.has(sourceKey(story)) || seenTitles.has(titleKey(story))) continue;
+    if (accepted.some(previous=>sameNewsEvent(previous,story))) continue;
     const count=sourceCounts.get(story.publisher)||0;
     if (count >= MAX_PER_SOURCE) continue;
-    seenUrls.add(sourceKey(story));seenTitles.add(titleKey(story));
+    accepted.push(story);
     sourceCounts.set(story.publisher,count+1);
     buckets[story.category].push(story);
   }
@@ -219,8 +211,8 @@ export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   const indiaSelected=selectIndiaStories(allArticles);
   // A failing RSS network never overwrites a healthy, previous public cache.
   if (selected.length < MIN_STORIES) return {ok:false,reason:"insufficient_new_stories",count:selected.length};
-  const news=await Promise.all(selected.map(publicItem));
-  const india_news=await Promise.all(indiaSelected.map(publicItem));
+  const news=await Promise.all(selected.map(article=>publicItem(article,allArticles,nowMs)));
+  const india_news=await Promise.all(indiaSelected.map(article=>publicItem(article,allArticles,nowMs)));
   const data={schema_version:1,generated_at:new Date(nowMs).toISOString(),news,india_news,drafts:[],
     warnings:results.some(x=>x.error)?["some_feed_sources_unavailable"]:[]};
   await env.NEWS_CACHE.put(SNAPSHOT_KEY,JSON.stringify(data));

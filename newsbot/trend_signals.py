@@ -39,12 +39,25 @@ def match_for_coverage(article: Article, other: Article) -> bool:
     return same_story(first, second)
 
 
+def publisher_group(source: str) -> str:
+    """Treat multiple RSS feeds under one news organization as one owner."""
+    name = source.casefold().strip()
+    for prefix, group in (
+        ("cnbc", "cnbc"), ("bbc", "bbc"), ("yahoo finance", "yahoo"),
+        ("et ", "economic-times"), ("economic times", "economic-times"),
+        ("product hunt", "product-hunt"),
+    ):
+        if name.startswith(prefix):
+            return group
+    return name
+
+
 def signals_for_selected(selected: list[Article], all_stories: list[Article],
                          now: datetime, *, lookback_hours=36) -> dict[str, dict]:
     """Map selected article ID to bounded numeric signals & safe explanation.
 
     Ignore feed posts that are stale or future-dated, and count distinct feed
-    names only once. Heuristic impact comes from title, not publisher evidence.
+    publisher organizations only once. Heuristic impact comes from title, not independent verification.
     """
     from datetime import timedelta
     if now.tzinfo is None:
@@ -55,14 +68,14 @@ def signals_for_selected(selected: list[Article], all_stories: list[Article],
         published = datetime.fromisoformat(article.published_at)
         relevance = assess_story(article.title, article.summary,
                                  article.category, published, now)
-        feeds = {article.source}
+        feeds = {publisher_group(article.source)}
         for candidate in all_stories:
             timestamp = datetime.fromisoformat(candidate.published_at)
             timestamp = timestamp.astimezone(timezone.utc)
             if not now - timedelta(hours=lookback_hours) <= timestamp <= now + timedelta(minutes=10):
                 continue
             if match_for_coverage(article, candidate):
-                feeds.add(candidate.source)
+                feeds.add(publisher_group(candidate.source))
             if len(feeds) >= MAX_FEEDS:
                 break
         count = min(len(feeds), MAX_FEEDS)
@@ -73,7 +86,7 @@ def signals_for_selected(selected: list[Article], all_stories: list[Article],
         score = max(0, min(100, int(relevance["score"]) * 7 +
                              impact + min(count - 1, 3) * 8 - speculative))
         if count > 1:
-            reason = f"Headline relevance and {count} matching RSS feeds"
+            reason = f"Headline relevance and {count} matching publishers"
         elif impact:
             reason = "Fresh headline about a reported development"
         else:

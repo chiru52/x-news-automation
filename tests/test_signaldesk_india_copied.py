@@ -29,7 +29,7 @@ class IndiaCopiedDashboardTests(unittest.TestCase):
         self.assertIn('selectedView === "india"',self.js)
         self.assertIn("india_news:Array.isArray(dynamic.india_news)",self.js)
         self.assertIn("export function selectIndiaStories(stories)",self.worker)
-        self.assertIn("india_news=await Promise.all(indiaSelected.map(publicItem))",self.worker)
+        self.assertIn("india_news=await Promise.all(indiaSelected.map(article=>publicItem(article,allArticles,nowMs)))",self.worker)
         self.assertIn('region:isIndiaStory(article) ? "india" : "global"',self.worker)
         self.assertIn('data.india_news.some(item=>item.region!=="india")',self.worker)
 

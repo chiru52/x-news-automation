@@ -11,6 +11,13 @@ const stage=new Map();
 const stageOf=item=>stage.get(item.id)||"new";
 const key=url=>new URL(url).pathname;
 
+test("trend ranks across India and Global by evidence score, not continent",()=>{
+  const entries=[news("a","India AI startup expands developer tools","india",93),
+    news("b","Global AI launch draws response","global",81)];
+  assert.deepEqual(topNews(entries).map(x=>x.id),["news:a","news:b"]);
+  assert.deepEqual(newsInSection(entries,"india").map(x=>x.id),["news:a"]);
+  assert.deepEqual(newsInSection(entries,"global").map(x=>x.id),["news:b"]);
+});
 test("the seven-menu model partitions a shared Global + India news pool",()=>{
   assert.deepEqual(NEWS_VIEWS,["all","trending","global","india"]);
   const globalA=news("a","Worldwide software release","global",95);

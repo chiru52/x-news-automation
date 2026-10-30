@@ -27,8 +27,16 @@ class TrendingSignalsTests(unittest.TestCase):
         result = signals_for_selected([original], [original, copy, same_feed], NOW)
         data = result[original.identity]
         self.assertEqual(data["coverage_feeds"], 2)
-        self.assertIn("matching RSS feeds", data["reason"])
+        self.assertIn("matching publishers", data["reason"])
         self.assertTrue(0 <= data["score"] <= 100)
+
+    def test_multiple_feeds_from_same_publisher_are_not_independent_coverage(self):
+        selected = article("OpenAI launches enterprise AI coding assistant for developer teams")
+        same_owner = article(selected.title, "BBC Business", url="https://other.example/bbc")
+        separate = article(selected.title, "Ars Technica", url="https://ars.example/story")
+        data = signals_for_selected([selected], [selected, same_owner, separate], NOW)[selected.identity]
+        self.assertEqual(data["coverage_feeds"], 2)
+        self.assertIn("matching publishers", data["reason"])
 
     def test_question_headline_downgraded_not_deleted(self):
         question = article("AI developers: Will a new AI tool launch next year?", url="https://example.com/forecast")

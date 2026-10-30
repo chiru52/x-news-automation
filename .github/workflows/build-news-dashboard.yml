@@ -57,6 +57,8 @@ jobs:
           npm install --prefix news-collector --no-audit --no-fund
           node --test tests/signaldesk-news-history.test.mjs
           node --test tests/signaldesk-news-sections.test.mjs
+          node --test tests/signaldesk-news-intelligence.test.mjs
+          node --check news-collector/intelligence.mjs
           node --test tests/signaldesk-studio.test.mjs
       - name: Collect current RSS candidates (review and copy only)
         run: python -m newsbot --preview --dashboard-limit 30 --output output/dashboard-news

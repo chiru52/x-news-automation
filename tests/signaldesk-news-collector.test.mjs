@@ -57,6 +57,24 @@ test("selection avoids duplicates, caps source and balances topics",()=>{
   assert.ok(new Set(picks.map(x=>x.source_url)).size===30);
   assert.ok(Math.max(...Object.values(Object.groupBy(picks,x=>x.publisher)).map(x=>x.length))<=4);
 });
+test("India headlines can be classified by strong RSS preview context but not generic Indian publisher names",()=>{
+  const indiaContext=rss("AI technology startup raises new software funding")
+    .replace("The publisher says the new product launch is expected this year.",
+             "An India-based startup plans enterprise software investments in local markets.");
+  assert.equal(parseFeed(indiaContext,source,NOW)[0].region,"india");
+  const unrelated=parseFeed(rss("Microsoft unveils developer software for global cloud customers"),
+    {name:"YourStory India",category:"technology",url:"https://yourstory.com/feed"},NOW);
+  assert.equal(unrelated[0].region,"global");
+});
+test("collector conservatively removes cross-publisher duplicates without hiding different facts",()=>{
+  const headline="OpenAI launches enterprise AI coding assistant for developer teams";
+  const basic={...item("base"),title:headline};
+  const matched={...item("other"),title:headline+" today",publisher:"Other Publisher"};
+  const numbers={...item("different"),title:"OpenAI raises $20 million for developer tools software expansion"};
+  const numbers2={...item("amount"),title:"OpenAI raises $25 million for developer tools software expansion",publisher:"Other Publisher"};
+  const picks=selectStories([basic,matched,numbers,numbers2]);
+  assert.equal(picks.length,3);
+});
 test("India-specific finance headline terms qualify without generic market words",()=>{
   const india=parseFeed(rss("RBI updates Nifty and Sensex index rules"),source,NOW);
   assert.equal(india.length,1);
@@ -98,7 +116,7 @@ test("public item schema matches original dashboard contract and X manual-only",
   assert.ok(card.post.includes(card.source_url));
   assert.ok(card.post.includes("I'm curious"));
   assert.ok(card.post.length<320);
-  assert.equal(card.trend_reason,"Fresh headline about a reported development");
+  assert.equal(card.trend_reason,"Recent headline about a reported development");
 });
 test("cron is the only thing fetching RSS; visitors only read cache",async()=>{
   assert.equal(CRON,"*/15 * * * *");

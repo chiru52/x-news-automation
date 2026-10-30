@@ -12,16 +12,35 @@ export function isIndiaArticle(item) {
     INDIA_FOCUSED_SOURCES.has(item.publisher) ||
     INDIA_MARKERS.test(item.title || ""));
 }
+// Keep the same conservative cross-source duplicate rules as the collector.
+// Different numbers or company lead terms are *not* the same news event.
+const IGNORE=new Set(["the","a","an","and","or","but","of","in","on","for","to",
+  "with","at","by","from","as","after","before","new","latest","says",
+  "report","reports","news","update","updates"]);
+function headlineTokens(title){
+  return (String(title||"").toLowerCase().match(/[a-z0-9]+(?:[.][0-9]+)?/g)||[])
+    .filter(word=>!IGNORE.has(word));
+}
+export function nearIdenticalHeadlines(a,b){
+  const aTokens=headlineTokens(a),bTokens=headlineTokens(b);
+  const first=new Set(aTokens),second=new Set(bTokens);
+  if(first.size<6||second.size<6)return false;
+  const numbers=values=>values.filter(x=>/\d/.test(x)).join("|");
+  if(numbers(aTokens)!==numbers(bTokens)||
+     aTokens.slice(0,2).join("|")!==bTokens.slice(0,2).join("|"))return false;
+  const shared=[...first].filter(x=>second.has(x)).length;
+  return shared>=6 && shared/(first.size+second.size-shared)>=0.84;
+}
 export function eligibleNews(items, stageOf, storyKey) {
-  const seen = new Set();
-  return items.filter(item => {
-    if (item.kind !== "news" || item.history_only ||
-        ["copied","archived"].includes(stageOf(item))) return false;
-    const key = storyKey(item.source_url) || item.id;
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const seen = new Set(), accepted=[];
+  for(const item of items){
+    if(item.kind!=="news"||item.history_only||
+       ["copied","archived"].includes(stageOf(item)))continue;
+    const key=storyKey(item.source_url)||item.id;
+    if(seen.has(key)||accepted.some(previous=>nearIdenticalHeadlines(item.title,previous.title)))continue;
+    seen.add(key);accepted.push(item);
+  }
+  return accepted;
 }
 function dateValue(item) {
   const value = new Date(item.published_at || item.updated_at).getTime();

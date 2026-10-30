@@ -24,7 +24,7 @@ class RegionKpisTests(unittest.TestCase):
             "function trendingPicks()",1)[0]
         self.assertIn("eligibleNews(records, workflowStage, canonicalStoryUrl)",section)
         helper=(ROOT/"dashboard/news-sections.mjs").read_text("utf-8")
-        self.assertIn('item.kind !== "news"', helper)
+        self.assertIn('item.kind!=="news"', helper)
         self.assertIn("item.history_only", helper)
         self.assertIn('["copied","archived"].includes(stageOf(item))',helper)
         self.assertIn("seen.add(key)",helper)
