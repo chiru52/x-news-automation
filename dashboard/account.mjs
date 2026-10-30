@@ -47,7 +47,7 @@ async function setup(){
     if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
     else {message("Sign in, register, or reset your password.");form.hidden=mode==="update-password";}
     showMode();
-  }catch(err){client=null;form.hidden=true;message("Accounts are not enabled yet. Continue browsing SignalDesk as a guest.");}
+  }catch(err){client=null;form.hidden=true;message(err?.message==="Accounts are not enabled yet."?"Accounts are not enabled yet. Continue browsing SignalDesk as a guest.":"Account connection unavailable. Please refresh or try again later; news remains available without signing in.");}
 }
 addEventListener("hashchange",showMode);
 form.addEventListener("submit",async event=>{
