@@ -3,7 +3,6 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import patch
 
 from news_collector import configure_live
 
@@ -18,37 +17,46 @@ class LiveCollectorWiringTests(unittest.TestCase):
         (dest / "feed-config.json").write_text('{"schema_version":1,"live_feed_url":null}',
                                               encoding="utf-8")
 
-    def test_static_fallback_when_cloudflare_access_is_not_available(self):
+    def test_static_fallback_if_no_public_worker_url_is_approved(self):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)
             self.setup_bundle(dest)
-            with patch.object(configure_live, "discover", side_effect=RuntimeError("403")):
-                value = configure_live.configure(dest)
+            value = configure_live.configure(dest)
             self.assertIsNone(value["live_feed_url"])
             self.assertEqual(json.loads((dest / "feed-config.json").read_text("utf-8")),
                              {"schema_version": 1, "live_feed_url": None})
             self.assertIn("connect-src 'self';", (dest / "_headers").read_text("utf-8"))
 
-    def test_live_url_only_after_verified_worker_health(self):
+    def test_pinned_verified_public_url_and_csp(self):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)
             self.setup_bundle(dest)
-            url = "https://signaldesk-news-feed.example-workers.workers.dev/feed"
-            with patch.object(configure_live, "discover", return_value=url):
-                value = configure_live.configure(dest)
+            url = configure_live.APPROVED_ENDPOINT
+            (dest / "feed-config.json").write_text(
+                json.dumps({"schema_version":1,"live_feed_url":url}), encoding="utf-8")
+            value = configure_live.configure(dest)
             self.assertEqual(value["live_feed_url"],url)
             headers = (dest / "_headers").read_text("utf-8")
-            self.assertIn("connect-src 'self' https://signaldesk-news-feed.example-workers.workers.dev;",headers)
+            self.assertIn("connect-src 'self' " + configure_live.APPROVED_ORIGIN + ";",headers)
             self.assertNotIn("CLOUDFLARE_API_TOKEN", headers)
 
-    def test_wrong_worker_hostname_falls_back(self):
+    def test_unapproved_worker_hostname_falls_back(self):
         with tempfile.TemporaryDirectory() as tmp:
             dest = Path(tmp)
             self.setup_bundle(dest)
-            with patch.object(configure_live,"discover",
-                              return_value="https://random.example.org/feed"):
-                value=configure_live.configure(dest)
+            (dest / "feed-config.json").write_text(json.dumps(
+                {"schema_version":1,"live_feed_url":"https://attacker.example/feed"}),
+                encoding="utf-8")
+            value=configure_live.configure(dest)
             self.assertIsNone(value["live_feed_url"])
+            self.assertIn("connect-src 'self';", (dest / "_headers").read_text("utf-8"))
+
+    def test_worker_url_is_configured_by_approved_source_only(self):
+        source = json.loads((ROOT / "dashboard/feed-config.json").read_text("utf-8"))
+        self.assertEqual(source["schema_version"], 1)
+        self.assertEqual(source["live_feed_url"], configure_live.APPROVED_ENDPOINT)
+        self.assertNotIn("run_path", (ROOT / "news_collector/configure_live.py").read_text("utf-8"))
+        self.assertNotIn("api.cloudflare.com", (ROOT / "news_collector/configure_live.py").read_text("utf-8"))
 
     def test_worker_deploy_is_separate_and_no_model_or_x(self):
         workflow = (ROOT/".github/workflows/deploy-news-collector.yml").read_text("utf-8")

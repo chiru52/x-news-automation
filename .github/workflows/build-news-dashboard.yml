@@ -74,11 +74,23 @@ jobs:
           print(f'Public feed verified: {len(data["news"])} news, {len(data["drafts"])} drafts')
           print('No private evidence, GitHub secrets, X token or publishing operation')
           PY
-      - name: Wire verified shared RSS feed (fallback to static when unavailable)
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      - name: Wire exact verified shared RSS feed (preserve static fallback)
         run: python -m news_collector.configure_live dist/signaldesk
+      - name: Assert approved live feed URL and narrow CSP before publishing
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          from news_collector.configure_live import APPROVED_ENDPOINT, APPROVED_ORIGIN
+          root = Path('dist/signaldesk')
+          cfg = json.loads((root / 'feed-config.json').read_text(encoding='utf-8'))
+          headers = (root / '_headers').read_text(encoding='utf-8')
+          if cfg != {'schema_version': 1, 'live_feed_url': APPROVED_ENDPOINT}:
+              raise RuntimeError('Public collector configuration was not applied')
+          if "connect-src 'self' " + APPROVED_ORIGIN + ";" not in headers:
+              raise RuntimeError('Public collector CSP allowlist not applied')
+          print('Exact approved shared collector URL and CSP verified; daily fallback retained')
+          PY
       - name: Confirm Cloudflare Pages deployment credentials
         env:
           HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
