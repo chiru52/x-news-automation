@@ -25,7 +25,7 @@ function showMode(){
 }
 async function setup(){
   try{
-    const response=await fetch("./auth-config.json",{cache:"no-store"});
+    const response=await fetch("./auth-config.json?auth=84",{cache:"no-store"});
     if(!response.ok) throw Error("Config unavailable");
     const config=await response.json();
     if(config.enabled!==true) throw Error("Accounts are not enabled yet.");
