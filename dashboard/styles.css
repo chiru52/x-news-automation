@@ -235,3 +235,31 @@
 .account-settings button{border:0;background:#6c48ca;color:white;border-radius:8px;padding:11px;font-weight:700;cursor:pointer}
 .account-settings button:disabled{opacity:.6;cursor:wait}
 .account-settings[hidden],.account-links[hidden]{display:none}
+
+/* Authentication two-column animated editorial preview */
+.account-page{display:block;min-height:100vh;padding:36px;background:#faf9f7}
+.account-layout{max-width:1180px;margin:auto;min-height:min(760px,calc(100vh - 72px));display:grid;grid-template-columns:minmax(340px,470px) minmax(0,1fr);gap:34px;align-items:stretch}
+.account-layout .account-panel{width:100%;max-width:none;align-self:start}
+.account-showcase{position:relative;overflow:hidden;min-height:610px;background:linear-gradient(140deg,#21154c,#6c48ca 65%,#9b82e8);color:white;padding:65px 50px;border-radius:24px}
+.showcase-orb{position:absolute;width:400px;height:400px;border-radius:50%;background:rgba(255,255,255,.08);right:-140px;top:-160px;animation:orb-drift 11s ease-in-out infinite alternate}
+.showcase-kicker{font-size:12px;letter-spacing:2px;opacity:.8}
+.account-showcase h2{font:600 clamp(28px,3vw,47px)/1.12 Georgia,serif;max-width:510px;margin:24px 0 55px;position:relative}
+.showcase-feed{display:grid;gap:17px;position:relative}
+.showcase-story{padding:20px 22px;border:1px solid rgba(255,255,255,.25);border-radius:16px;background:rgba(255,255,255,.13);backdrop-filter:blur(7px);display:grid;gap:5px;animation:story-float 7s ease-in-out infinite}
+.showcase-story:nth-child(2){animation-delay:-2.3s;margin-left:25px}.showcase-story:nth-child(3){animation-delay:-4.6s;margin-left:10px}
+.showcase-story span{font-size:11px;color:#f6d8ff;text-transform:uppercase;letter-spacing:1px}.showcase-story strong{font-size:18px}.showcase-story small{opacity:.7}
+.account-showcase>p{font-size:13px;color:#eee4ff;margin-top:35px}
+@keyframes story-float{0%,100%{transform:translateY(0)}50%{transform:translateY(-9px)}}@keyframes orb-drift{to{transform:translate(-70px,65px)}}
+#profile-greeting:not([hidden]){font-weight:700;color:var(--purple);white-space:nowrap;font-size:13px}
+#nav-manage-account[hidden],#account-workspace[hidden]{display:none!important}
+.content.account-open>:not(#account-workspace){display:none!important}
+#account-workspace{max-width:1030px;margin:auto}
+#account-workspace h1{font:700 30px Georgia,serif;margin:0 0 7px}
+#account-workspace>p{color:var(--muted);margin-bottom:20px}
+#account-frame{width:100%;min-height:1050px;border:0;background:transparent;border-radius:14px}
+.account-embedded{padding:0!important;background:transparent!important}
+.account-embedded .account-layout{display:block;min-height:0;max-width:860px}
+.account-embedded .account-panel{box-shadow:none;width:100%;padding:25px 35px}
+.account-embedded .account-showcase,.account-embedded .account-back,.account-embedded .account-mark{display:none!important}
+@media(max-width:800px){.account-layout{display:block}.account-showcase{margin-top:25px;min-height:440px;padding:35px}.account-page{padding:16px}.account-embedded{padding:0!important}}
+@media(prefers-reduced-motion:reduce){.showcase-story,.showcase-orb{animation:none!important}}

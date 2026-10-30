@@ -10,6 +10,9 @@ function showMode(){
   mode=cleanMode();
   const headings={"sign-in":"Sign in to SignalDesk","sign-up":"Create a SignalDesk account",forgot:"Reset your password","update-password":"Choose a new password"};
   $("account-heading").textContent=headings[mode];
+  $("auth-name-label").hidden=mode!=="sign-up";
+  $("auth-name").hidden=mode!=="sign-up";
+  $("auth-name").required=mode==="sign-up";
   $("password-label").hidden=mode==="forgot";
   $("auth-password").hidden=mode==="forgot";
   $("auth-password").required=mode!=="forgot";
@@ -109,7 +112,7 @@ form.addEventListener("submit",async event=>{
   try{
     let response;
     if(mode==="sign-in")response=await client.auth.signInWithPassword({email,password});
-    if(mode==="sign-up")response=await client.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname+"#sign-in"}});
+    if(mode==="sign-up")response=await client.auth.signUp({email,password,options:{emailRedirectTo:location.origin+location.pathname+"#sign-in",data:{display_name:$("auth-name").value.trim()}}});
     if(mode==="forgot")response=await client.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname+"#update-password"});
     if(mode==="update-password")response=await client.auth.updateUser({password});
     if(response?.error)throw response.error;
@@ -128,4 +131,5 @@ form.addEventListener("submit",async event=>{
   finally{submit.disabled=false;}
 });
 $("account-sign-out").addEventListener("click",async()=>{if(!client)return;const {error}=await client.auth.signOut();if(error){message(error.message);return;}renderAccountUser(null);message("Signed out.");location.hash="sign-in";showMode();});
+if(new URLSearchParams(location.search).has("embedded"))document.body.classList.add("account-embedded");
 showMode();setup();

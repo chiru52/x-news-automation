@@ -1114,6 +1114,7 @@ async function updateOptionalAccountProfile(){
   const signIn=profileMenu.querySelector('a[href="./account.html#sign-in"]');
   const signUp=profileMenu.querySelector('a[href="./account.html#sign-up"]');
   const manage=$("profile-account-link");
+  const greeting=$("profile-greeting"),manageNav=$("nav-manage-account");
   const signOut=$("profile-sign-out"),accountStatus=$("profile-account-status");
   try{
     const response=await fetch("./auth-config.json",{cache:"no-store"});
@@ -1132,6 +1133,10 @@ async function updateOptionalAccountProfile(){
       title.textContent=signedIn?"Signed in to SignalDesk":"Browsing as guest";
       description.textContent=signedIn?"Account: "+(user.email||"Signed-in user")+" · Your saved items remain in this browser until cloud sync is enabled.":"Your saved items stay in this browser. Sign-in is optional.";
       signIn.hidden=signedIn;signUp.hidden=signedIn;manage.hidden=!signedIn;signOut.hidden=!signedIn;
+      manageNav.hidden=!signedIn;
+      const name=String(user?.user_metadata?.display_name||"").trim().slice(0,40);
+      greeting.hidden=!signedIn;greeting.textContent=signedIn?"Hi "+(name||"there")+"!":"";
+      if(!signedIn && document.querySelector(".content").classList.contains("account-open"))closeAccountWorkspace();
       profileToggle.setAttribute("aria-label",signedIn?"Account menu, signed in":"Account menu, guest");
     };
     signOut.addEventListener("click",async()=>{
@@ -1148,7 +1153,25 @@ async function updateOptionalAccountProfile(){
     auth.auth.onAuthStateChange((_event,session)=>renderSession(session?.user));
   }catch(_error){ /* Account health must never block public news. */ }
 }
+function openAccountWorkspace(){
+  const workspace=$("account-workspace"),content=document.querySelector(".content");
+  content.classList.add("account-open");workspace.hidden=false;
+  $("nav-manage-account").classList.add("active");
+  setProfileOpen(false);
+  history.replaceState(null,"","?view=account");
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+function closeAccountWorkspace(){
+  $("account-workspace").hidden=true;
+  document.querySelector(".content").classList.remove("account-open");
+  $("nav-manage-account").classList.remove("active");
+  if(location.search.includes("view=account"))history.replaceState(null,"",location.pathname);
+}
+$("nav-manage-account").addEventListener("click",openAccountWorkspace);
+$("profile-account-link").addEventListener("click",event=>{event.preventDefault();openAccountWorkspace()});
+document.querySelectorAll(".nav-items [data-view]").forEach(button=>button.addEventListener("click",closeAccountWorkspace));
 updateOptionalAccountProfile();
+if(new URLSearchParams(location.search).get("view")==="account")openAccountWorkspace();
 profileToggle.addEventListener("click",()=>setProfileOpen(profileMenu.hidden));
 document.addEventListener("click",(event)=>{
   if(!event.target.closest(".profile-wrap")) setProfileOpen(false);
