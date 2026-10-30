@@ -1,5 +1,6 @@
 import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
+import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -22,12 +23,7 @@ function showBrowserCheckStatus(ok) {
   }).format(new Date());
   label.textContent = (ok ? "Browser checked " : "Browser check failed ") + now;
 }
-const INDIA_TERMS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi)\b/i;
-const INDIA_FOCUSED_PUBLISHERS = new Set(["Inc42 India Startups","ET Entrepreneur India Startups"]);
-function isIndiaNews(item) {
-  return item.kind === "news" && (item.region === "india" ||
-    INDIA_FOCUSED_PUBLISHERS.has(item.publisher) || INDIA_TERMS.test(item.title));
-}
+function isIndiaNews(item) { return isIndiaArticle(item); }
 let copyUndo = null;
 function showCopyUndo(item, previousStage, fromClipboard = true) {
   copyUndo = {id:item.id, previousStage, returnView:selectedView};
@@ -156,10 +152,13 @@ function setWorkflowStage(item, stage) {
   catch (_) { showNotice("Your browser could not save this status; it may reset when you close the page."); }
   updateCounts();
 }
+function availableNews() {
+  // All news = deduplicated Global + India, excluding copied/archived stories.
+  return eligibleNews(records, workflowStage, canonicalStoryUrl);
+}
 function trendingPicks() {
-  return records.filter(item => item.kind === "news" && !item.history_only)
-    .sort((a,b) => b.trend_score - a.trend_score || byFreshness(a,b))
-    .slice(0,5);
+  // Top five editorial signals across BOTH geographies, not social popularity.
+  return topNews(availableNews(), 5);
 }
 
 const noteKey = "signaldesk:research-notes:v1";
@@ -259,40 +258,85 @@ function showNotice(message) {
   note.textContent = message;
   note.hidden = !message;
 }
-function indiaNewsForCurrentView() {
-  // KPI numbers in India News must match its visible, uncopied article list,
-  // including active topic and search filters. Exclude local copied history.
-  return records.filter(item =>
-    isIndiaNews(item) && !item.history_only &&
-    !["copied","archived"].includes(workflowStage(item)) &&
+function filteredNewsForCurrentView() {
+  return newsInSection(availableNews(), selectedView, trendingPicks()).filter(item =>
     (selectedCategory === "all" || item.category === selectedCategory) &&
     (!query || [item.title,item.description,item.publisher,item.post]
       .some(value => clean(value).toLocaleLowerCase().includes(query)))
   );
 }
 function updateCounts() {
-  const news = records.filter(r => r.kind === "news" && !r.history_only).length;
-  const drafts = records.filter(r => r.kind === "draft" && !r.history_only).length;
-  const indiaView = selectedView === "india";
-  const indiaNews = indiaView ? indiaNewsForCurrentView() : [];
-  $("count-news-label").textContent = indiaView ? "India news stories" : "News stories";
-  $("count-trending-label").textContent = indiaView ? "India trending picks" : "Trending picks";
-  $("count-ready-label").textContent = indiaView ? "India ready to copy" : "Ready to copy";
-  $("count-news").textContent = indiaView ? indiaNews.length : news;
-  $("count-trending").textContent = Math.min(5,indiaView ? indiaNews.length : news);
-  $("count-ready").textContent = indiaView
-    ? indiaNews.filter(item => workflowStage(item) === "ready").length
-    : records.filter(r => workflowStage(r) === "ready").length;
-  $("nav-all-count").textContent = records.filter(r => !r.history_only && !["copied","archived"].includes(workflowStage(r))).length;
-  $("nav-trend-count").textContent = Math.min(5, news);
-  $("nav-workflow-count").textContent = records.filter(r => workflowStage(r) !== "new").length;
-  $("nav-copied-count").textContent = records.filter(r => workflowStage(r) === "copied").length;
-  $("nav-india-count").textContent = records.filter(r => isIndiaNews(r) && !["copied","archived"].includes(workflowStage(r))).length;
-  $("nav-draft-count").textContent = drafts;
-  $("nav-saved-count").textContent = saved.size;
+  const news = availableNews();
+  const global = news.filter(item => !isIndiaNews(item));
+  const india = news.filter(isIndiaNews);
+  const trending = trendingPicks();
+  const filtered = filteredNewsForCurrentView();
+  const geographical = ["all","india","global","trending"].includes(selectedView);
+  const matchesFilters = item =>
+    (selectedCategory === "all" || item.category === selectedCategory) &&
+    (!query || [item.title,item.description,item.publisher,item.post]
+      .some(value => clean(value).toLocaleLowerCase().includes(query)));
+  const workflowItems = records.filter(item =>
+    !item.history_only && (item.kind === "draft" || workflowStage(item) !== "new"));
+  const copiedItems = records.filter(item => workflowStage(item) === "copied" && matchesFilters(item));
+  const savedItems = records.filter(item =>
+    saved.has(item.id) && !["copied","archived"].includes(workflowStage(item)) &&
+    matchesFilters(item));
+  if (geographical) {
+    $("count-news-label").textContent = selectedView === "india" ? "India news stories"
+      : selectedView === "global" ? "Global news stories"
+      : selectedView === "trending" ? "Trending news stories" : "News stories";
+    $("count-trending-label").textContent = selectedView === "india" ? "India trending picks"
+      : selectedView === "global" ? "Global trending picks" : "Trending picks";
+    $("count-ready-label").textContent = selectedView === "india" ? "India ready to copy"
+      : selectedView === "global" ? "Global ready to copy" : "Ready to copy";
+    $("count-news").textContent = filtered.length;
+    $("count-trending").textContent = selectedView === "trending" ? filtered.length
+      : filtered.filter(item => trending.some(pick => pick.id === item.id)).length;
+    $("count-ready").textContent = filtered.filter(item => workflowStage(item) === "ready").length;
+  } else if (selectedView === "workflow") {
+    const scoped = records.filter(item =>
+      (selectedStage === "all" ? workflowItems.includes(item) :
+       selectedStage === "drafts" ? item.kind === "draft" && !item.history_only :
+       workflowStage(item) === selectedStage) && matchesFilters(item));
+    $("count-news-label").textContent = "Workflow items";
+    $("count-trending-label").textContent = "Prepared drafts";
+    $("count-ready-label").textContent = "Ready to copy";
+    $("count-news").textContent = scoped.length;
+    $("count-trending").textContent = scoped.filter(item => item.kind === "draft").length;
+    $("count-ready").textContent = scoped.filter(item => workflowStage(item) === "ready").length;
+  } else if (selectedView === "copied") {
+    $("count-news-label").textContent = "Copied items";
+    $("count-trending-label").textContent = "India copied";
+    $("count-ready-label").textContent = "Global copied";
+    $("count-news").textContent = copiedItems.length;
+    $("count-trending").textContent = copiedItems.filter(isIndiaNews).length;
+    $("count-ready").textContent = copiedItems.filter(item =>
+      item.kind === "news" && !isIndiaNews(item)).length;
+  } else {
+    $("count-news-label").textContent = "Saved items";
+    $("count-trending-label").textContent = "Saved news";
+    $("count-ready-label").textContent = "Saved drafts";
+    $("count-news").textContent = savedItems.length;
+    $("count-trending").textContent = savedItems.filter(item => item.kind === "news").length;
+    $("count-ready").textContent = savedItems.filter(item => item.kind === "draft").length;
+  }
+  $("nav-all-count").textContent = news.length;
+  $("nav-trend-count").textContent = trending.length;
+  $("nav-global-count").textContent = global.length;
+  $("nav-india-count").textContent = india.length;
+  $("nav-workflow-count").textContent = workflowItems.length;
+  $("nav-copied-count").textContent = records.filter(item =>
+    workflowStage(item) === "copied").length;
+  $("nav-saved-count").textContent = records.filter(item =>
+    saved.has(item.id) && !["copied","archived"].includes(workflowStage(item))).length;
 }
 function setView(view) {
   selectedView = view;
+  // Navigation means a fresh section; old searches should not make it
+  // unexpectedly appear empty after switching Global ↔ India.
+  $("search-input").value = "";
+  query = "";
   selectedCategory = "all";
   visibleCount = 12;
   selectedStage = "all";
@@ -312,15 +356,19 @@ function setView(view) {
     btn.classList.toggle("active", btn.dataset.filter === "all");
     btn.setAttribute("aria-pressed", String(btn.dataset.filter === "all"));
   });
-  const titles = {all: "Explore the latest", trending: "Trending news", india: "India news", copied: "Copied articles", drafts: "Your X draft library", workflow: "Your content workflow", saved: "Saved for later"};
+  const titles = {
+    all: "All stories", trending: "Trending news", global: "Global news",
+    india: "India news", copied: "Copied articles",
+    workflow: "My Workflow", saved: "Saved for later"
+  };
   const descriptions = {
-    all: "Fresh stories and prepared drafts, all in one place.",
-    trending: "The strongest headline signals from the current news feed, not social popularity.",
-    workflow: "Organize your own reading and copying stages, stored only in this browser.",
-    drafts: "Suggestions to verify, edit and copy when you choose.",
-    saved: "Your bookmarked stories, stored only in this browser.",
-    india: "Indian startups, AI, technology and markets — from India-focused reporting and relevant headlines.",
-    copied: "Stories you copied to the clipboard. This does not mean they were posted on X."
+    all: "Global and India news together, including trending stories. Each article appears only once.",
+    trending: "Top editorial news signals from both Global and India — not social-media popularity.",
+    global: "International news, excluding articles specifically relevant to India.",
+    india: "India-related startups, AI, technology and markets, regardless of publisher country.",
+    workflow: "Review article stages and find prepared X drafts in one workspace. Saved only in this browser.",
+    copied: "Stories marked Copied or copied to your clipboard. This does not mean they were posted on X.",
+    saved: "Your bookmarked articles and drafts, stored only in this browser."
   };
   $("feed-title").textContent = titles[view];
   $("feed-description").textContent = descriptions[view];
@@ -576,7 +624,8 @@ function card(item) {
     }
     if (stage === "ready") showNotice("Ready is your personal mark. Check the source and claims before publishing manually.");
     if (selectedView === "workflow" && selectedStage !== "all" ||
-        ["all","trending","india","drafts","saved"].includes(selectedView) && ["copied","archived"].includes(stage) ||
+        ["all","trending","global","india","saved"].includes(selectedView) &&
+          ["copied","archived"].includes(stage) ||
         selectedView === "copied" && stage !== "copied") render();
   });
   const save = node.querySelector(".save-button");
@@ -590,35 +639,43 @@ function render() {
   updateCounts();
   const trendIds = new Set(trendingPicks().map(item => item.id));
   let list = records.filter(item => {
+    // All / Trending / Global / India are news-only. Prepared drafts live
+    // under My Workflow > Prepared drafts, never mixed into news headlines.
+    if (["all","trending","global","india"].includes(selectedView) && item.kind !== "news") return false;
     if (selectedView === "trending" && !trendIds.has(item.id)) return false;
+    if (selectedView === "global" && isIndiaNews(item)) return false;
     if (selectedView === "india" && !isIndiaNews(item)) return false;
     if (selectedView === "copied" && workflowStage(item) !== "copied") return false;
-    if (["all","trending","india","drafts","saved"].includes(selectedView) &&
+    if (["all","trending","global","india","saved"].includes(selectedView) &&
         ["copied","archived"].includes(workflowStage(item))) return false;
-    if (selectedView === "workflow" && selectedStage !== "all" && workflowStage(item) !== selectedStage) return false;
-    if (selectedView === "all" && workflowStage(item) === "archived") return false;
-    if (selectedView === "drafts" && item.kind !== "draft") return false;
+    if (selectedView === "workflow" && selectedStage === "all" &&
+        !(item.kind === "draft" || workflowStage(item) !== "new") ||
+        selectedView === "workflow" && item.history_only && selectedStage === "all") return false;
+    if (selectedView === "workflow" && selectedStage === "drafts" && item.kind !== "draft") return false;
+    if (selectedView === "workflow" && selectedStage !== "drafts" &&
+        selectedStage !== "all" && workflowStage(item) !== selectedStage) return false;
     if (selectedView === "saved" && !saved.has(item.id)) return false;
     if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
     if (query && ![item.title, item.description, item.publisher, item.post]
       .some(t => clean(t).toLocaleLowerCase().includes(query))) return false;
     return true;
   });
-  // New stories should be visible first; AI drafts remain in their own tab.
-  // Remove only repeated publisher URLs in All, retaining the newest item.
+  // Combine regional news without duplicates. Prepared drafts remain
+  // available in My Workflow even when a related source URL also has news.
   list.sort(selectedView === "trending"
     ? (a,b) => b.trend_score - a.trend_score || byFreshness(a,b)
     : byFreshness);
-  if (selectedView === "all") {
+  if (["all","trending","global","india"].includes(selectedView)) {
     const used = new Set();
     list = list.filter(item => {
-      const url = canonicalStoryUrl(item.source_url);
-      if (!url || used.has(url)) return !url;
+      const url = canonicalStoryUrl(item.source_url) || item.id;
+      if (used.has(url)) return false;
       used.add(url);
       return true;
     });
   }
-  $("result-count").textContent = list.length + (list.length === 1 ? " story" : " stories");
+  const noun = ["all","trending","global","india"].includes(selectedView) ? "story" : "item";
+  $("result-count").textContent = list.length + " " + noun + (list.length === 1 ? "" : "s");
   const target = $("cards");
   target.replaceChildren(...list.slice(0, visibleCount).map(card));
   target.setAttribute("aria-busy", "false");
@@ -731,8 +788,6 @@ async function initialize(background = false) {
 }
 document.querySelectorAll("[data-view]").forEach(button =>
   button.addEventListener("click", () => setView(button.dataset.view)));
-document.querySelectorAll("[data-category]").forEach(button =>
-  button.addEventListener("click", () => { setView("all"); setCategory(button.dataset.category); }));
 document.querySelectorAll("[data-filter]").forEach(button =>
   button.addEventListener("click", () => setCategory(button.dataset.filter)));
 document.querySelectorAll("[data-stage]").forEach(button =>

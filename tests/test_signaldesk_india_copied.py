@@ -41,7 +41,7 @@ class IndiaCopiedDashboardTests(unittest.TestCase):
         self.assertIn('setWorkflowStage(item, "copied")',self.js)
         self.assertIn('rememberCopied(item)',self.js)
         self.assertIn('showCopyUndo(item, previousStage)',self.js)
-        self.assertIn('["all","trending","india","drafts","saved"].includes(selectedView)',self.js)
+        self.assertIn('["all","trending","global","india","saved"].includes(selectedView)',self.js)
         self.assertIn('["copied","archived"].includes(workflowStage(item))',self.js)
         self.assertIn('selectedView === "copied" && workflowStage(item) !== "copied"',self.js)
         self.assertIn('const copiedLibraryKey = "signaldesk:copied-library:v1"',self.js)

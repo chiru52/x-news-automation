@@ -18,17 +18,11 @@
       <nav class="nav-items" aria-label="Main navigation">
         <button class="nav-item active" data-view="all" aria-current="page"><span class="nav-icon">▦</span> All stories <span id="nav-all-count" class="nav-count">–</span></button>
         <button class="nav-item" data-view="trending"><span class="nav-icon">↗</span> Trending news <span id="nav-trend-count" class="nav-count">–</span></button>
-        <button class="nav-item" data-view="india"><span class="nav-icon">🇮🇳</span> India news <span id="nav-india-count" class="nav-count">–</span></button>
-        <button class="nav-item" data-view="drafts"><span class="nav-icon">✧</span> X-ready drafts <span id="nav-draft-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="global"><span class="nav-icon">◎</span> Global news <span id="nav-global-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="india"><span class="nav-icon">IN</span> India news <span id="nav-india-count" class="nav-count">–</span></button>
         <button class="nav-item" data-view="workflow"><span class="nav-icon">☷</span> My workflow <span id="nav-workflow-count" class="nav-count">0</span></button>
         <button class="nav-item" data-view="copied"><span class="nav-icon">✓</span> Copied articles <span id="nav-copied-count" class="nav-count">0</span></button>
         <button class="nav-item" data-view="saved"><span class="nav-icon">♡</span> Saved for later <span id="nav-saved-count" class="nav-count">0</span></button>
-      </nav>
-      <div class="sidebar-section-label topic-label">TOPICS</div>
-      <nav class="nav-items" aria-label="News categories">
-        <button class="nav-item topic-item" data-category="technology"><span class="topic-dot purple"></span> AI &amp; technology</button>
-        <button class="nav-item topic-item" data-category="saas"><span class="topic-dot orange"></span> Startups &amp; SaaS</button>
-        <button class="nav-item topic-item" data-category="markets"><span class="topic-dot blue"></span> Markets &amp; finance</button>
       </nav>
       <div class="sidebar-bottom">
         <div class="safety-mini"><span class="safety-symbol">✓</span><div><strong>You stay in control</strong><span>Nothing is posted automatically.</span></div></div>
@@ -52,11 +46,12 @@
           <div class="metric"><span class="metric-icon mint">✓</span><div><span id="count-ready-label">Ready to copy</span><strong id="count-ready">—</strong></div></div>
         </section>
         <section class="feed-section">
-          <div class="section-title"><div><span class="section-kicker">EDITORIAL FEED</span><h2 id="feed-title">Explore the latest</h2><p id="feed-description">Fresh stories and prepared drafts, all in one place.</p><p id="refresh-note" class="refresh-note"><span aria-hidden="true">↻</span> News is collected approximately every 15 minutes. This browser checks shortly afterward; Last refreshed shows when the news was generated.</p></div><div class="results" id="result-count" aria-live="polite">—</div></div>
+          <div class="section-title"><div><span class="section-kicker">EDITORIAL FEED</span><h2 id="feed-title">Explore the latest</h2><p id="feed-description">Explore global and India news together. Trending stories are included, without duplicates.</p><p id="refresh-note" class="refresh-note"><span aria-hidden="true">↻</span> News is collected approximately every 15 minutes. This browser checks shortly afterward; Last refreshed shows when the news was generated.</p></div><div class="results" id="result-count" aria-live="polite">—</div></div>
           <div class="toolbar">
             <div class="search-wrap"><span aria-hidden="true">⌕</span><label class="sr-only" for="search-input">Search articles and drafts</label><input id="search-input" type="search" placeholder="Search stories, companies, topics..." autocomplete="off"></div>
             <div id="workflow-filters" class="workflow-filters" role="group" aria-label="Filter personal workflow status" hidden>
               <button type="button" data-stage="all" class="stage-filter active" aria-pressed="true">All stages</button>
+              <button type="button" data-stage="drafts" class="stage-filter" aria-pressed="false">Prepared drafts</button>
               <button type="button" data-stage="new" class="stage-filter" aria-pressed="false">New</button>
               <button type="button" data-stage="reviewing" class="stage-filter" aria-pressed="false">Reviewing</button>
               <button type="button" data-stage="ready" class="stage-filter" aria-pressed="false">Ready</button>

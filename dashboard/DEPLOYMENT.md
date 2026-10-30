@@ -1,5 +1,41 @@
 # SignalDesk — public Cloudflare news dashboard
 
+## Navigation: seven distinct sections
+
+The sidebar has one simple menu with precisely seven choices: **All Stories,
+Trending News, Global News, India News, My Workflow, Copied Articles,
+Saved for Later**. The redundant sidebar Topics menu is removed; optional
+inline AI/SaaS/Markets filters remain available next to search.
+
+- **All Stories:** All current, non-copied and non-archived news from both
+  Global and India. News tagged Trending is part of this view, not added again;
+  the browser deduplicates by normalized source URL. Prepared draft records are
+  not news and do not inflate the article count.
+- **Trending News:** Five highest editorial-scoring eligible articles from the
+  same combined Global + India news pool, regardless of origin. The score is
+  an RSS relevance/recency heuristic, not social-media popularity.
+- **Global News:** Current news articles that are *not* classified as India
+  related (including articles from non-Indian publishers about other regions).
+- **India News:** Current news articles classified as India related, including
+  relevant stories from international publishers. A story can belong to exactly
+  one of Global/India, while also appearing in All/Trending.
+- **My Workflow:** Personal workflow with New, Reviewing, Ready, Copied and
+  Archived filters, plus a **Prepared drafts** tab. This preserves the existing
+  approved AI draft issue display after removing its redundant sidebar menu.
+- **Copied Articles:** Items personally marked Copied or copied to clipboard,
+  retained only in browser-local storage. Copied means *not posted to X*.
+- **Saved for Later:** User-bookmarked items, also browser-local.
+
+The region classifier first uses an explicit public region tag from the
+scheduled Worker, then relevant India keywords and tightly named India
+startup-focused sources for the daily static fallback. Classification is
+heuristic; publisher country alone never labels a generic global article
+as Indian.
+
+No changes to Worker Cron, Cloudflare account settings, paid AI, login,
+publishing permissions or X APIs are required for this navigation.
+
+
 ## Browser refresh timing and independently generated news timestamps
 
 The Worker Cron Trigger is scheduled for **:00, :15, :30 and :45 UTC**. A dashboard tab that checked 15 minutes after it was first opened could run immediately *before* the next collector snapshot, then not check again for almost 15 more minutes. To reduce that lag without increasing the typical number of reads, browser checks are now aligned to **:02, :17, :32, :47 UTC**, with 0–45 seconds of per-tab jitter. Timers can still be delayed by Cloudflare propagation, a suspended browser, and throttling.

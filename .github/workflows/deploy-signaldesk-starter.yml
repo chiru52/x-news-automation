@@ -28,9 +28,9 @@ jobs:
           assert data.get('news') == [] and data.get('drafts') == []
           out=Path('dist/public-starter')
           out.mkdir(parents=True, exist_ok=True)
-          for name in ('index.html','styles.css','app.js','studio.mjs','refresh-clock.mjs','data.json','_headers'):
+          for name in ('index.html','styles.css','app.js','studio.mjs','refresh-clock.mjs','news-sections.mjs','data.json','_headers'):
               (out/name).write_bytes((root/name).read_bytes())
-          assert len(list(out.iterdir())) == 7
+          assert len(list(out.iterdir())) == 8
           print('Built EMPTY starter artifact only. Production site unchanged.')
           PY
       - uses: actions/upload-artifact@v4

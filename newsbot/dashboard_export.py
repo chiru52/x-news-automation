@@ -252,7 +252,7 @@ def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=No
     }
     validate_public_bundle(result)
     dest.mkdir(parents=True, exist_ok=True)
-    for filename in ("index.html", "styles.css", "app.js", "studio.mjs", "refresh-clock.mjs", "feed-config.json", "_headers"):
+    for filename in ("index.html", "styles.css", "app.js", "studio.mjs", "refresh-clock.mjs", "news-sections.mjs", "feed-config.json", "_headers"):
         shutil.copyfile(ASSETS / filename, dest / filename)
     (dest / "data.json").write_text(
         json.dumps(result, ensure_ascii=False, separators=(",", ":")),

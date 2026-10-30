@@ -25,6 +25,8 @@ jobs:
         run: node --check dashboard/app.js
       - name: Test browser refresh clock alignment offline
         run: node --test tests/signaldesk-refresh-clock.test.mjs
+      - name: Test Global/India/Trending news sections offline
+        run: node --test tests/signaldesk-news-sections.test.mjs
       - name: Test no-cost Post Studio and research tools offline
         run: node --test tests/signaldesk-studio.test.mjs
       - name: Test disabled Cloudflare AI gateway, signed Access JWT and daily D1 quota offline

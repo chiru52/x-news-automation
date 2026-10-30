@@ -35,7 +35,7 @@ class SignalDeskPhaseOneUITests(unittest.TestCase):
         self.assertIn("localStorage.setItem(workflowKey", self.script)
         self.assertIn('function setWorkflowStage(item, stage)', self.script)
         self.assertIn('selectedView === "workflow"', self.script)
-        self.assertIn('workflowStage(item) === "archived"', self.script)
+        self.assertIn('["copied","archived"].includes(workflowStage(item))', self.script)
         self.assertIn('stageSelect.addEventListener("change"', self.script)
         self.assertIn('onCopied();', self.script)
         self.assertIn('setWorkflowStage(item, "copied")', self.script)
