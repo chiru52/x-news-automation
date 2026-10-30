@@ -57,7 +57,7 @@ async function setup(){
 }
 addEventListener("hashchange",showMode);
 form.addEventListener("submit",async event=>{
-  event.preventDefault();if(!client || (mode==="update-password" && !recoveryAuthorized))return;
+  event.preventDefault();if(!client || (mode==="update-password" && !verifiedUser))return;
   submit.disabled=true;message("Processing account request…");
   const email=$("auth-email").value.trim(),password=$("auth-password").value;
   try{
@@ -69,7 +69,7 @@ form.addEventListener("submit",async event=>{
     if(response?.error)throw response.error;
     message(mode==="sign-up"?"If confirmation is required, check your email to complete registration.":mode==="forgot"?"If the address has an account, you will receive a reset email.":mode==="update-password"?"Password updated.":"Signed in.");
     $("auth-password").value="";
-    if(mode==="update-password"){location.hash="sign-in";showMode();}
+    if(mode==="update-password"){location.hash="sign-in";showMode();message("Password updated successfully. You can now sign in with your new password.");}
   }catch(err){message(err?.message||"Account request failed.");}
   finally{submit.disabled=false;}
 });
