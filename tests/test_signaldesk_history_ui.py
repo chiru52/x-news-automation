@@ -25,6 +25,15 @@ class HistoryUITests(unittest.TestCase):
         self.assertIn('function archiveMode() {return selectedView === "archive" && historyOpen;}',self.js)
         self.assertIn('"archive-controls").hidden = !archiveMode()',self.js)
 
+    def test_archive_clear_filters_resets_all_controls_without_navigation(self):
+        self.assertIn('id="archive-clear-filters"', self.page)
+        section=self.js.split('$("archive-clear-filters").addEventListener("click",()=>{',1)[1].split('\n});',1)[0]
+        for control in ('search-input', 'archive-days', 'archive-date', 'archive-region', 'archive-publisher'):
+            self.assertIn(f'$("{control}").value=',section)
+        self.assertIn('selectedCategory="all"',section)
+        self.assertIn('loadHistory(0)',section)
+        self.assertNotIn('setView(',section)
+
     def test_archive_is_deliberate_fetch_only_without_background_polling(self):
         self.assertIn('async function loadHistory(page=0)',self.js)
         self.assertIn('fetch(url,{cache:"no-store",credentials:"omit",mode:"cors"})',self.js)
