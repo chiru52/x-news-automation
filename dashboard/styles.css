@@ -513,3 +513,10 @@
 @media(max-width:600px){.topic-writer-form,.topic-writer-preview{padding:16px}
   .topic-writer-form input,.topic-writer-form select,.topic-writer-form textarea,
   .topic-writer-preview textarea{font-size:16px}}
+
+/* AI Writer: three separate user-selectable suggestions, never auto-copied. */
+.ai-draft-choices{display:grid;gap:9px;margin:12px 0 18px}
+.topic-writer .ai-draft-option{display:block;text-align:left;white-space:normal;overflow-wrap:anywhere;font-weight:500;background:var(--white);border:1px solid var(--line);padding:13px 15px;line-height:1.6}
+.topic-writer .ai-draft-option:hover{border-color:var(--purple)}
+#topic-writer-ai-generate{color:var(--purple);background:var(--white);border:1px solid var(--purple)}
+#topic-writer-ai-generate:disabled{opacity:.55;cursor:wait}
