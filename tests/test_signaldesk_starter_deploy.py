@@ -1,4 +1,4 @@
-"""Prevent the Cloudflare starter bootstrap from leaking private drafts."""
+"""Prevent the retired empty starter workflow from deploying to Cloudflare."""
 import unittest
 from pathlib import Path
 
@@ -6,11 +6,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class StarterDeploymentSafetyTests(unittest.TestCase):
-    def test_bootstrap_has_a_narrow_once_only_trigger(self):
+    def test_starter_is_manual_only_and_cannot_override_production(self):
         text = (ROOT / ".github/workflows/deploy-signaldesk-starter.yml").read_text("utf-8")
         self.assertIn("workflow_dispatch:", text)
-        self.assertIn("branches: [main]", text)
-        self.assertIn("paths:\n      - '.github/workflows/deploy-signaldesk-starter.yml'", text)
+        self.assertNotIn("branches: [main]", text)
+        self.assertNotIn("  push:", text)
+        self.assertNotIn("pages deploy", text)
+        self.assertNotIn("wrangler-action", text)
+        self.assertNotIn("CLOUDFLARE_API_TOKEN", text)
         self.assertNotIn("  schedule:", text)
         self.assertNotIn("  pull_request:", text)
         self.assertIn("  contents: read", text)
@@ -19,10 +22,11 @@ class StarterDeploymentSafetyTests(unittest.TestCase):
 
     def test_starter_never_uploads_private_bundles(self):
         text = (ROOT / ".github/workflows/deploy-signaldesk-starter.yml").read_text("utf-8")
-        self.assertIn("d['news'] == [] and d['drafts'] == []", text)
+        self.assertIn("data.get('news') == [] and data.get('drafts') == []", text)
         self.assertIn("out=Path('dist/public-starter')", text)
         self.assertIn("assert len(list(out.iterdir())) == 6", text)
-        self.assertIn("pages deploy dist/public-starter", text)
+        self.assertIn("signaldesk-empty-starter-do-not-deploy", text)
+        self.assertNotIn("pages deploy dist/public-starter", text)
         self.assertNotIn("dist/signaldesk", text)
         self.assertNotIn("signaldesk-private-site", text)
         self.assertIn("'studio.mjs'", text)
