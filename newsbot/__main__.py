@@ -19,7 +19,12 @@ def main() -> int:
     parser.add_argument("--demo", action="store_true", help="Use illustrative offline articles")
     parser.add_argument("--preview", action="store_true",
                         help="Show more review candidates without consuming today\'s real quota")
+    parser.add_argument("--dashboard-limit", type=int, default=None,
+                        help="Up to 40 fresh suggestions for public dashboard preview only")
     args = parser.parse_args()
+    if args.dashboard_limit is not None and (
+            not args.preview or not 9 <= args.dashboard_limit <= 40):
+        parser.error("--dashboard-limit must be 9–40 and requires --preview; publishing quota unchanged")
     settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
     if settings.get("publishing_enabled") is not False or settings.get("ai_provider") != "none":
         parser.error("SAFETY: stage 1 requires publishing_enabled=false and ai_provider=none")
@@ -54,13 +59,16 @@ def main() -> int:
             diagnostics.append(stat)
     state = load_state(Path(args.state))
     selection_state = make_preview_state(state, now, settings["timezone"]) if args.preview else state
-    selected = select_articles(stories, selection_state, now, daily_limit=int(settings["daily_draft_limit"]),
+    public_limit = args.dashboard_limit if args.dashboard_limit is not None else int(settings["daily_draft_limit"])
+    selected = select_articles(stories, selection_state, now, daily_limit=public_limit,
                                lookback_hours=int(settings["lookback_hours"]),
                                timezone_name=settings["timezone"],
                               category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))),
                               rank_by_relevance=settings.get("relevance_filter_enabled") is True,
-                              max_per_source_per_day=int(settings.get("max_drafts_per_source_per_day", 2)),
-                              max_saas_funding_per_day=int(settings.get("max_saas_funding_drafts_per_day", 1)),
+                              max_per_source_per_day=(4 if args.dashboard_limit else
+                                                         int(settings.get("max_drafts_per_source_per_day", 2))),
+                              max_saas_funding_per_day=(3 if args.dashboard_limit else
+                                                         int(settings.get("max_saas_funding_drafts_per_day", 1))),
                               exclude_promotional_headlines=settings.get("exclude_promotional_headlines") is True,
                               max_us_index_futures_per_day=int(settings.get("max_us_index_futures_drafts_per_day", 1)))
     trend_signals = signals_for_selected(selected, stories, now,

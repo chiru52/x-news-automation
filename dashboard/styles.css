@@ -83,3 +83,12 @@
 .research-apply:disabled{background:#e0dbe9;color:#a69cac;cursor:default}
 .research-apply-row span{font-size:10px;color:#a49ba9}
 .research-apply:focus-visible{outline:2px solid #a58adb;outline-offset:2px}
+
+
+/* Larger curated feed: quiet status notice + compact pagination. */
+.refresh-note{color:#8f899a;font-size:11px;line-height:1.6;margin-top:9px!important;max-width:620px}
+.refresh-note span{color:#7854cc;font-size:15px;vertical-align:-1px;margin-right:4px}
+.more-container{display:flex;align-items:center;justify-content:center;gap:13px;flex-wrap:wrap;margin:23px 0 6px}
+.load-more{background:#fff;border:1px solid #ddd4ed;border-radius:9px;color:#7147c7;padding:11px 18px;font-size:12px;font-weight:700}
+.load-more:hover,.load-more:focus-visible{background:#f1ecfc;border-color:#ae93e1}
+.more-counter{color:#9990a3;font-size:11px}

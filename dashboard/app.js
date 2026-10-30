@@ -6,6 +6,11 @@ const CATEGORIES = {
   markets: {label: "Markets & finance", cls: "markets"}
 };
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
+let visibleCount = 12;
+let loadedSnapshot = "";
+let feedCheckInProgress = false;
+const NEWS_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
 const STAGES = ["new","reviewing","ready","copied","archived"];
 const workflowKey = "signaldesk:workflow:v1";
 const workflow = new Map();
@@ -144,6 +149,7 @@ function updateCounts() {
 function setView(view) {
   selectedView = view;
   selectedCategory = "all";
+  visibleCount = 12;
   selectedStage = "all";
   $("workflow-filters").hidden = view !== "workflow";
   $("feed-disclaimer").hidden = view !== "trending";
@@ -175,6 +181,7 @@ function setView(view) {
 }
 function setCategory(category) {
   selectedCategory = category;
+  visibleCount = 12;
   document.querySelectorAll("[data-filter]").forEach(btn => {
     const active = btn.dataset.filter === category;
     btn.classList.toggle("active", active);
@@ -441,8 +448,12 @@ function render() {
   }
   $("result-count").textContent = list.length + (list.length === 1 ? " story" : " stories");
   const target = $("cards");
-  target.replaceChildren(...list.map(card));
+  target.replaceChildren(...list.slice(0, visibleCount).map(card));
   target.setAttribute("aria-busy", "false");
+  const remaining = Math.max(0, list.length - visibleCount);
+  $("more-container").hidden = remaining === 0;
+  $("more-counter").textContent = Math.min(list.length, visibleCount) + " of " + list.length + " shown";
+  $("load-more").textContent = "Show " + Math.min(12, remaining) + " more";
   $("empty").hidden = list.length > 0;
   $("empty-title").textContent = !records.length ? "Your workspace is ready" : "No matching stories";
   $("empty-text").textContent = !records.length
@@ -473,32 +484,48 @@ function parseItem(item, kind, index) {
     index
   };
 }
-async function initialize() {
+async function initialize(background = false) {
+  if (feedCheckInProgress) return;
+  feedCheckInProgress = true;
   try {
     const response = await fetch("./data.json", {cache: "no-store"});
     if (!response.ok) throw new Error("HTTP " + response.status);
     const data = await response.json();
-    if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts))
+    if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts) ||
+        typeof data.generated_at !== "string" || Number.isNaN(new Date(data.generated_at).getTime()))
       throw new Error("Unsupported feed format");
-    records = [...data.drafts.map((x,i) => parseItem(x,"draft",i)),
-               ...data.news.map((x,i) => parseItem(x,"news",i))]
+    // An unchanged snapshot must not interrupt someone typing an edited post.
+    if (background && loadedSnapshot === data.generated_at) return;
+    const updated = [...data.drafts.map((x,i) => parseItem(x,"draft",i)),
+                     ...data.news.map((x,i) => parseItem(x,"news",i))]
       .filter(Boolean).slice(0,300);
-    const unique = new Set();
-    records = records.filter(x => {
-      if (unique.has(x.id)) return false;
-      unique.add(x.id);
+    const seen = new Set();
+    records = updated.filter(x => {
+      if (seen.has(x.id)) return false;
+      seen.add(x.id);
       return true;
     });
-    $("updated-display").textContent = formatDate(data.generated_at);
+    loadedSnapshot = data.generated_at;
+    const date = new Date(data.generated_at);
+    $("updated-display").textContent = new Intl.DateTimeFormat(undefined, {
+      month:"short", day:"numeric", year:"numeric", hour:"2-digit", minute:"2-digit"
+    }).format(date);
     $("sync-indicator").textContent = "✓ Latest available snapshot";
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();
   } catch (_) {
-    $("sync-indicator").textContent = "Feed unavailable";
-    showNotice("The news feed could not be loaded. Please check the most recent GitHub dashboard build.");
-    updateCounts();
-    render();
+    if (!records.length) {
+      $("sync-indicator").textContent = "Feed unavailable";
+      showNotice("The news feed could not be loaded. Please check the most recent GitHub dashboard build.");
+      updateCounts();
+      render();
+    } else {
+      $("sync-indicator").textContent = "Last available snapshot";
+      showNotice("The latest feed check failed. Existing news remains available; we'll check again later.");
+    }
+  } finally {
+    feedCheckInProgress = false;
   }
 }
 document.querySelectorAll("[data-view]").forEach(button =>
@@ -510,6 +537,7 @@ document.querySelectorAll("[data-filter]").forEach(button =>
 document.querySelectorAll("[data-stage]").forEach(button =>
   button.addEventListener("click", () => {
     selectedStage = button.dataset.stage;
+    visibleCount = 12;
     document.querySelectorAll("[data-stage]").forEach(other => {
       const active = other.dataset.stage === selectedStage;
       other.classList.toggle("active", active);
@@ -519,6 +547,7 @@ document.querySelectorAll("[data-stage]").forEach(button =>
   }));
 $("search-input").addEventListener("input", event => {
   query = event.target.value.trim().toLocaleLowerCase().slice(0,100);
+  visibleCount = 12;
   render();
 });
 $("clear-filters").addEventListener("click", () => {
@@ -526,4 +555,14 @@ $("clear-filters").addEventListener("click", () => {
   query = "";
   setView("all");
 });
+$("load-more").addEventListener("click", () => {
+  visibleCount += 12;
+  render();
+});
 initialize();
+// Poll the shared static snapshot, never trigger server-side collection per visitor.
+// Browser may delay checks in background tabs; latest real build time is shown.
+setInterval(() => {
+  if (document.visibilityState === "visible") initialize(true);
+}, NEWS_CHECK_INTERVAL_MS);
+

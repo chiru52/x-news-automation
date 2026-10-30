@@ -40,6 +40,14 @@ Only schema-versioned fields in `dist/signaldesk/data.json`: headline, original 
 
 The Python exporter validates the allowlisted JSON structure and fails closed when private markers or token-looking strings are found. The client uses `textContent`, never dynamic HTML. **Do not add private notes or passwords to an X draft**, because the prepared post text is intentionally public.
 
+## More stories and refresh behavior
+
+The public dashboard export now selects **up to 30 news suggestions** per build (previously nine), retaining topic relevance, source diversity, forecast warnings, and duplicate removal. The original GitHub editorial quota of **nine** is unchanged, as are the Copilot workflow and X publishing controls. The display opens with 12 stories and offers **Show more** in groups of 12.
+
+The static website checks its already-published \`data.json\` snapshot **every 15 minutes while the tab is visible**. The displayed **Last refreshed** time always comes from the server-generated snapshot and includes the local date and time. Checking does **not** trigger an RSS collection job for each visitor or a new Cloudflare deployment.
+
+**Important:** Server-side RSS collection and Cloudflare publishing currently run **daily** (07:12 UTC), plus manual deployments and relevant merges. A site notice makes this distinction clear. For genuine shared 15-minute news collection, we must first decouple RSS ingestion from GitHub Actions/Cloudflare Pages deployments using a scheduled shared cache (e.g. Cloudflare Worker + KV/D1). Avoid scheduling the entire private GitHub Actions build/deploy every 15 minutes: it would mean roughly 2,880 runs per 30-day month, potentially exceeding private GitHub Actions minutes and Cloudflare Pages build/deployment quotas. Cloudflare/GitHub costs must be separately reviewed before activation.
+
 ## Daily refresh
 
 The workflow `Build and publish public SignalDesk news dashboard (no X posting)` runs on:
