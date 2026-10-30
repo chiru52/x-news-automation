@@ -250,12 +250,30 @@ function showNotice(message) {
   note.textContent = message;
   note.hidden = !message;
 }
+function indiaNewsForCurrentView() {
+  // KPI numbers in India News must match its visible, uncopied article list,
+  // including active topic and search filters. Exclude local copied history.
+  return records.filter(item =>
+    isIndiaNews(item) && !item.history_only &&
+    !["copied","archived"].includes(workflowStage(item)) &&
+    (selectedCategory === "all" || item.category === selectedCategory) &&
+    (!query || [item.title,item.description,item.publisher,item.post]
+      .some(value => clean(value).toLocaleLowerCase().includes(query)))
+  );
+}
 function updateCounts() {
   const news = records.filter(r => r.kind === "news" && !r.history_only).length;
   const drafts = records.filter(r => r.kind === "draft" && !r.history_only).length;
-  $("count-news").textContent = news;
-  $("count-trending").textContent = Math.min(5, news);
-  $("count-ready").textContent = records.filter(r => workflowStage(r) === "ready").length;
+  const indiaView = selectedView === "india";
+  const indiaNews = indiaView ? indiaNewsForCurrentView() : [];
+  $("count-news-label").textContent = indiaView ? "India news stories" : "News stories";
+  $("count-trending-label").textContent = indiaView ? "India trending picks" : "Trending picks";
+  $("count-ready-label").textContent = indiaView ? "India ready to copy" : "Ready to copy";
+  $("count-news").textContent = indiaView ? indiaNews.length : news;
+  $("count-trending").textContent = Math.min(5,indiaView ? indiaNews.length : news);
+  $("count-ready").textContent = indiaView
+    ? indiaNews.filter(item => workflowStage(item) === "ready").length
+    : records.filter(r => workflowStage(r) === "ready").length;
   $("nav-all-count").textContent = records.filter(r => !r.history_only && !["copied","archived"].includes(workflowStage(r))).length;
   $("nav-trend-count").textContent = Math.min(5, news);
   $("nav-workflow-count").textContent = records.filter(r => workflowStage(r) !== "new").length;
@@ -551,6 +569,7 @@ function card(item) {
   return node;
 }
 function render() {
+  updateCounts();
   const trendIds = new Set(trendingPicks().map(item => item.id));
   let list = records.filter(item => {
     if (selectedView === "trending" && !trendIds.has(item.id)) return false;
