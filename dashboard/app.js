@@ -4,7 +4,33 @@ const CATEGORIES = {
   saas: {label: "Startups & SaaS", cls: "saas"},
   markets: {label: "Markets & finance", cls: "markets"}
 };
-let records = [], selectedView = "all", selectedCategory = "all", query = "";
+let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
+const STAGES = ["new","reviewing","ready","copied","archived"];
+const workflowKey = "signaldesk:workflow:v1";
+const workflow = new Map();
+try {
+  const stored = JSON.parse(localStorage.getItem(workflowKey) || "{}");
+  if (stored && typeof stored === "object" && !Array.isArray(stored)) {
+    for (const [id, stage] of Object.entries(stored).slice(0,300)) {
+      if (id.length <= 140 && STAGES.includes(stage)) workflow.set(id, stage);
+    }
+  }
+} catch (_) { /* Browser storage is optional. */ }
+function workflowStage(item) { return workflow.get(item.id) || "new"; }
+function setWorkflowStage(item, stage) {
+  if (!STAGES.includes(stage)) return;
+  if (stage === "new") workflow.delete(item.id);
+  else workflow.set(item.id, stage);
+  try { localStorage.setItem(workflowKey, JSON.stringify(Object.fromEntries(workflow))); }
+  catch (_) { showNotice("Your browser could not save this status; it may reset when you close the page."); }
+  updateCounts();
+}
+function trendingPicks() {
+  return records.filter(item => item.kind === "news")
+    .sort((a,b) => b.trend_score - a.trend_score || byFreshness(a,b))
+    .slice(0,5);
+}
+
 const savedKey = "signaldesk:saved:v1";
 let saved = new Set();
 const editsKey = "signaldesk:edits:v1";
@@ -85,15 +111,24 @@ function updateCounts() {
   const news = records.filter(r => r.kind === "news").length;
   const drafts = records.filter(r => r.kind === "draft").length;
   $("count-news").textContent = news;
-  $("count-drafts").textContent = drafts;
-  $("count-reviewed").textContent = records.filter(r => r.kind === "draft" && r.status === "reviewed").length;
+  $("count-trending").textContent = Math.min(5, news);
+  $("count-ready").textContent = records.filter(r => workflowStage(r) === "ready").length;
   $("nav-all-count").textContent = records.length;
+  $("nav-trend-count").textContent = Math.min(5, news);
+  $("nav-workflow-count").textContent = records.filter(r => workflowStage(r) !== "new").length;
   $("nav-draft-count").textContent = drafts;
   $("nav-saved-count").textContent = saved.size;
 }
 function setView(view) {
   selectedView = view;
   selectedCategory = "all";
+  selectedStage = "all";
+  $("workflow-filters").hidden = view !== "workflow";
+  $("feed-disclaimer").hidden = view !== "trending";
+  document.querySelectorAll("[data-stage]").forEach(btn => {
+    btn.classList.toggle("active", btn.dataset.stage === "all");
+    btn.setAttribute("aria-pressed", String(btn.dataset.stage === "all"));
+  });
   document.querySelectorAll("[data-view]").forEach(el => {
     const active = el.dataset.view === view;
     el.classList.toggle("active", active);
@@ -104,9 +139,11 @@ function setView(view) {
     btn.classList.toggle("active", btn.dataset.filter === "all");
     btn.setAttribute("aria-pressed", String(btn.dataset.filter === "all"));
   });
-  const titles = {all: "Explore the latest", drafts: "Your X draft library", saved: "Saved for later"};
+  const titles = {all: "Explore the latest", trending: "Trending news", drafts: "Your X draft library", workflow: "Your content workflow", saved: "Saved for later"};
   const descriptions = {
     all: "Fresh stories and prepared drafts, all in one place.",
+    trending: "The strongest headline signals from the current news feed, not social popularity.",
+    workflow: "Organize your own reading and copying stages, stored only in this browser.",
     drafts: "Suggestions to verify, edit and copy when you choose.",
     saved: "Your bookmarked stories, stored only in this browser."
   };
@@ -141,11 +178,12 @@ function handleSaved(item, button) {
   button.append(heart, " ", on ? "Saved" : "Save");
   if (selectedView === "saved") render();
 }
-async function handleCopy(post, button) {
+async function handleCopy(post, button, onCopied = () => {}) {
   if (!post) return;
   try {
     if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
     await navigator.clipboard.writeText(post);
+    onCopied();
     const label = button.querySelector("span");
     label.textContent = "Copied!";
     button.setAttribute("aria-label", "Post copied to clipboard");
@@ -167,6 +205,14 @@ function card(item) {
   node.querySelector(".card-title").textContent = item.title || "Untitled story";
   node.querySelector(".card-description").textContent = item.description ||
     (item.kind === "draft" ? "AI-assisted editorial draft. Check the original reporting before sharing." : "Read the original publisher report for details.");
+  const trendingIds = new Set(trendingPicks().map(entry => entry.id));
+  if (item.kind === "news" && trendingIds.has(item.id)) {
+    node.querySelector(".trend-pill").hidden = false;
+    const context = node.querySelector(".trend-reason");
+    context.hidden = false;
+    context.textContent = "Editorial signal " + item.trend_score + "/100 · " +
+      item.trend_reason + " · Not independently verified";
+  }
   const src = safeSource(item.source_url);
   const srcLink = node.querySelector(".source-link");
   if (src) {
@@ -216,13 +262,35 @@ function card(item) {
     editor.focus();
   });
   editButton.addEventListener("click", () => showEditor(!editing));
-  copy.addEventListener("click", () => handleCopy(currentDraft().trim(), copy));
+  copy.addEventListener("click", () => handleCopy(currentDraft().trim(), copy, () => {
+    setWorkflowStage(item, "copied");
+    stageSelect.value = "copied";
+    status.textContent = "Personal: Copied · not posted to X";
+    if (selectedView === "workflow" && selectedStage !== "all") render();
+  }));
   refreshDraft();
   const status = node.querySelector(".status-info");
-  if (item.kind === "draft") {
-    status.textContent = item.status === "reviewed" ? "Editorial review completed" : "Not fact-checked";
-    if (item.status === "reviewed") status.classList.add("reviewed");
-  } else status.textContent = "News suggestion · Unverified";
+  const stageSelect = node.querySelector(".workflow-select");
+  stageSelect.value = workflowStage(item);
+  function updateStageNote(stage) {
+    const messages = {
+      new: "Personal: New · source not verified",
+      reviewing: "Personal: Reviewing · check original source",
+      ready: "Personal: Ready · self-reviewed; not fact-checked by SignalDesk",
+      copied: "Personal: Copied · not posted to X",
+      archived: "Personal: Archived · hidden from All stories"
+    };
+    status.textContent = messages[stage];
+    status.classList.toggle("reviewed", stage === "ready");
+  }
+  updateStageNote(stageSelect.value);
+  stageSelect.addEventListener("change", () => {
+    const stage = stageSelect.value;
+    setWorkflowStage(item, stage);
+    updateStageNote(stage);
+    if (stage === "ready") showNotice("Ready is your personal mark. Check the source and claims before publishing manually.");
+    if (selectedView === "workflow" && selectedStage !== "all" || selectedView === "all" && stage === "archived") render();
+  });
   const save = node.querySelector(".save-button");
   save.setAttribute("aria-pressed", String(saved.has(item.id)));
   save.querySelector("span").textContent = saved.has(item.id) ? "♥" : "♡";
@@ -231,7 +299,11 @@ function card(item) {
   return node;
 }
 function render() {
+  const trendIds = new Set(trendingPicks().map(item => item.id));
   let list = records.filter(item => {
+    if (selectedView === "trending" && !trendIds.has(item.id)) return false;
+    if (selectedView === "workflow" && selectedStage !== "all" && workflowStage(item) !== selectedStage) return false;
+    if (selectedView === "all" && workflowStage(item) === "archived") return false;
     if (selectedView === "drafts" && item.kind !== "draft") return false;
     if (selectedView === "saved" && !saved.has(item.id)) return false;
     if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
@@ -241,7 +313,9 @@ function render() {
   });
   // New stories should be visible first; AI drafts remain in their own tab.
   // Remove only repeated publisher URLs in All, retaining the newest item.
-  list.sort(byFreshness);
+  list.sort(selectedView === "trending"
+    ? (a,b) => b.trend_score - a.trend_score || byFreshness(a,b)
+    : byFreshness);
   if (selectedView === "all") {
     const used = new Set();
     list = list.filter(item => {
@@ -275,6 +349,9 @@ function parseItem(item, kind, index) {
     post: clean(item.post, 1000),
     category: item.category,
     status: clean(item.status, 24),
+    trend_score: kind === "news" && Number.isInteger(item.trend_score) && item.trend_score >= 0 && item.trend_score <= 100 ? item.trend_score : 0,
+    coverage_feeds: kind === "news" && Number.isInteger(item.coverage_feeds) ? item.coverage_feeds : 1,
+    trend_reason: kind === "news" ? clean(item.trend_reason, 160) : "",
     published_at: clean(item.published_at, 50),
     updated_at: clean(item.updated_at, 50),
     index
@@ -314,6 +391,16 @@ document.querySelectorAll("[data-category]").forEach(button =>
   button.addEventListener("click", () => { setView("all"); setCategory(button.dataset.category); }));
 document.querySelectorAll("[data-filter]").forEach(button =>
   button.addEventListener("click", () => setCategory(button.dataset.filter)));
+document.querySelectorAll("[data-stage]").forEach(button =>
+  button.addEventListener("click", () => {
+    selectedStage = button.dataset.stage;
+    document.querySelectorAll("[data-stage]").forEach(other => {
+      const active = other.dataset.stage === selectedStage;
+      other.classList.toggle("active", active);
+      other.setAttribute("aria-pressed", String(active));
+    });
+    render();
+  }));
 $("search-input").addEventListener("input", event => {
   query = event.target.value.trim().toLocaleLowerCase().slice(0,100);
   render();

@@ -302,14 +302,16 @@ def draft_template(article: Article) -> str:
 
 def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors: list[str],
                    source_diagnostics: list[dict] | None = None,
-                   preview_only: bool = False) -> None:
+                   preview_only: bool = False,
+                   trend_signals: dict[str, dict] | None = None) -> None:
     outdir.mkdir(parents=True, exist_ok=True)
     queue = []
     for item in articles:
         published = datetime.fromisoformat(item.published_at)
         assessment = assess_story(item.title, item.summary, item.category, published, now)
         suggestion = suggest_post(item)
-        queue.append({**asdict(item), "draft": draft_template(item),
+        queue.append({**asdict(item), "trend": (trend_signals or {}).get(item.identity, {}),
+                      "draft": draft_template(item),
                       "suggested_post": suggestion["text"], "writing": suggestion,
                       "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
                       "category_verified": False, "relevance": assessment})

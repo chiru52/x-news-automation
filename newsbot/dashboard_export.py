@@ -53,6 +53,24 @@ def categorize(text, fallback="technology"):
     return fallback if fallback in CATEGORIES else "technology"
 
 
+
+def bounded_trend(value: object) -> dict:
+    """Accept only a bounded computed heuristic, never arbitrary RSS text."""
+    default = {"score": 0, "coverage_feeds": 1, "reason": "Headline relevance and recency"}
+    if not isinstance(value, dict) or not value:
+        return default
+    score = value.get("score")
+    count = value.get("coverage_feeds")
+    reason = value.get("reason")
+    if (type(score) is not int or not 0 <= score <= 100 or
+            type(count) is not int or not 1 <= count <= 20 or
+            reason not in ("Headline relevance and recency",
+                           "Fresh headline about a reported development",
+                           f"Headline relevance and {count} matching RSS feeds")):
+        raise ValueError("Unexpected or unsafe editorial signal metadata")
+    return {"score": score, "coverage_feeds": count, "reason": reason}
+
+
 def read_news(queue: dict) -> list[dict]:
     """Only use source-attributed review suggestions, never untrusted HTML."""
     if not isinstance(queue, dict) or queue.get("publishing_enabled") is not False:
@@ -82,6 +100,9 @@ def read_news(queue: dict) -> list[dict]:
             "category": category,
             "published_at": clean(article.get("published_at"), 50),
             "status": "unverified",
+            "trend_score": bounded_trend(article.get("trend", {}))["score"],
+            "coverage_feeds": bounded_trend(article.get("trend", {}))["coverage_feeds"],
+            "trend_reason": bounded_trend(article.get("trend", {}))["reason"],
         })
     return unique_stories(out)
 
@@ -157,7 +178,7 @@ def fetch_private_issues() -> list[dict]:
 # Explicit public contract. Never export private GitHub issue bodies, full
 # publisher evidence, analysis, transcripts, URLs into private issues or tokens.
 PUBLIC_TOP = {"schema_version","generated_at","news","drafts","warnings"}
-PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","published_at","status"}
+PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","published_at","status","trend_score","coverage_feeds","trend_reason"}
 PUBLIC_DRAFT = {"id","title","description","publisher","source_url","post","category","updated_at","status"}
 PRIVATE_MARKERS = (
     "github_pat_", "ghp_", "gho_", "ghs_", "ghu_", "ghr_",
@@ -182,7 +203,14 @@ def validate_public_bundle(data: dict) -> None:
         for entry in entries:
             if not isinstance(entry, dict) or set(entry) != keys:
                 raise ValueError("Unexpected public article fields")
-            if any(not isinstance(value, str) for value in entry.values()):
+            if kind == "news":
+                signal = bounded_trend({"score": entry["trend_score"],
+                                        "coverage_feeds": entry["coverage_feeds"],
+                                        "reason": entry["trend_reason"]})
+                if signal["score"] != entry["trend_score"]:
+                    raise ValueError("Invalid news trend score")
+            if any(not isinstance(value, str) for key, value in entry.items()
+                   if key not in ("trend_score", "coverage_feeds")):
                 raise ValueError("Public article fields must all be strings")
             if (not entry["id"] or not entry["title"] or entry["category"] not in CATEGORIES
                     or source_url(entry["source_url"]) != entry["source_url"]):

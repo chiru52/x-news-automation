@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
                    render_outputs, save_state, select_articles)
+from .trend_signals import signals_for_selected
 
 
 def main() -> int:
@@ -62,8 +63,10 @@ def main() -> int:
                               max_saas_funding_per_day=int(settings.get("max_saas_funding_drafts_per_day", 1)),
                               exclude_promotional_headlines=settings.get("exclude_promotional_headlines") is True,
                               max_us_index_futures_per_day=int(settings.get("max_us_index_futures_drafts_per_day", 1)))
+    trend_signals = signals_for_selected(selected, stories, now,
+                                         lookback_hours=int(settings['lookback_hours']))
     render_outputs(selected, Path(args.output), now, errors, diagnostics,
-                   preview_only=args.preview)
+                   preview_only=args.preview, trend_signals=trend_signals)
     if not args.preview:
         save_state(Path(args.state), state)
     print(f"Collected {len(stories)} articles, drafted {len(selected)}, feed errors {len(errors)}")

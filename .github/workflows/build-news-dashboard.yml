@@ -10,6 +10,9 @@ on:
       - 'dashboard/**'
       - 'newsbot/dashboard_export.py'
       - 'newsbot/news_quality.py'
+      - 'newsbot/trend_signals.py'
+      - 'newsbot/__main__.py'
+      - 'newsbot/core.py'
       - '.github/workflows/build-news-dashboard.yml'
   workflow_dispatch:
   schedule:

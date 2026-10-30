@@ -19,3 +19,24 @@
 .reset-edit:disabled{color:#bbb7c3;text-decoration:none;cursor:default}
 .local-note{font-size:9px;color:#aaa6b4;text-align:right}
 @media(max-width:430px){.draft-bottom{align-items:flex-start;flex-wrap:wrap}.draft-actions{margin-left:auto}.compose-actions{align-items:flex-start;flex-wrap:wrap}.local-note{margin-left:auto}}
+
+
+/* Phase 1 additions: compact newsroom signals and personal workflow.
+   All original layout, typography and colors are intentionally retained. */
+.card-top{gap:8px;flex-wrap:wrap}
+.card-date{margin-left:auto}
+.trend-pill{font-size:10px;font-weight:700;background:#e9f5ed;color:#397d55;padding:5px 9px;border-radius:6px;white-space:nowrap}
+.trend-reason{font-size:10.5px;color:#696986;background:#faf9ff;border-left:2px solid #ae98e7;padding:7px 10px;margin:0 0 14px;line-height:1.55}
+.feed-disclaimer{font-size:11px;color:#8d849c;padding:9px 12px;margin:-8px 0 18px;border-radius:8px;background:#f1edfa}
+.workflow-filters{display:flex;gap:5px;flex-wrap:wrap;width:100%;align-items:center;margin:0 0 4px}
+.stage-filter{padding:9px 12px;background:#fff;border:1px solid #e9e4ef;color:#858097;border-radius:8px;font-size:11px;font-weight:700}
+.stage-filter:hover{border-color:#baa7e8}
+.stage-filter.active{background:#eee8fa;border-color:#eee8fa;color:#7048ca}
+.workflow-control{display:flex;align-items:flex-start;flex-direction:column;gap:5px;min-width:0}
+.workflow-label{display:flex;align-items:center;gap:8px;color:#8e889d;font-size:10px}
+.workflow-select{appearance:auto;background:#fff;border:1px solid #ddd5ed;color:#5c5073;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:700;max-width:155px}
+.workflow-select:focus-visible{outline:2px solid #a18bd4;outline-offset:2px}
+.story-card .status-info{max-width:270px;line-height:1.4}
+.story-card .status-info::before{width:5px;height:5px;margin-right:5px}
+.card-footer{gap:10px;align-items:flex-end;flex-wrap:wrap}
+@media(max-width:650px){.trend-reason{font-size:10px}.workflow-select{min-width:100px}.stage-filter{padding:7px 9px}.story-card .status-info{max-width:225px}}

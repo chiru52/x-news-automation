@@ -17,7 +17,9 @@
       <div class="sidebar-section-label">WORKSPACE</div>
       <nav class="nav-items" aria-label="Main navigation">
         <button class="nav-item active" data-view="all" aria-current="page"><span class="nav-icon">▦</span> All stories <span id="nav-all-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="trending"><span class="nav-icon">↗</span> Trending news <span id="nav-trend-count" class="nav-count">–</span></button>
         <button class="nav-item" data-view="drafts"><span class="nav-icon">✧</span> X-ready drafts <span id="nav-draft-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="workflow"><span class="nav-icon">☷</span> My workflow <span id="nav-workflow-count" class="nav-count">0</span></button>
         <button class="nav-item" data-view="saved"><span class="nav-icon">♡</span> Saved for later <span id="nav-saved-count" class="nav-count">0</span></button>
       </nav>
       <div class="sidebar-section-label topic-label">TOPICS</div>
@@ -44,13 +46,21 @@
         </section>
         <section class="metrics" aria-label="Feed overview">
           <div class="metric"><span class="metric-icon lilac">▤</span><div><span>News stories</span><strong id="count-news">—</strong></div></div>
-          <div class="metric"><span class="metric-icon peach">✧</span><div><span>Drafts to review</span><strong id="count-drafts">—</strong></div></div>
-          <div class="metric"><span class="metric-icon mint">✓</span><div><span>Reviewed drafts</span><strong id="count-reviewed">—</strong></div></div>
+          <div class="metric"><span class="metric-icon peach">✧</span><div><span>Trending picks</span><strong id="count-trending">—</strong></div></div>
+          <div class="metric"><span class="metric-icon mint">✓</span><div><span>Ready to copy</span><strong id="count-ready">—</strong></div></div>
         </section>
         <section class="feed-section">
           <div class="section-title"><div><span class="section-kicker">EDITORIAL FEED</span><h2 id="feed-title">Explore the latest</h2><p id="feed-description">Fresh stories and prepared drafts, all in one place.</p></div><div class="results" id="result-count" aria-live="polite">—</div></div>
           <div class="toolbar">
             <div class="search-wrap"><span aria-hidden="true">⌕</span><label class="sr-only" for="search-input">Search articles and drafts</label><input id="search-input" type="search" placeholder="Search stories, companies, topics..." autocomplete="off"></div>
+            <div id="workflow-filters" class="workflow-filters" role="group" aria-label="Filter personal workflow status" hidden>
+              <button type="button" data-stage="all" class="stage-filter active" aria-pressed="true">All stages</button>
+              <button type="button" data-stage="new" class="stage-filter" aria-pressed="false">New</button>
+              <button type="button" data-stage="reviewing" class="stage-filter" aria-pressed="false">Reviewing</button>
+              <button type="button" data-stage="ready" class="stage-filter" aria-pressed="false">Ready</button>
+              <button type="button" data-stage="copied" class="stage-filter" aria-pressed="false">Copied</button>
+              <button type="button" data-stage="archived" class="stage-filter" aria-pressed="false">Archived</button>
+            </div>
             <div class="filters" role="group" aria-label="Filter category">
               <button data-filter="all" class="filter active" aria-pressed="true">All topics</button>
               <button data-filter="technology" class="filter" aria-pressed="false">AI &amp; tech</button>
@@ -58,6 +68,7 @@
               <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
             </div>
           </div>
+          <p id="feed-disclaimer" class="feed-disclaimer" hidden>Trending is an editorial ranking of the current RSS feed, not X popularity, verified facts, or independent source confirmation.</p>
           <div id="alert" role="status" class="notice" hidden></div>
           <div id="cards" class="cards" aria-live="polite" aria-busy="true"></div>
           <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><button type="button" id="clear-filters" class="secondary-action">Clear filters</button></div>
@@ -68,11 +79,20 @@
   </div>
   <template id="story-card">
     <article class="story-card">
-      <div class="card-top"><span class="category-pill"></span><span class="card-date"></span></div>
-      <h3 class="card-title"></h3><p class="card-description"></p>
+      <div class="card-top"><span class="category-pill"></span><span class="trend-pill" hidden>↗ Trending</span><span class="card-date"></span></div>
+      <h3 class="card-title"></h3><p class="card-description"></p><p class="trend-reason" hidden></p>
       <div class="card-source"><span class="source-mark">↗</span><a class="source-link" target="_blank" rel="noopener noreferrer">Read original source</a><span class="source-publisher"></span></div>
       <div class="draft-panel"><div class="draft-heading"><span>✧ &nbsp; SUGGESTED X POST</span><span class="review-tag">REVIEW BEFORE SHARING</span></div><p class="draft-text"></p><div class="compose-panel" hidden><label class="compose-label">Edit your post <span>(saved only on this device)</span><textarea class="compose-input" rows="5" maxlength="1000" spellcheck="true" placeholder="Write your own take and verify the source before sharing"></textarea></label><div class="compose-actions"><button class="reset-edit" type="button">Reset to suggestion</button><span class="local-note">Edits stay in this browser</span></div></div><div class="draft-bottom"><span class="char-count"></span><div class="draft-actions"><button class="edit-button" type="button" aria-expanded="false">Edit draft</button><button class="copy-button" type="button" aria-label="Copy suggested X post">▣ <span>Copy post</span></button></div></div></div>
-      <div class="card-footer"><span class="status-info"></span><button class="save-button" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Save</button></div>
+      <div class="card-footer">
+        <div class="workflow-control"><label class="workflow-label">My status
+          <select class="workflow-select" aria-label="Personal content workflow status">
+            <option value="new">New</option><option value="reviewing">Reviewing</option>
+            <option value="ready">Ready</option><option value="copied">Copied</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label><span class="status-info">Personal status · not fact-checked</span></div>
+        <button class="save-button" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Save</button>
+      </div>
     </article>
   </template>
 </body>
