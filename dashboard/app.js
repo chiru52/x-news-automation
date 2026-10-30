@@ -185,14 +185,13 @@ async function readFeedData() {
         !Number.isFinite(dynamicDate) || Date.now()-dynamicDate>90*60*1000 ||
         dynamicDate>Date.now()+10*60*1000) return {data:staticData,fromLive:false};
     // Source diagnostics can be newer than the static build even when news is not.
-    if (!(dynamicDate>staticDate)) return {data:{...staticData,source_health:dynamic.source_health},fromLive:false};
+    if (!(dynamicDate>staticDate)) return {data:staticData,fromLive:false};
     return {data:{
       schema_version:1,generated_at:dynamic.generated_at,
       news:dynamic.news,
       india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 15 ? dynamic.india_news : [],
       drafts:staticData.drafts,
       warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
-      source_health:dynamic.source_health,
     },fromLive:true};
   } catch (_) {
     return {data:staticData,fromLive:false};
@@ -944,27 +943,6 @@ async function initialize(background = false) {
     $("refresh-note").textContent = fromLive
       ? "News is collected approximately every 15 minutes. Last refreshed shows the news generation time."
       : "Showing the latest available news snapshot. Last refreshed shows when it was generated.";
-    const health=data.source_health;
-    const validHealth=health && Array.isArray(health.sources) && health.sources.length<=20 &&
-      health.sources.every(x=>typeof x.name==="string" && x.name.length<=100 &&
-        ["india","global"].includes(x.region) &&
-        ["ok","empty","error"].includes(x.status) &&
-        Number.isInteger(x.recent_articles) && x.recent_articles>=0);
-    $("source-health").hidden=false;
-    $("source-health-summary").textContent="Diagnostics unavailable";
-    $("source-health-list").replaceChildren();
-    $("source-health-message").hidden=!!validHealth;
-    if(validHealth) {
-      const sources=health.sources, failures=sources.filter(x=>x.status==="error").length;
-      $("source-health-summary").textContent=sources.length+" sources checked · "+
-        failures+" unavailable · "+sources.filter(x=>x.status==="empty").length+" without recent headlines";
-      $("source-health-list").replaceChildren(...sources.map(source=>{
-        const row=document.createElement("li");
-        row.textContent=source.name+" · "+source.region+" · "+source.status+
-          " · "+source.recent_articles+" recent";
-        return row;
-      }));
-    }
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();

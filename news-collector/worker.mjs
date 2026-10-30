@@ -222,12 +222,7 @@ export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   const news=await Promise.all(selected.map(publicItem));
   const india_news=await Promise.all(indiaSelected.map(publicItem));
   const data={schema_version:1,generated_at:new Date(nowMs).toISOString(),news,india_news,drafts:[],
-    warnings:results.some(x=>x.error)?["some_feed_sources_unavailable"]:[],
-    source_health:{checked_at:new Date(nowMs).toISOString(),sources:sources.map((source,i)=>({
-      name:String(source.name).slice(0,100),region:source.region==="india"?"india":"global",
-      status:results[i].error?"error":results[i].articles.length?"ok":"empty",
-      recent_articles:results[i].articles.length
-    }))}};
+    warnings:results.some(x=>x.error)?["some_feed_sources_unavailable"]:[]};
   await env.NEWS_CACHE.put(SNAPSHOT_KEY,JSON.stringify(data));
   // Optional archive is bounded to one day-key per Cron. Failure cannot
   // corrupt or interrupt the working live-feed update.
