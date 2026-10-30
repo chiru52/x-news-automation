@@ -33,4 +33,8 @@ class HeaderAccountTests(unittest.TestCase):
         self.assertIn("resetPasswordForEmail",client)
         self.assertIn("updateUser",client)
         self.assertNotIn("service_role",config)
+        self.assertIn('recoveryAuthorized=false',client)
+        self.assertIn('event==="PASSWORD_RECOVERY"',client)
+        self.assertIn('mode==="update-password" && !recoveryAuthorized',client)
+        self.assertIn('previousElementSibling.hidden=mode==="update-password"',client)
 if __name__=="__main__": unittest.main()

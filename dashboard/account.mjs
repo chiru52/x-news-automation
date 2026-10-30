@@ -2,7 +2,7 @@
 // Never put service_role or secret keys in a browser configuration.
 const $=id=>document.getElementById(id);
 const status=$("auth-status"),form=$("auth-form"),submit=$("auth-submit");
-let client=null,mode="sign-in";
+let client=null,mode="sign-in",recoveryAuthorized=false;
 const cleanMode=()=>["sign-in","sign-up","forgot","update-password"].includes(location.hash.slice(1))?location.hash.slice(1):"sign-in";
 function message(value){status.textContent=value;}
 function showMode(){
@@ -13,14 +13,15 @@ function showMode(){
   $("auth-password").hidden=mode==="forgot";
   $("auth-password").required=mode!=="forgot";
   $("auth-password").autocomplete=mode==="sign-in"?"current-password":"new-password";
-  $("auth-email").closest("label")?.removeAttribute("hidden");
+  $("auth-email").previousElementSibling.hidden=mode==="update-password";
   $("auth-email").hidden=mode==="update-password";
   $("auth-email").required=mode!=="update-password";
   submit.textContent={"sign-in":"Sign in","sign-up":"Create account",forgot:"Email reset link","update-password":"Update password"}[mode];
   for(const name of ["sign-in","sign-up","forgot"]){
     $("account-"+(name==="forgot"?"recover":name)).setAttribute("aria-current",name===mode?"page":"false");
   }
-  if(client && $("account-signed-in").hidden) form.hidden=false;
+  if(client) form.hidden=!$("account-signed-in").hidden && mode!=="update-password";
+  if(mode==="update-password" && !recoveryAuthorized){form.hidden=true;message("Use your password-reset email link to update your password.");}
 }
 async function setup(){
   try{
@@ -35,22 +36,22 @@ async function setup(){
     const {createClient}=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0/+esm");
     client=createClient(u.href,config.publishable_key,{auth:{detectSessionInUrl:true,flowType:"pkce",persistSession:true,autoRefreshToken:true}});
     client.auth.onAuthStateChange((event,session)=>{
-      if(event==="PASSWORD_RECOVERY"){location.hash="update-password";showMode();}
+      if(event==="PASSWORD_RECOVERY"){recoveryAuthorized=true;location.hash="update-password";showMode();}
       const user=session?.user;
       $("account-signed-in").hidden=!user;
-      if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=mode!=="update-password";message("Your account is active.");}
+      if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
       else {form.hidden=false;}
     });
     const {data:{user}}=await client.auth.getUser();
     $("account-signed-in").hidden=!user;
-    if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=true;message("Your account is active.");}
+    if(user){$("account-email").textContent="Signed in as "+(user.email||"account");form.hidden=!(mode==="update-password" && recoveryAuthorized);if(mode!=="update-password")message("Your account is active.");}
     else {message("Sign in, register, or reset your password.");form.hidden=false;}
     showMode();
   }catch(err){client=null;form.hidden=true;message("Accounts are not enabled yet. Continue browsing SignalDesk as a guest.");}
 }
 addEventListener("hashchange",showMode);
 form.addEventListener("submit",async event=>{
-  event.preventDefault();if(!client)return;
+  event.preventDefault();if(!client || (mode==="update-password" && !recoveryAuthorized))return;
   submit.disabled=true;message("Processing account request…");
   const email=$("auth-email").value.trim(),password=$("auth-password").value;
   try{
@@ -62,6 +63,7 @@ form.addEventListener("submit",async event=>{
     if(response?.error)throw response.error;
     message(mode==="sign-up"?"If confirmation is required, check your email to complete registration.":mode==="forgot"?"If the address has an account, you will receive a reset email.":mode==="update-password"?"Password updated.":"Signed in.");
     $("auth-password").value="";
+    if(mode==="update-password"){recoveryAuthorized=false;location.hash="sign-in";showMode();}
   }catch(err){message(err?.message||"Account request failed.");}
   finally{submit.disabled=false;}
 });
