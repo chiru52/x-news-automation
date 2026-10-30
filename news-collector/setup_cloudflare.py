@@ -10,6 +10,7 @@ import json
 import os
 import re
 import sys
+import time
 from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
@@ -91,15 +92,28 @@ def discover():
     if not isinstance(subdomain, str) or not re.fullmatch(r"[a-z0-9-]{1,63}", subdomain):
         raise RuntimeError("Worker account subdomain is unavailable")
     url = "https://" + SCRIPT_NAME + "." + subdomain + ".workers.dev"
-    try:
-        with urlopen(url + "/health", timeout=12) as response:
-            health = json.load(response)
-    except (HTTPError, URLError, ValueError):
-        raise RuntimeError("Collector public health endpoint not verified") from None
-    if (health.get("status") != "read_only" or
-            health.get("x_posting_enabled") is not False or
-            health.get("ai_generation_enabled") is not False):
-        raise RuntimeError("Collector health/safety status mismatch")
+    # A new workers.dev route can require propagation after Wrangler succeeds.
+    # Do not print response bodies (which may be upstream HTML); report only
+    # HTTP status or transport category. This is an exact endpoint probe.
+    last_error = "not yet available"
+    for attempt in range(1, 9):
+        try:
+            with urlopen(url + "/health", timeout=12) as response:
+                health = json.load(response)
+            if (health.get("status") == "read_only" and
+                    health.get("x_posting_enabled") is False and
+                    health.get("ai_generation_enabled") is False):
+                break
+            last_error = "unexpected health response"
+        except HTTPError as exc:
+            last_error = "HTTP " + str(exc.code)
+        except (URLError, ValueError):
+            last_error = "endpoint not yet reachable"
+        print(f"Collector health probe {attempt}/8: {last_error}")
+        if attempt < 8:
+            time.sleep(6)
+    else:
+        raise RuntimeError("Collector public health endpoint not verified: " + last_error)
     output("live_feed_url", url + "/feed")
     print("Verified read-only collector health at " + url)
     return url + "/feed"
