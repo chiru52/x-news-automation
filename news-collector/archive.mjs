@@ -59,17 +59,18 @@ export function historyParams(url, nowMs=Date.now()){
   const days=Number(url.searchParams.get("days")||7);
   const page=Number(url.searchParams.get("page")||0);
   const category=url.searchParams.get("category")||"all";
-  const expected=["q","region","publisher","date","days","page","category"];
+  const sort=url.searchParams.get("sort")||"newest";
+  const expected=["q","region","publisher","date","days","page","category","sort"];
   if([...url.searchParams.keys()].some(key=>!expected.includes(key)) ||
      new Set([...url.searchParams.keys()]).size!==url.searchParams.size ||
-     url.searchParams.size>7 || q.length>100 || publisher.length>100 ||
+     url.searchParams.size>8 || !["newest","oldest"].includes(sort) || q.length>100 || publisher.length>100 ||
      !["all","india","global"].includes(region) ||
      !["all","technology","saas","markets"].includes(category) ||
      !Number.isInteger(page) || page<0 || page>59 ||
      ![7,30].includes(days) || date!==null && !validHistoryDate(date,nowMs))
     return null;
   return {q:q.trim().toLocaleLowerCase(),region,publisher:publisher.trim(),
-    category,page, dates:date ? [date] : archiveDates(nowMs,days),
+    category,sort,page, dates:date ? [date] : archiveDates(nowMs,days),
     days:date ? 1 : days, date:date||null};
 }
 export function queryArchive(buckets, params) {
@@ -89,7 +90,9 @@ export function queryArchive(buckets, params) {
       all.push(item);
     }
   }
-  all.sort((a,b)=>new Date(b.published_at)-new Date(a.published_at));
+  const order=params.sort==="oldest" ? 1 : -1;
+  all.sort((a,b)=>order*(new Date(a.published_at)-new Date(b.published_at)) ||
+    a.source_url.localeCompare(b.source_url));
   const publishers=[...new Set(buckets.flatMap(bucket=>
     Array.isArray(bucket?.items)?bucket.items.map(x=>x.publisher).filter(x=>typeof x==="string" && x.length<=100):[]))].sort().slice(0,100);
   const offset=params.page*ARCHIVE_PAGE_SIZE;

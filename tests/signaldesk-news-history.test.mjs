@@ -124,3 +124,18 @@ test("browser history endpoint is pinned and queries are GET-only",()=>{
   assert.equal(archiveResponse({schema_version:1,archive:true,news:[],publishers:[],total:0,page:0,has_more:false}),true);
   assert.equal(archiveResponse({schema_version:1,archive:true,news:Array(61).fill({}),publishers:[],total:61,page:0,has_more:true}),false);
 });
+
+test("archive sorting applies before pagination and rejects invalid sort values",()=>{
+  const first=item(71,"global","Example Publisher","technology",NOW-86400000);
+  const second=item(72,"india","Example Publisher","technology",NOW-1000);
+  const third=item(73,"global","Example Publisher","technology",NOW-3600000);
+  const bucket=mergeDailyArchive(null,[first,second,third],NOW);
+  const newest=historyParams(new URL("https://worker.example/archive?sort=newest"),NOW);
+  const oldest=historyParams(new URL("https://worker.example/archive?sort=oldest"),NOW);
+  assert.deepEqual(queryArchive([bucket],newest).news.map(x=>x.id),[second.id,third.id,first.id]);
+  assert.deepEqual(queryArchive([bucket],oldest).news.map(x=>x.id),[first.id,third.id,second.id]);
+  assert.equal(historyParams(new URL("https://worker.example/archive?sort=popular"),NOW),null);
+  const endpoint=archiveEndpoint("https://signaldesk-news-feed.littlekingchess.workers.dev/feed");
+  const url=archiveQuery(endpoint,{days:7,date:null,region:"all",publisher:"",category:"all",q:"",page:0,sort:"oldest"});
+  assert.equal(new URL(url).searchParams.get("sort"),"oldest");
+});

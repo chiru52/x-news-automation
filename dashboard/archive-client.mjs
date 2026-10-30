@@ -13,8 +13,8 @@ export function archiveEndpoint(feedUrl) {
 export function archiveQuery(endpoint, options) {
   if(!endpoint || typeof options!=="object") return "";
   const url=new URL(endpoint);
-  const {days,date,region,publisher,category,q,page}=options;
-  if(![7,30].includes(days) ||
+  const {days,date,region,publisher,category,q,page,sort="newest"}=options;
+  if(![7,30].includes(days) || !["newest","oldest"].includes(sort) ||
      !["all","india","global"].includes(region) ||
      !["all","technology","saas","markets"].includes(category) ||
      !Number.isInteger(page)||page<0||page>59||
@@ -25,6 +25,7 @@ export function archiveQuery(endpoint, options) {
     if(!/^\d{4}-\d{2}-\d{2}$/.test(date)) return "";
     url.searchParams.set("date",date);
   }
+  if(sort!=="newest") url.searchParams.set("sort",sort);
   if(region!=="all") url.searchParams.set("region",region);
   if(category!=="all") url.searchParams.set("category",category);
   if(publisher) url.searchParams.set("publisher",publisher);

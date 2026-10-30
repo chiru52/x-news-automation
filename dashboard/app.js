@@ -45,6 +45,7 @@ async function loadHistory(page=0) {
     date:$("archive-date").value || null,
     region:$("archive-region").value,
     publisher:$("archive-publisher").value,
+    sort:$("archive-sort").value,
     category:selectedCategory,
     q:$("search-input").value.trim().slice(0,100),
     page
@@ -995,6 +996,7 @@ $("archive-clear-filters").addEventListener("click",()=>{
   $("archive-date").value="";
   $("archive-region").value="all";
   $("archive-publisher").value="";
+  $("archive-sort").value="newest";
   selectedCategory="all";
   document.querySelectorAll("[data-filter]").forEach(button=>{
     const active=button.dataset.filter==="all";
@@ -1010,6 +1012,7 @@ $("archive-days").addEventListener("change",()=>{
 $("archive-date").addEventListener("change",()=>loadHistory(0));
 $("archive-region").addEventListener("change",()=>loadHistory(0));
 $("archive-publisher").addEventListener("change",()=>loadHistory(0));
+$("archive-sort").addEventListener("change",()=>loadHistory(0));
 $("archive-prev").addEventListener("click",()=>loadHistory(Math.max(0,historyPage-1)));
 $("archive-next").addEventListener("click",()=>{if(historyHasMore)loadHistory(historyPage+1);});
 $("clear-filters").addEventListener("click", () => {
