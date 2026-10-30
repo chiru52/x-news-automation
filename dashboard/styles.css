@@ -388,3 +388,41 @@
 .manage-account-grid input[type="password"]{min-width:0}
 
 
+
+
+/* Phase 4: manual X content studio — single post or editable thread. */
+.studio-format{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin:0 0 15px}
+.studio-format button{padding:9px 12px;border:1px solid #e5def2;border-radius:8px;
+  background:#fff;color:#705d88;font-weight:700;font-size:11px;cursor:pointer}
+.studio-format button.active{background:#ebe2fb;border-color:#a88adf;color:#6240ac}
+.studio-format button:focus-visible,.studio-thread-copy:focus-visible,
+.studio-thread-reviewed:focus-visible,.studio-thread-input:focus-visible{
+  outline:2px solid #9877d4;outline-offset:2px}
+.studio-thread{min-width:0}
+.studio-thread-part{border:1px solid #e8e2f2;background:#fff;border-radius:10px;
+  padding:11px 12px;margin:12px 0}
+.studio-thread-part label{display:block;font-size:11px;font-weight:700;color:#6b548c}
+.studio-thread-input{box-sizing:border-box;display:block;margin-top:8px;width:100%;min-height:100px;
+  border:1px solid #ddd4ec;border-radius:8px;background:#fff;color:#332a44;
+  font-size:12px;line-height:1.65;padding:10px;resize:vertical;overflow-wrap:anywhere}
+.studio-thread-part-actions{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-top:9px}
+.studio-thread-length{font-size:11px;color:#867998;font-variant-numeric:tabular-nums}
+.studio-thread-length.over{color:#bb463a;font-weight:700}
+.studio-thread-copy{padding:8px 12px;border:0;border-radius:7px;background:#7048c8;
+  color:#fff;font-weight:700;font-size:11px;cursor:pointer}
+.studio-thread-copy:disabled{background:#e9e2f1;color:#8e849d;cursor:not-allowed}
+.studio-thread-review{display:flex;align-items:flex-start;gap:10px;padding:12px 0;
+  color:#5c5269;font-size:11px;line-height:1.55;cursor:pointer}
+.studio-thread-review input{margin-top:3px;flex:0 0 auto;accent-color:#7048c8}
+.studio-thread-status{font-size:11px;color:#6f5d87;line-height:1.6;margin:0 0 4px}
+[data-theme="dark"] .studio-format button,[data-theme="dark"] .studio-thread-part,
+[data-theme="dark"] .studio-thread-input{background:#24212d;color:#eee8f4;border-color:#493b61}
+[data-theme="dark"] .studio-format button.active{background:#413059;color:#efe0ff}
+[data-theme="dark"] .studio-thread-review,[data-theme="dark"] .studio-thread-status,
+[data-theme="dark"] .studio-thread-part label{color:#d4c6e8}
+@media(max-width:650px){
+  .studio-format{display:grid;grid-template-columns:1fr 1fr}
+  .studio-format button{min-width:0}
+  .studio-thread-part{padding:10px}
+  .studio-thread-input{font-size:16px}
+}

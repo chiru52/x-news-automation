@@ -108,12 +108,26 @@
       </div>
       <section class="studio-panel" aria-label="Post writing studio" hidden>
         <div class="studio-panel-heading"><strong>Post Studio</strong><span>No-cost writing starters · not AI-generated</span></div>
-        <label class="studio-tone-label">Choose writing style
-          <select class="studio-tone"><option value="brief">News brief</option><option value="professional">Professional</option><option value="analytical">Analytical</option><option value="discussion">Discussion</option></select>
-        </label>
-        <p class="studio-intro">These drafts use only the publisher headline and source URL. Verify the actual reporting before copying.</p>
-        <p class="studio-preview" aria-live="polite"></p>
-        <div class="studio-actions"><span class="studio-length"></span><button class="studio-use" type="button">Use this draft</button></div>
+        <div class="studio-format" role="group" aria-label="X content format">
+          <button class="studio-format-post active" type="button" aria-pressed="true">Single post</button>
+          <button class="studio-format-thread" type="button" aria-pressed="false">3-post thread</button>
+        </div>
+        <div class="studio-single">
+          <label class="studio-tone-label">Choose writing style
+            <select class="studio-tone"><option value="brief">Conversational</option><option value="professional">Professional</option><option value="analytical">Analytical</option><option value="discussion">Discussion question</option><option value="factual">Source-attributed</option></select>
+          </label>
+          <p class="studio-intro">Source-grounded writing starters from the publisher headline. Verify the reporting before copying.</p>
+          <p class="studio-preview" aria-live="polite"></p>
+          <div class="studio-actions"><span class="studio-length"></span><button class="studio-use" type="button">Edit this post</button></div>
+        </div>
+        <div class="studio-thread" hidden>
+          <p class="studio-intro">An editable three-part outline using only the headline, questions and original source link. No claim has been independently verified.</p>
+          <div class="studio-thread-part"><label>Post 1 of 3<textarea class="studio-thread-input" rows="4" maxlength="1000" spellcheck="true" aria-label="Thread post 1"></textarea></label><div class="studio-thread-part-actions"><span class="studio-thread-length">≈0/280</span><button type="button" class="studio-thread-copy" disabled><span>Copy 1/3</span></button></div></div>
+          <div class="studio-thread-part"><label>Post 2 of 3<textarea class="studio-thread-input" rows="4" maxlength="1000" spellcheck="true" aria-label="Thread post 2"></textarea></label><div class="studio-thread-part-actions"><span class="studio-thread-length">≈0/280</span><button type="button" class="studio-thread-copy" disabled><span>Copy 2/3</span></button></div></div>
+          <div class="studio-thread-part"><label>Post 3 of 3<textarea class="studio-thread-input" rows="4" maxlength="1000" spellcheck="true" aria-label="Thread post 3"></textarea></label><div class="studio-thread-part-actions"><span class="studio-thread-length">≈0/280</span><button type="button" class="studio-thread-copy" disabled><span>Copy 3/3</span></button></div></div>
+          <label class="studio-thread-review"><input type="checkbox" class="studio-thread-reviewed"/> I reviewed the original source and checked the wording. Copying does not publish anything to X.</label>
+          <p class="studio-thread-status" role="status" aria-live="polite">Review the source before copying thread parts.</p>
+        </div>
       </section>
       <section class="research-panel" aria-label="Why this story matters research guide" hidden>
         <div class="studio-panel-heading"><strong>Why it matters</strong><span>Research guide · not an AI summary</span></div>

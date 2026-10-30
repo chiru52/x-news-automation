@@ -5,7 +5,7 @@
  * already in the public feed and require manual verification.
  */
 const MAX_HEADLINE = 260;
-const VALID_TONES = Object.freeze(["brief", "professional", "analytical", "discussion"]);
+const VALID_TONES = Object.freeze(["brief", "professional", "analytical", "discussion", "factual"]);
 const QUESTIONS = Object.freeze({
   technology: [
     "What functionality is actually available, and to whom?",
@@ -125,7 +125,9 @@ export function postStarters(item) {
     {tone:"analytical", label:"Analytical", description:"A useful question without invented facts",
      lines:[lead, angles.analytical]},
     {tone:"discussion", label:"Discussion", description:"Invite a genuine conversation",
-     lines:[lead, angles.discussion]}
+     lines:[lead, angles.discussion]},
+    {tone:"factual", label:"Source-attributed", description:"Headline and publisher, no added claims",
+     lines:["Publisher: "+(cleanText(item?.publisher,65)||"Original source"),lead]}
   ];
   return starters.map(draft => ({
     tone: draft.tone,
@@ -134,6 +136,43 @@ export function postStarters(item) {
     text: prepareText(draft.lines, url)
   }));
 }
+/**
+ * A three-part EDITABLE discussion outline, not three reported facts.
+ * Only the first part repeats the publisher's headline; the others contain
+ * generic verification prompts and a source link. No article body is read.
+ */
+const THREAD_CHECKS=Object.freeze({
+  technology:"What is actually available, and how would you test it against existing alternatives?",
+  saas:"What changes for customers, and what do pricing, usage or official documents confirm?",
+  markets:"What do the primary figures, filings and dates confirm before drawing conclusions?"
+});
+export function threadOutline(item) {
+  const url=safeArticleUrl(item?.source_url);
+  const title=cleanText(item?.title,MAX_HEADLINE);
+  if(!url||!title)return [];
+  const publisher=cleanText(item?.publisher,55)||"the publisher";
+  const lead="1/3 "+publisher+" reports: ";
+  // Leave the entire first part within the ordinary 280 character limit.
+  const available=Math.max(20,275-approximateXCharacters(lead));
+  const first=lead+shortHeadline(title,available);
+  const second="2/3 What I'd verify next:\n"+(THREAD_CHECKS[item?.category]||THREAD_CHECKS.technology);
+  const third="3/3 The headline is a starting point, not the complete story. What would you want confirmed before forming an opinion?\n\nSource: "+url;
+  const result=[first,second,third];
+  return result.every(part=>approximateXCharacters(part)<=280)?result:[];
+}
+/** Check all three posts before copying. Returns only safe, bounded issues. */
+export function reviewThread(parts,sourceUrl) {
+  const url=safeArticleUrl(sourceUrl);
+  if(!url||!Array.isArray(parts)||parts.length!==3)return {valid:false,reason:"Thread source or structure is unavailable."};
+  if(parts.some(part=>typeof part!=="string"||!part.trim()))
+    return {valid:false,reason:"Write all three posts before copying."};
+  if(parts.some(part=>part.length>1000||approximateXCharacters(part)>280))
+    return {valid:false,reason:"One or more posts exceed the approximate 280-character limit."};
+  if(!parts.some(part=>part.includes(url)))
+    return {valid:false,reason:"Keep the original source link in at least one post."};
+  return {valid:true,reason:"Ready to copy manually after reviewing the source."};
+}
+
 export function draftFromNotes(notes, url) {
   const content = cleanText(notes, 1200);
   if (!content || !safeArticleUrl(url)) return "";

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {postStarters, researchGuide, draftFromNotes, safeArticleUrl, approximateXCharacters, VALID_TONES} from "../dashboard/studio.mjs";
+import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread, safeArticleUrl, approximateXCharacters, VALID_TONES} from "../dashboard/studio.mjs";
 
 const base = {
   title: "OpenAI launches a new developer tool",
@@ -9,7 +9,7 @@ const base = {
   category: "technology"
 };
 
-test("four distinct headline-attributed writing starters, no network or API", () => {
+test("five distinct headline-attributed writing starters, no network or API", () => {
   const variants = postStarters(base);
   assert.deepEqual(variants.map(x => x.tone), [...VALID_TONES]);
   for (const variant of variants) {
@@ -20,6 +20,7 @@ test("four distinct headline-attributed writing starters, no network or API", ()
   }
   assert.ok(variants.find(x => x.tone === "analytical").text.includes("What changes"));
   assert.ok(variants.find(x => x.tone === "discussion").text.includes("What do you think"));
+  assert.ok(variants.find(x=>x.tone==="factual").text.includes("Publisher: Example Publisher"));
 });
 
 test("human funding drafts paraphrase only the stated amount and round", () => {
@@ -68,7 +69,7 @@ test("newly written starters never claim unverified outcomes or fake AI generati
 test("conservative X length preserves source URL even with long headline", () => {
   const long = {...base,title:"New enterprise AI platform update ".repeat(25)};
   const variants = postStarters(long);
-  assert.equal(variants.length, 4);
+  assert.equal(variants.length, 5);
   for (const item of variants) {
     assert.ok(item.text.endsWith(base.source_url));
     assert.ok(approximateXCharacters(item.text) <= 280);
@@ -141,4 +142,47 @@ test("source attribution is escaped through DOM textContent, not HTML injection"
   const variants = postStarters(malicious);
   assert.ok(variants[0].text.includes('<script>'));
   // The client must use textContent to display this literal source string.
+});
+
+
+test("thread outline is three individually bounded source-grounded posts, not an auto-published thread",()=>{
+  const parts=threadOutline(base);
+  assert.equal(parts.length,3);
+  assert.match(parts[0],/^1\/3/);
+  assert.match(parts[1],/^2\/3/);
+  assert.match(parts[2],/^3\/3/);
+  assert.ok(parts[0].includes(base.title));
+  assert.ok(parts[0].includes(base.publisher));
+  assert.ok(parts[2].includes(base.source_url));
+  for(const part of parts)assert.ok(approximateXCharacters(part)<=280);
+  assert.deepEqual(reviewThread(parts,base.source_url),{
+    valid:true,reason:"Ready to copy manually after reviewing the source."
+  });
+  assert.doesNotMatch(parts.join(" "),/\b(?:is confirmed|independently verified|guaranteed)\b/i);
+});
+test("thread questions adapt to markets, SaaS, and technology without invented article facts",()=>{
+  const tech=threadOutline(base);
+  const saas=threadOutline({...base,category:"saas"});
+  const markets=threadOutline({...base,category:"markets"});
+  assert.notEqual(tech[1],saas[1]);
+  assert.notEqual(saas[1],markets[1]);
+  assert.match(markets[1],/filings/);
+  assert.match(saas[1],/customers/);
+});
+test("thread review rejects blank posts, overlong edits, missing source and unsafe link",()=>{
+  const parts=threadOutline(base);
+  assert.equal(reviewThread([],base.source_url).valid,false);
+  assert.equal(reviewThread([parts[0],"",parts[2]],base.source_url).valid,false);
+  assert.equal(reviewThread([parts[0],"X".repeat(300),parts[2]],base.source_url).valid,false);
+  assert.equal(reviewThread([parts[0],parts[1],"3/3 My thoughts without any link"],base.source_url).valid,false);
+  assert.equal(reviewThread(parts,"javascript:alert(1)").valid,false);
+  assert.deepEqual(threadOutline({...base,source_url:"http://unsafe.example/article"}),[]);
+});
+test("long headlines are shortened without breaking source link or individual length checks",()=>{
+  const long={...base,title:"AI software product announcement for enterprise developer teams ".repeat(24)};
+  const parts=threadOutline(long);
+  assert.equal(parts.length,3);
+  assert.ok(parts[0].endsWith("…"));
+  assert.ok(parts[2].includes(base.source_url));
+  assert.ok(parts.every(part=>approximateXCharacters(part)<=280));
 });

@@ -1,4 +1,4 @@
-import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as studioXCharacters} from "./studio.mjs";
+import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
@@ -308,6 +308,30 @@ function rememberEdit(id, content, original) {
   persistEdits();
 }
 
+const threadKey="signaldesk:thread-drafts:v1";
+const threadEdits=new Map();
+try {
+  const raw=JSON.parse(localStorage.getItem(threadKey)||"{}");
+  if(raw && typeof raw==="object" && !Array.isArray(raw)){
+    for(const [id,parts] of Object.entries(raw).slice(-100)){
+      if(id.length<=140 && Array.isArray(parts) && parts.length===3 &&
+         parts.every(part=>typeof part==="string" && part.length<=1000))
+        threadEdits.set(id,parts);
+    }
+  }
+}catch(_){/* Browser-local thread drafts are optional. */}
+function rememberThread(id,parts,defaults){
+  if(parts.every((part,i)=>part===defaults[i]))threadEdits.delete(id);
+  else{
+    threadEdits.delete(id);
+    threadEdits.set(id,[...parts]);
+    if(threadEdits.size>100)threadEdits.delete(threadEdits.keys().next().value);
+  }
+  try{localStorage.setItem(threadKey,JSON.stringify(Object.fromEntries(threadEdits)));}
+  catch(_){showNotice("Unable to save the thread locally. Copy your text before leaving this page.");}
+}
+
+
 try {
   const parsed = JSON.parse(localStorage.getItem(savedKey) || "[]");
   if (Array.isArray(parsed)) saved = new Set(parsed.filter(x => typeof x === "string").slice(0, 300));
@@ -568,16 +592,23 @@ function handleSaved(item, button) {
 }
 async function handleCopy(post, button, onCopied = () => {}) {
   if (!post) return;
+  if(approximateXLength(post)>280){
+    showNotice("This post exceeds the approximate 280-character X limit. Shorten it before copying.");
+    return;
+  }
+  const label=button.querySelector("span");
+  const originalLabel=label?.textContent||"Copy post";
+  const originalAria=button.getAttribute("aria-label");
   try {
     if (!navigator.clipboard?.writeText) throw new Error("Clipboard unavailable");
     await navigator.clipboard.writeText(post);
     onCopied();
-    const label = button.querySelector("span");
-    label.textContent = "Copied!";
+    if(label)label.textContent="Copied!";
     button.setAttribute("aria-label", "Post copied to clipboard");
     window.setTimeout(() => { if (button.isConnected) {
-      label.textContent = "Copy post";
-      button.setAttribute("aria-label", "Copy suggested X post");
+      if(label)label.textContent=originalLabel;
+      if(originalAria)button.setAttribute("aria-label",originalAria);
+      else button.removeAttribute("aria-label");
     } }, 1900);
   } catch (_) {
     showNotice("Your browser blocked clipboard access. Try opening this page over HTTPS and enabling clipboard permission.");
@@ -627,7 +658,8 @@ function card(item) {
     const estimate = approximateXLength(text);
     chars.textContent = "≈" + estimate + "/280 X characters (links shortened) · Verify first";
     chars.classList.toggle("over", estimate > 280);
-    copy.disabled = !text.trim();
+    copy.disabled = !text.trim() || estimate > 280;
+    chars.title = estimate>280?"Shorten to 280 characters before copying":"Approximate X length; confirm in X before posting";
     tag.textContent = edits.has(item.id) ? "LOCALLY EDITED · VERIFY" : "REVIEW BEFORE SHARING";
     reset.disabled = !edits.has(item.id);
   }
@@ -705,6 +737,65 @@ function card(item) {
     showEditor(true);
     showNotice("Starter loaded into your editor. Check every claim against the original source before copying.");
   });
+
+  // Editable three-part thread. Every post is saved locally but never sent to X.
+  const postFormat=node.querySelector(".studio-format-post");
+  const threadFormat=node.querySelector(".studio-format-thread");
+  const singleSection=node.querySelector(".studio-single");
+  const threadSection=node.querySelector(".studio-thread");
+  const threadInputs=[...node.querySelectorAll(".studio-thread-input")];
+  const threadCounts=[...node.querySelectorAll(".studio-thread-length")];
+  const threadButtons=[...node.querySelectorAll(".studio-thread-copy")];
+  const threadReviewCheckbox=node.querySelector(".studio-thread-reviewed");
+  const threadStatus=node.querySelector(".studio-thread-status");
+  const defaultThread=threadOutline(item);
+  let threadParts=threadEdits.has(item.id)?[...threadEdits.get(item.id)]:[...defaultThread];
+  function renderThread(){
+    const checked=threadReviewCheckbox.checked;
+    const outcome=reviewThread(threadParts,item.source_url);
+    threadInputs.forEach((textarea,index)=>{
+      const content=threadParts[index]||"";
+      if(textarea.value!==content)textarea.value=content;
+      const length=studioXCharacters(content);
+      threadCounts[index].textContent="≈"+length+"/280 characters";
+      threadCounts[index].classList.toggle("over",length>280);
+    });
+    const allowed=checked && outcome.valid;
+    threadButtons.forEach(button=>{button.disabled=!allowed;});
+    threadStatus.textContent=!outcome.valid?outcome.reason:
+      checked?"Ready to copy manually, one post at a time. Nothing will be published.":
+      "Read the original source and confirm your edits before copying.";
+  }
+  threadInputs.forEach((textarea,index)=>{
+    textarea.addEventListener("input",()=>{
+      threadParts[index]=textarea.value.slice(0,1000);
+      rememberThread(item.id,threadParts,defaultThread);
+      threadReviewCheckbox.checked=false;
+      renderThread();
+    });
+  });
+  threadReviewCheckbox.addEventListener("change",renderThread);
+  threadButtons.forEach((button,index)=>{
+    button.addEventListener("click",()=>{
+      if(!threadReviewCheckbox.checked||!reviewThread(threadParts,item.source_url).valid)return;
+      handleCopy(threadParts[index].trim(),button,()=>{
+        showNotice("Copied thread part "+(index+1)+"/3. Paste manually into X and review each post before publishing.");
+      });
+    });
+  });
+  function setStudioFormat(format){
+    const isThread=format==="thread";
+    singleSection.hidden=isThread;
+    threadSection.hidden=!isThread;
+    postFormat.classList.toggle("active",!isThread);
+    threadFormat.classList.toggle("active",isThread);
+    postFormat.setAttribute("aria-pressed",String(!isThread));
+    threadFormat.setAttribute("aria-pressed",String(isThread));
+    if(isThread)renderThread();
+  }
+  postFormat.addEventListener("click",()=>setStudioFormat("post"));
+  threadFormat.addEventListener("click",()=>setStudioFormat("thread"));
+  renderThread();
 
   const guide = researchGuide(item);
   node.querySelector(".research-headline").textContent = guide.heading;
