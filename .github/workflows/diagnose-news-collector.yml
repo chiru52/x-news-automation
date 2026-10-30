@@ -1,0 +1,32 @@
+name: Diagnose SignalDesk Worker HTTP 403 (read only)
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnose-news-collector.yml'
+      - '.github/scripts/diagnose_signaldesk_worker.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Inspect public Worker HTTP response and optional Cloudflare Access scope
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python .github/scripts/diagnose_signaldesk_worker.py
+      - name: Safety report
+        run: |
+          echo 'Read-only HTTP inspection: no Worker deployment, KV writes, DNS changes or Access policy mutations.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No AI generation or X publishing operations.' >> "$GITHUB_STEP_SUMMARY"
