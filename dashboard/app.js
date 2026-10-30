@@ -987,6 +987,22 @@ $("archive-toggle").addEventListener("click",()=>{
 });
 $("archive-close").addEventListener("click",()=>setView("all"));
 $("archive-search").addEventListener("click",()=>loadHistory(0));
+$("archive-clear-filters").addEventListener("click",()=>{
+  if(!archiveMode()) return;
+  $("search-input").value="";
+  query="";
+  $("archive-days").value="7";
+  $("archive-date").value="";
+  $("archive-region").value="all";
+  $("archive-publisher").value="";
+  selectedCategory="all";
+  document.querySelectorAll("[data-filter]").forEach(button=>{
+    const active=button.dataset.filter==="all";
+    button.classList.toggle("active",active);
+    button.setAttribute("aria-pressed",String(active));
+  });
+  loadHistory(0);
+});
 $("archive-days").addEventListener("change",()=>{
   $("archive-date").value="";
   loadHistory(0);
