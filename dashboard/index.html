@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="robots" content="noindex, nofollow, noarchive">
+  <title>SignalDesk — Your AI news workspace</title>
+  <meta name="description" content="Private news review workspace: browse, verify and copy drafts for X. No automatic posting.">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./app.js"></script>
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar" aria-label="Workspace navigation">
+      <a href="./" class="brand" aria-label="SignalDesk home"><span class="brand-mark">S<span class="brand-dot">.</span></span><span>signal<span class="brand-light">desk</span><small>YOUR EDITORIAL SPACE</small></span></a>
+      <div class="sidebar-section-label">WORKSPACE</div>
+      <nav class="nav-items" aria-label="Main navigation">
+        <button class="nav-item active" data-view="all" aria-current="page"><span class="nav-icon">▦</span> All stories <span id="nav-all-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="drafts"><span class="nav-icon">✧</span> X-ready drafts <span id="nav-draft-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="saved"><span class="nav-icon">♡</span> Saved for later <span id="nav-saved-count" class="nav-count">0</span></button>
+      </nav>
+      <div class="sidebar-section-label topic-label">TOPICS</div>
+      <nav class="nav-items" aria-label="News categories">
+        <button class="nav-item topic-item" data-category="technology"><span class="topic-dot purple"></span> AI &amp; technology</button>
+        <button class="nav-item topic-item" data-category="saas"><span class="topic-dot orange"></span> Startups &amp; SaaS</button>
+        <button class="nav-item topic-item" data-category="markets"><span class="topic-dot blue"></span> Markets &amp; finance</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="safety-mini"><span class="safety-symbol">✓</span><div><strong>You stay in control</strong><span>Nothing is posted automatically.</span></div></div>
+        <p class="sidebar-foot">Private editorial workspace · v1</p>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar">
+        <div class="mobile-brand"><span class="brand-mark">S<span class="brand-dot">.</span></span><strong>signaldesk</strong></div>
+        <div class="crumb"><span>Workspace</span><span class="slash">/</span><strong>News feed</strong></div>
+        <div class="top-right"><span id="sync-indicator" class="sync-indicator"><span class="pulse"></span> Reading feed</span><span class="avatar" aria-label="Private workspace">SD</span></div>
+      </header>
+      <main class="content">
+        <section class="intro">
+          <div class="eyebrow"><span class="eyebrow-line"></span> YOUR DAILY INTELLIGENCE</div>
+          <div class="intro-heading"><div><h1>The signal, <em>without</em> the noise.</h1><p>Discover what's important. Shape your point of view. Share only when you're ready.</p></div><div class="today-box"><span>LAST REFRESHED</span><strong id="updated-display">—</strong></div></div>
+        </section>
+        <section class="metrics" aria-label="Feed overview">
+          <div class="metric"><span class="metric-icon lilac">▤</span><div><span>News stories</span><strong id="count-news">—</strong></div></div>
+          <div class="metric"><span class="metric-icon peach">✧</span><div><span>Drafts to review</span><strong id="count-drafts">—</strong></div></div>
+          <div class="metric"><span class="metric-icon mint">✓</span><div><span>Reviewed drafts</span><strong id="count-reviewed">—</strong></div></div>
+        </section>
+        <section class="feed-section">
+          <div class="section-title"><div><span class="section-kicker">EDITORIAL FEED</span><h2 id="feed-title">Explore the latest</h2><p id="feed-description">Fresh stories and prepared drafts, all in one place.</p></div><div class="results" id="result-count" aria-live="polite">—</div></div>
+          <div class="toolbar">
+            <div class="search-wrap"><span aria-hidden="true">⌕</span><label class="sr-only" for="search-input">Search articles and drafts</label><input id="search-input" type="search" placeholder="Search stories, companies, topics..." autocomplete="off"></div>
+            <div class="filters" role="group" aria-label="Filter category">
+              <button data-filter="all" class="filter active" aria-pressed="true">All topics</button>
+              <button data-filter="technology" class="filter" aria-pressed="false">AI &amp; tech</button>
+              <button data-filter="saas" class="filter" aria-pressed="false">SaaS</button>
+              <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
+            </div>
+          </div>
+          <div id="alert" role="status" class="notice" hidden></div>
+          <div id="cards" class="cards" aria-live="polite" aria-busy="true"></div>
+          <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><button type="button" id="clear-filters" class="secondary-action">Clear filters</button></div>
+        </section>
+        <footer class="footer"><span>SignalDesk — Built for thoughtful sharing</span><span>Source claims and AI drafts require independent verification. No X integration.</span></footer>
+      </main>
+    </div>
+  </div>
+  <template id="story-card">
+    <article class="story-card">
+      <div class="card-top"><span class="category-pill"></span><span class="card-date"></span></div>
+      <h3 class="card-title"></h3><p class="card-description"></p>
+      <div class="card-source"><span class="source-mark">↗</span><a class="source-link" target="_blank" rel="noopener noreferrer">Read original source</a><span class="source-publisher"></span></div>
+      <div class="draft-panel"><div class="draft-heading"><span>✧ &nbsp; SUGGESTED X POST</span><span class="review-tag">REVIEW BEFORE SHARING</span></div><p class="draft-text"></p><div class="draft-bottom"><span class="char-count"></span><button class="copy-button" type="button" aria-label="Copy suggested X post">▣ <span>Copy post</span></button></div></div>
+      <div class="card-footer"><span class="status-info"></span><button class="save-button" type="button" aria-pressed="false"><span aria-hidden="true">♡</span> Save</button></div>
+    </article>
+  </template>
+</body>
+</html>

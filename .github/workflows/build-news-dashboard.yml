@@ -1,0 +1,68 @@
+name: Build SignalDesk private news dashboard (no deployment)
+
+# Prepares downloadable static assets. Nothing is pushed to Cloudflare or X.
+# The artifact contains PRIVATE editorial drafts; protect every Pages hostname
+# with Cloudflare Access before later deploying this artifact.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'dashboard/**'
+      - 'newsbot/dashboard_export.py'
+      - '.github/workflows/build-news-dashboard.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '12 7 * * *'
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: signaldesk-static-build
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      PUBLISH_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run offline dashboard exporter tests
+        run: python -m unittest discover -s tests -p 'test_dashboard_export.py' -v
+      - name: Collect current RSS review candidates, never publish to X
+        run: python -m newsbot --preview --output output/dashboard-news
+      - name: Read private GitHub AI drafts and build static site locally
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python -m newsbot.dashboard_export \
+            --queue output/dashboard-news/review_queue.json \
+            --github \
+            --output dist/signaldesk
+      - name: Record artifact and privacy requirements
+        run: |
+          echo '## SignalDesk static dashboard — NOT deployed' >> "$GITHUB_STEP_SUMMARY"
+          echo 'The ZIP artifact contains private editorial drafts. Do not upload it to a public website.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'Configure Cloudflare Access for the Pages production URL, preview URLs, and custom domain BEFORE any deployment.' >> "$GITHUB_STEP_SUMMARY"
+          echo 'No X API calls, no posting, no Cloudflare deployment.' >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload safe empty starter (use to configure Cloudflare Access first)
+        uses: actions/upload-artifact@v4
+        with:
+          name: signaldesk-public-starter
+          path: dashboard/
+          if-no-files-found: error
+          retention-days: 7
+      - uses: actions/upload-artifact@v4
+        with:
+          name: signaldesk-private-site-${{ github.run_id }}
+          path: dist/signaldesk/
+          if-no-files-found: error
+          retention-days: 7
