@@ -34,6 +34,13 @@ class HistoryUITests(unittest.TestCase):
         self.assertIn('loadHistory(0)',section)
         self.assertNotIn('setView(',section)
 
+    def test_archive_layout_hides_duplicate_global_metrics_only_in_archive(self):
+        self.assertIn('id="dashboard-intro"',self.page)
+        self.assertIn('id="dashboard-metrics"',self.page)
+        self.assertIn('id="archive-statistics"',self.page)
+        self.assertIn('$("dashboard-metrics").hidden = archiveMode()',self.js)
+        self.assertIn('$("dashboard-intro").hidden = archiveMode()',self.js)
+
     def test_archive_is_deliberate_fetch_only_without_background_polling(self):
         self.assertIn('async function loadHistory(page=0)',self.js)
         self.assertIn('fetch(url,{cache:"no-store",credentials:"omit",mode:"cors"})',self.js)

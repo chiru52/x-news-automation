@@ -23,6 +23,8 @@ function trackHistoryItem(item) {
 function setArchiveVisibility() {
   $("archive-entry").hidden = true; // History is accessed from the dedicated Archive navigation.
   $("archive-controls").hidden = !archiveMode();
+  $("dashboard-metrics").hidden = archiveMode();
+  $("dashboard-intro").hidden = archiveMode();
   $("archive-toggle").setAttribute("aria-expanded", String(archiveMode()));
 }
 function exitArchive() {

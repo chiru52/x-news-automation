@@ -201,3 +201,10 @@
 .account-links a{padding:10px 14px;border-radius:9px;background:#f1ebfb;color:#6c48ca;text-decoration:none;font-weight:700}
 .account-links a[aria-current="page"]{background:#6c48ca;color:#fff}
 .account-panel .account-note{font-size:11px}
+
+/* Step 70: give the Archive its own compact header without duplicate top KPIs. */
+#dashboard-intro[hidden],#dashboard-metrics[hidden]{display:none!important}
+.content:has(#dashboard-intro[hidden]){padding-top:25px}
+.content:has(#dashboard-intro[hidden]) .section-title{margin-bottom:13px}
+.content:has(#dashboard-intro[hidden]) .toolbar{margin-bottom:13px}
+@media(max-width:650px){.content:has(#dashboard-intro[hidden]){padding-top:18px}}
