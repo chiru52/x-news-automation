@@ -38,6 +38,7 @@ async function loadHistory(page=0) {
   if(!archiveMode()) return;
   const requestId=++historyRequest;
   $("archive-status").textContent="Searching saved public news…";
+  $("archive-statistics").hidden=true;
   $("archive-search").disabled=true;
   const endpoint=archiveEndpoint(liveFeedUrl);
   const options={
@@ -63,6 +64,13 @@ async function loadHistory(page=0) {
     if(!archiveResponse(data)) throw Error("Invalid archive result");
     if(requestId!==historyRequest || !archiveMode()) return;
     historyItems=data.news.map((item,i)=>parseItem(item,"news",i)).filter(Boolean);
+    const stats=data.stats;
+    $("archive-stat-total").textContent=stats.articles.toLocaleString();
+    $("archive-stat-global").textContent=stats.global.toLocaleString();
+    $("archive-stat-india").textContent=stats.india.toLocaleString();
+    $("archive-stat-dates").textContent=stats.earliest_date ?
+      stats.earliest_date+(stats.latest_date===stats.earliest_date?"":" – "+stats.latest_date) : "No saved days";
+    $("archive-statistics").hidden=false;
     historyTotal=data.total;
     historyPage=data.page;
     historyHasMore=data.has_more;
