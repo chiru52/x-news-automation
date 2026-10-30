@@ -16,22 +16,19 @@ export function composeTopicDraft({topic="",angle="observation",observation="",s
   const raw=typeof sourceUrl==="string"?sourceUrl.trim():"";
   const source=raw?safeArticleUrl(raw):"";
   if(raw&&!source)return {text:"",valid:false,message:"Use a valid HTTPS source link, or leave it blank for opinion-only writing."};
+  // Prefer the author's actual observation over repetitive canned closers.
+  // This is a deterministic writing aid, not AI-authored analysis.
+  const sentence=cap(subject).replace(/[.?!]+$/,"");
   const framing={
-    observation:"Something I've been thinking about: "+subject+".",
-    implications:"The bigger question around "+subject+" is what happens next.",
-    connecting:"There's a wider conversation around "+subject+".",
-    question:"What are we missing in the conversation about "+subject+"?",
-    short:cap(subject).replace(/[.?!]+$/,"")+".",
+    observation:insight ? sentence+": " : "One thought on "+subject+":",
+    implications:subject+" — here's why it matters to me:",
+    connecting:"I keep coming back to "+subject+" when thinking about the bigger picture.",
+    question:"What are we overlooking about "+subject+"?",
+    short:sentence+".",
   }[angle];
-  const endings={
-    observation:"Curious how others see it.",
-    implications:"Worth watching how this develops.",
-    connecting:"It's worth looking beyond one headline.",
-    question:"What would you pay attention to?",
-    short:"",
-  };
-  // Never silently shorten user-provided insights or factual claims.
-  const text=[framing,insight,endings[angle],source].filter(Boolean).join("\n\n");
+  const text=angle==="observation"&&insight
+    ?[framing+insight,source].filter(Boolean).join("\n\n")
+    :[framing,insight,source].filter(Boolean).join("\n\n");
   const review=reviewTopicDraft(text,{sourceUrl:source});
   return {...review,text};
 }
