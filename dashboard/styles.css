@@ -219,3 +219,9 @@
 #auth-status{border-radius:8px;background:#f1ebfb;padding:11px 13px;font-size:12px}
 .account-links{flex-wrap:wrap}
 .account-links a{font-size:12px}
+
+/* Optional account menu controls, visible only for authenticated sessions. */
+#profile-sign-out:not([hidden]){display:block;width:100%;text-align:left;border:0;border-radius:7px;background:transparent;color:inherit;padding:9px 10px;cursor:pointer;font:inherit}
+#profile-sign-out:not([hidden]):hover{background:rgba(125,90,205,.1)}
+#profile-sign-out:disabled{opacity:.6;cursor:wait}
+#profile-account-status:not([hidden]){font-size:12px;margin:5px 0;color:inherit}

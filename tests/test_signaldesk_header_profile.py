@@ -22,6 +22,12 @@ class HeaderAccountTests(unittest.TestCase):
         self.assertIn('auth.auth.getUser()',js)
         self.assertIn('signIn.hidden=signedIn',js)
         self.assertIn('id="profile-account-link" hidden',html)
+        self.assertIn('id="profile-sign-out" hidden',html)
+        self.assertIn('id="profile-account-status"',html)
+        self.assertIn('await auth.auth.signOut()',js)
+        self.assertIn('signOut.hidden=!signedIn',js)
+        self.assertIn('renderSession(null)',js)
+        self.assertIn('!/^[a-z0-9-]+\\.supabase\\.co$/.test(url.hostname)',js)
     def test_auth_not_faked_and_exported(self):
         page=(ROOT/"dashboard/account.html").read_text()
         export=(ROOT/"newsbot/dashboard_export.py").read_text()
