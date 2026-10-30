@@ -4,6 +4,7 @@ import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-secti
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
+import {requestAiDrafts} from "./ai-writer-client.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -1292,17 +1293,13 @@ aiGenerate.addEventListener("click",async()=>{
   try{
     const {data,error}=await topicAuthClient.auth.getSession();
     if(error||!data?.session?.access_token)throw Error("Please sign in before using AI Writer.");
-    const response=await fetch("/api/ai-writer",{
-      method:"POST",
-      headers:{"content-type":"application/json","authorization":"Bearer "+data.session.access_token},
-      body:JSON.stringify({topic,observation,angle:topicAngle.value,sourceUrl:topicSource.value.trim()})
+    const drafts=await requestAiDrafts({
+      accessToken:data.session.access_token,topic,observation,
+      angle:topicAngle.value,sourceUrl:topicSource.value.trim()
     });
-    const result=await response.json();
-    if(!response.ok)throw Error(result.error||"AI generation unavailable.");
-    if(!Array.isArray(result.drafts)||result.drafts.length!==3)throw Error("Invalid AI result.");
     const captions=["Professional","Conversational","Analytical"];
     for(let i=0;i<3;i++){
-      const draft=result.drafts[i];
+      const draft=drafts[i];
       if(typeof draft!=="string"||draft.length>280||!draft.trim())continue;
       const button=document.createElement("button");
       button.type="button";
