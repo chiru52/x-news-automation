@@ -1,0 +1,44 @@
+name: X post approval plan (manual, no publishing)
+
+# Plans exact account + text fingerprint for a Reviewed private AI Draft.
+# No X tokens, X API, posting, ledger writes, or automatic approvals.
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: 'Reviewed private AI Draft Issue number'
+        required: true
+        type: string
+      destination_handle:
+        description: 'Intended X username without @ (NOT an authenticated account)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  issues: read
+
+concurrency:
+  group: x-publish-planning
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      PUBLISH_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build read-only content fingerprint and fail-closed planning summary
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          ISSUE_NUMBER: ${{ inputs.issue_number }}
+          DESTINATION_HANDLE: ${{ inputs.destination_handle }}
+        run: python -m newsbot.x_publish_plan
