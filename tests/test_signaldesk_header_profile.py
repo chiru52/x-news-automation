@@ -17,6 +17,11 @@ class HeaderAccountTests(unittest.TestCase):
         self.assertIn('./account.html#sign-up',html)
         self.assertIn('signaldesk:theme:v1',js)
         self.assertIn('setProfileOpen(false)',js)
+        self.assertIn('updateOptionalAccountProfile()',js)
+        self.assertIn('if(config.enabled!==true) return;',js)
+        self.assertIn('auth.auth.getUser()',js)
+        self.assertIn('signIn.hidden=signedIn',js)
+        self.assertIn('id="profile-account-link" hidden',html)
     def test_auth_not_faked_and_exported(self):
         page=(ROOT/"dashboard/account.html").read_text()
         export=(ROOT/"newsbot/dashboard_export.py").read_text()

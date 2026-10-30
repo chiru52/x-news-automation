@@ -1107,6 +1107,38 @@ function setProfileOpen(open) {
   profileMenu.hidden=!open;
   profileToggle.setAttribute("aria-expanded",String(open));
 }
+// News and editorial actions remain available to every visitor, regardless of auth.
+async function updateOptionalAccountProfile(){
+  const title=profileMenu.querySelector("strong");
+  const description=profileMenu.querySelector("p");
+  const signIn=profileMenu.querySelector('a[href="./account.html#sign-in"]');
+  const signUp=profileMenu.querySelector('a[href="./account.html#sign-up"]');
+  const manage=$("profile-account-link");
+  try{
+    const response=await fetch("./auth-config.json",{cache:"no-store"});
+    if(!response.ok) return;
+    const config=await response.json();
+    if(config.enabled!==true) return;
+    const url=new URL(config.supabase_url);
+    if(url.protocol!=="https:" || !/^[a-z0-9-]+\\.supabase\\.co$/.test(url.hostname) ||
+       url.pathname!=="/" || !String(config.publishable_key||"").startsWith("sb_publishable_")) return;
+    const {createClient}=await import("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.102.0/+esm");
+    const auth=createClient(url.href,config.publishable_key,{
+      auth:{detectSessionInUrl:false,flowType:"pkce",persistSession:true,autoRefreshToken:true}
+    });
+    const renderSession=(user)=>{
+      const signedIn=!!user;
+      title.textContent=signedIn?"Signed in to SignalDesk":"Browsing as guest";
+      description.textContent=signedIn?"Account: "+(user.email||"Signed-in user")+" · Your saved items remain in this browser until cloud sync is enabled.":"Your saved items stay in this browser. Sign-in is optional.";
+      signIn.hidden=signedIn;signUp.hidden=signedIn;manage.hidden=!signedIn;
+      profileToggle.setAttribute("aria-label",signedIn?"Account menu, signed in":"Account menu, guest");
+    };
+    const {data:{user},error}=await auth.auth.getUser();
+    if(!error) renderSession(user);
+    auth.auth.onAuthStateChange((_event,session)=>renderSession(session?.user));
+  }catch(_error){ /* Account health must never block public news. */ }
+}
+updateOptionalAccountProfile();
 profileToggle.addEventListener("click",()=>setProfileOpen(profileMenu.hidden));
 document.addEventListener("click",(event)=>{
   if(!event.target.closest(".profile-wrap")) setProfileOpen(false);
