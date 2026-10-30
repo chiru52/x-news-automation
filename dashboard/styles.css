@@ -101,3 +101,7 @@
 .copy-undo button:hover,.copy-undo button:focus-visible{background:#e8ddfc;outline-offset:2px}
 .nav-item[data-view="india"] .nav-icon{font-size:15px}
 .nav-item[data-view="copied"] .nav-icon{color:#548b6b}
+
+
+/* Separate collection time from browser check time without changing layout. */
+.today-box .last-checked-display{display:block;margin-top:5px;font-size:10px;line-height:1.45;letter-spacing:0;color:#9792a1;font-weight:400;text-transform:none}

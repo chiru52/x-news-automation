@@ -1,4 +1,5 @@
 import {postStarters, researchGuide, draftFromNotes, approximateXCharacters as studioXCharacters} from "./studio.mjs";
+import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -9,7 +10,18 @@ let records = [], selectedView = "all", selectedCategory = "all", selectedStage 
 let visibleCount = 12;
 let loadedSnapshot = "";
 let feedCheckInProgress = false;
-const NEWS_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+let lastFeedCheckAt = 0;
+// Spread client cache reads across ~45 seconds so multiple visitors do not
+// hit the same shared feed endpoint simultaneously.
+const feedCheckJitterMs = Math.floor(Math.random() * 45000);
+function showBrowserCheckStatus(ok) {
+  const label = $("last-checked-display");
+  if (!label) return;
+  const now = new Intl.DateTimeFormat(undefined, {
+    hour:"2-digit", minute:"2-digit"
+  }).format(new Date());
+  label.textContent = (ok ? "Browser checked " : "Browser check failed ") + now;
+}
 const INDIA_TERMS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi)\b/i;
 const INDIA_FOCUSED_PUBLISHERS = new Set(["Inc42 India Startups","ET Entrepreneur India Startups"]);
 function isIndiaNews(item) {
@@ -611,11 +623,13 @@ function parseItem(item, kind, index) {
 async function initialize(background = false) {
   if (feedCheckInProgress) return;
   feedCheckInProgress = true;
+  lastFeedCheckAt = Date.now();
   try {
     const {data,fromLive} = await readFeedData();
     if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts) ||
         typeof data.generated_at !== "string" || Number.isNaN(new Date(data.generated_at).getTime()))
       throw new Error("Unsupported feed format");
+    showBrowserCheckStatus(true);
     // An unchanged snapshot must not interrupt someone typing an edited post.
     if (background && loadedSnapshot &&
         new Date(data.generated_at).getTime() <= new Date(loadedSnapshot).getTime()) return;
@@ -643,12 +657,13 @@ async function initialize(background = false) {
     $("sync-indicator").textContent = fromLive
       ? "✓ Shared news cache updated" : "✓ Latest available snapshot";
     $("refresh-note").textContent = fromLive
-      ? "A shared collector checks news about every 15 minutes. This page checks the public cache every 15 minutes; see Last refreshed for the actual update time."
-      : "This page checks for updates every 15 minutes. The latest available static snapshot is shown until the shared collector is active.";
+      ? "News is collected approximately every 15 minutes. This browser checks shortly afterward. Last refreshed is news generation time; Browser checked shows the actual check time."
+      : "Showing the latest static snapshot while the shared collector is unavailable or older. Browser checks run after scheduled news collection and when this tab becomes active." ;
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();
   } catch (_) {
+    showBrowserCheckStatus(false);
     if (!records.length) {
       $("sync-indicator").textContent = "Feed unavailable";
       showNotice("The news feed could not be loaded. Please check the most recent GitHub dashboard build.");
@@ -706,9 +721,21 @@ $("load-more").addEventListener("click", () => {
   render();
 });
 initialize();
-// Poll the shared static snapshot, never trigger server-side collection per visitor.
-// Browser may delay checks in background tabs; latest real build time is shown.
-setInterval(() => {
-  if (document.visibilityState === "visible") initialize(true);
-}, NEWS_CHECK_INTERVAL_MS);
+// The collector runs at :00, :15, :30 and :45 (UTC). Check a little later
+// rather than blindly 15 minutes after the visitor first opened the page.
+// Only GET public cached JSON; never invoke RSS collection per visitor.
+function scheduleFeedCheck() {
+  const delay = Math.max(1000, nextFeedCheckAt(Date.now(), feedCheckJitterMs) - Date.now());
+  window.setTimeout(() => {
+    if (document.visibilityState === "visible") initialize(true);
+    scheduleFeedCheck();
+  }, delay);
+}
+scheduleFeedCheck();
+// Background tabs can have their timers throttled. Check on return when the
+// last check was at least two minutes ago; rapid tab switching is throttled.
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" &&
+      shouldCheckAfterReturn(Date.now(), lastFeedCheckAt)) initialize(true);
+});
 
