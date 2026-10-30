@@ -36,9 +36,6 @@ function renderAccountUser(user){
   $("account-email").textContent="Signed in as "+(user.email||"account");
   $("account-created").textContent=user.created_at?"Account created: "+new Date(user.created_at).toLocaleDateString():"";
   $("profile-name").value=String(user.user_metadata?.display_name||"").slice(0,80);
-  $("preference-theme").value=localStorage.getItem("signaldesk:theme:v1")||"system";
-  const region=localStorage.getItem("signaldesk:preferred-view:v1")||"all";
-  $("preference-region").value=["all","global","india","trending"].includes(region)?region:"all";
 }
 function settingsMessage(value){$("account-settings-status").textContent=value;}
 $("profile-form").addEventListener("submit",async event=>{
@@ -52,26 +49,26 @@ $("profile-form").addEventListener("submit",async event=>{
   }catch(_error){settingsMessage("Could not save profile. Please try again.");}
   finally{button.disabled=false;}
 });
-$("profile-password-reset").addEventListener("click",async()=>{
-  if(!client||!currentUser?.email)return;
-  const button=$("profile-password-reset");button.disabled=true;
+$("account-password-form").addEventListener("submit",async event=>{
+  event.preventDefault();if(!client||!currentUser)return;
+  const button=event.currentTarget.querySelector('button[type="submit"]');
+  const current_password=$("account-current-password").value;
+  const password=$("account-new-password").value;
+  const confirmation=$("account-confirm-password").value;
+  if(password.length<6){settingsMessage("New password must contain at least 6 characters.");return;}
+  if(password!==confirmation){settingsMessage("New passwords do not match.");return;}
+  if(current_password===password){settingsMessage("Choose a different new password.");return;}
+  button.disabled=true;settingsMessage("Updating password…");
   try{
-    const {error}=await client.auth.resetPasswordForEmail(currentUser.email,{redirectTo:location.origin+location.pathname+"#update-password"});
+    // Supabase Auth validates the current password server-side.
+    const {error}=await client.auth.updateUser({password,current_password});
     if(error)throw error;
-    settingsMessage("If this address is eligible, a password-reset link will arrive by email.");
-  }catch(_error){settingsMessage("Unable to send password reset email. Try again.");}
-  finally{button.disabled=false;}
-});
-$("preferences-form").addEventListener("submit",event=>{
-  event.preventDefault();if(!currentUser)return;
-  try{
-    const theme=$("preference-theme").value,region=$("preference-region").value;
-    if(!["system","light","dark"].includes(theme)||!["all","global","india","trending"].includes(region))return;
-    if(theme==="system")localStorage.removeItem("signaldesk:theme:v1");
-    else localStorage.setItem("signaldesk:theme:v1",theme);
-    localStorage.setItem("signaldesk:preferred-view:v1",region);
-    settingsMessage("Preferences saved in this browser.");
-  }catch(_error){settingsMessage("Preferences could not be saved in this browser.");}
+    $("account-password-form").reset();
+    settingsMessage("Password updated successfully.");
+  }catch(_error){
+    $("account-current-password").value="";
+    settingsMessage("Password could not be updated. Check your current password and try again.");
+  }finally{button.disabled=false;}
 });
 
 async function setup(){

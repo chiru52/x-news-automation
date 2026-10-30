@@ -1141,8 +1141,6 @@ async function updateOptionalAccountProfile(){
     const renderSession=(user)=>{
       const signedIn=!!user;currentAccount=user||null;
       if(signedIn){$("manage-email").textContent=user.email||"Signed-in account";$("manage-created").textContent=user.created_at?"Account created: "+new Date(user.created_at).toLocaleDateString():"";$("manage-name").value=String(user.user_metadata?.display_name||"").slice(0,80);}
-      $("manage-theme").value=document.documentElement.dataset.theme==="dark"?"dark":"light";
-      $("manage-region").value=localStorage.getItem("signaldesk:preferred-view:v1")||"all";
       title.textContent=signedIn?"Signed in to SignalDesk":"Browsing as guest";
       description.textContent=signedIn?"Account: "+(user.email||"Signed-in user")+" · Your saved items remain in this browser until cloud sync is enabled.":"Your saved items stay in this browser. Sign-in is optional.";
       signIn.hidden=signedIn;signUp.hidden=signedIn;manage.hidden=!signedIn;signOut.hidden=!signedIn;
@@ -1160,20 +1158,37 @@ async function updateOptionalAccountProfile(){
         if(error)throw error;renderSession(data.user);$("manage-status").textContent="Profile saved.";
       }catch(_){$("manage-status").textContent="Unable to save profile. Please try again."}finally{button.disabled=false}
     });
-    $("manage-reset").addEventListener("click",async()=>{
-      if(!currentAccount?.email)return;
-      const button=$("manage-reset");button.disabled=true;
-      try{const {error}=await auth.auth.resetPasswordForEmail(currentAccount.email,{redirectTo:location.origin+"/account.html#update-password"});
-        if(error)throw error;$("manage-status").textContent="Password reset email requested. Check your inbox.";
-      }catch(_){$("manage-status").textContent="Password reset email could not be sent."}finally{button.disabled=false}
-    });
-    $("manage-preferences-form").addEventListener("submit",event=>{
-      event.preventDefault();if(!currentAccount)return;
-      try{const theme=$("manage-theme").value,view=$("manage-region").value;
-        if(!["light","dark"].includes(theme)||!["all","trending","global","india"].includes(view))return;
-        localStorage.setItem("signaldesk:theme:v1",theme);localStorage.setItem("signaldesk:preferred-view:v1",view);
-        applyTheme(theme);$("manage-status").textContent="Preferences saved in this browser.";
-      }catch(_){$("manage-status").textContent="Preferences could not be saved."}
+    $("manage-password-form").addEventListener("submit",async event=>{
+      event.preventDefault();
+      if(!currentAccount)return;
+      const button=event.currentTarget.querySelector('button[type="submit"]');
+      const current_password=$("manage-current-password").value;
+      const password=$("manage-new-password").value;
+      const confirmation=$("manage-confirm-password").value;
+      if(password.length<6){
+        $("manage-status").textContent="New password must contain at least 6 characters.";
+        return;
+      }
+      if(password!==confirmation){
+        $("manage-status").textContent="New passwords do not match.";
+        return;
+      }
+      if(current_password===password){
+        $("manage-status").textContent="Choose a different new password.";
+        return;
+      }
+      button.disabled=true;
+      $("manage-status").textContent="Updating password…";
+      try{
+        // Supabase Auth validates the supplied current password server-side.
+        const {error}=await auth.auth.updateUser({password,current_password});
+        if(error)throw error;
+        $("manage-password-form").reset();
+        $("manage-status").textContent="Password updated successfully.";
+      }catch(_error){
+        $("manage-current-password").value="";
+        $("manage-status").textContent="Password could not be updated. Check your current password and try again.";
+      }finally{button.disabled=false;}
     });
     signOut.addEventListener("click",async()=>{
       signOut.disabled=true;accountStatus.hidden=false;accountStatus.textContent="Signing out…";
