@@ -1,0 +1,26 @@
+name: Live RSS Worker audit (read-only; informational)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/live-news-health-audit.yml'
+      - 'scripts/check_live_news_worker.py'
+      - 'tests/test_live_news_worker_diagnostics.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public_health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test diagnostic code with no network
+        run: python -m unittest tests.test_live_news_worker_diagnostics -v
+      - name: Read public Worker health and feed (no credentials, no writes)
+        run: python scripts/check_live_news_worker.py
