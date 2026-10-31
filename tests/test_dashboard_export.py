@@ -132,7 +132,7 @@ class DashboardExportTests(unittest.TestCase):
             self.assertEqual(len(result["news"]), 1)
             self.assertEqual(len(result["drafts"]), 1)
             self.assertEqual(sorted(p.name for p in dest.iterdir()),
-                             ["_headers", "account-visual.css", "account.html", "account.mjs", "app.js", "archive-client.mjs", "auth-config.json", "cloud-sync.mjs", "data.json", "feed-config.json", "index.html", "news-sections.mjs", "perspective.mjs", "refresh-clock.mjs", "review-desk.mjs", "studio.mjs", "styles.css", "workspace-transfer.mjs"])
+                             ["_headers", "account-visual.css", "account.html", "account.mjs", "app.js", "archive-client.mjs", "auth-config.json", "cloud-sync.mjs", "coverage-note.mjs", "data.json", "feed-config.json", "index.html", "news-sections.mjs", "perspective.mjs", "refresh-clock.mjs", "review-desk.mjs", "studio.mjs", "styles.css", "workspace-transfer.mjs"])
             data = json.loads((dest / "data.json").read_text("utf-8"))
             self.assertNotIn("GH_TOKEN", json.dumps(data))
             self.assertNotIn("X_API", json.dumps(data))
