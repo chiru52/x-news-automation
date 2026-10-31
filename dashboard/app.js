@@ -2,6 +2,7 @@ import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {createNewsExplorer, canUseExplorer} from "./news-explorer.mjs";
+import {safeNewsImage} from "./news-image.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
@@ -258,7 +259,8 @@ function rememberCopied(item) {
   copiedLibrary.delete(item.id);
   copiedLibrary.set(item.id, {
     id:item.id, kind:item.kind, title:item.title, description:item.description,
-    source_preview:item.source_preview, context_status:item.context_status,
+    source_preview:item.source_preview, image_url:item.image_url,
+    context_status:item.context_status,
     publisher:item.publisher, source_url:item.source_url, post:item.post,
     category:item.category, region:item.region, published_at:item.published_at,
     status:item.status, trend_score:item.trend_score,
@@ -1111,6 +1113,7 @@ function parseItem(item, kind, index) {
     title: clean(item.title, 300),
     description: clean(item.description, 500),
     source_preview: kind === "news" ? clean(item.source_preview, 170) : "",
+    image_url: kind === "news" ? safeNewsImage(item.image_url) : "",
     context_status: kind === "news" ? clean(item.context_status, 30) : "headline_only",
     publisher: clean(item.publisher, 100),
     source_url: clean(item.source_url, 2000),

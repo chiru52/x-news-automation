@@ -78,6 +78,10 @@ jobs:
           node --test tests/signaldesk-source-reliability.test.mjs
       - name: Check exact-origin browser CORS without making network calls
         run: node --test tests/signaldesk-feed-cors.test.mjs
+      - name: Test source-attributed RSS thumbnails and safe gallery images
+        run: |
+          node --check dashboard/news-image.mjs
+          node --test tests/signaldesk-news-images.test.mjs
       - name: Test shared Cloudflare Cron collector and read-only KV API offline
         run: |
           node --check news-collector/worker.mjs

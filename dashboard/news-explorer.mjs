@@ -5,6 +5,7 @@
  * function, so original tools, workflow state, safety and local edits remain.
  * No new endpoints, image assets, third-party packages or X publishing.
  */
+import {safeNewsImage} from "./news-image.mjs";
 export function relativePosition(index, active, length) {
   if (!Number.isInteger(index) || !Number.isInteger(active) || length < 1) return 99;
   let distance = (index - active + length) % length;
@@ -63,9 +64,27 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
     tile.setAttribute("aria-label", "Explore story " + (index + 1) + ": " + item.title);
     const artwork = element("span", "explorer-artwork");
     artwork.setAttribute("aria-hidden", "true");
-    const strokes = element("span", "explorer-art-strokes");
-    strokes.append(element("i"), element("i"), element("i"), element("i"), element("i"));
-    artwork.append(element("span", "explorer-art-orbit"), strokes);
+    // When the publisher RSS feed includes an article-specific image, use it;
+    // do not invent photos for individual headlines or scrape article pages.
+    const fallback=element("span", "explorer-art-label",
+      item.category==="markets"?"MARKETS":item.category==="saas"?"BUSINESS":"TECHNOLOGY");
+    artwork.append(fallback);
+    const imageUrl=safeNewsImage(item.image_url);
+    if(imageUrl) {
+      const img=document.createElement("img");
+      img.className="explorer-art-image";
+      img.alt=""; // The story headline is already the accessible button label.
+      img.loading="lazy";
+      img.decoding="async";
+      img.referrerPolicy="no-referrer";
+      img.src=imageUrl;
+      img.addEventListener("load",()=>artwork.classList.add("has-publisher-image"));
+      img.addEventListener("error",()=>{
+        artwork.classList.remove("has-publisher-image");
+        img.remove();
+      });
+      artwork.append(img,element("span","explorer-cover-credit","PUBLISHER IMAGE"));
+    }
     const body = element("span", "explorer-tile-body");
     body.append(
       element("span", "explorer-tile-publisher", item.publisher || "Source"),

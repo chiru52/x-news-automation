@@ -38,3 +38,28 @@ Pre-merge checks:
 4. Confirm this separate original GitHub repository is the intended destination
    before deploying; Cloudflare preview currently tracks the fork instead.
 5. Do **not** deploy to production or auto-publish to X.
+
+## Real article imagery (RSS thumbnails)
+
+Card covers now use the article-specific image URL explicitly supplied by the
+publisher in media:thumbnail, media:content or image-typed RSS/Atom enclosure.
+We **do not** scrape article pages, manufacture headline imagery, request
+unsourced stock images, or add new third-party image API calls.
+
+If no valid image is included (or remote loading fails), the cards show
+typographic Technology, Business, or Markets covers instead of the previous
+five vertical bars. Images are lazy loaded by the visitor's browser, with
+no-referrer; visitors may connect directly to the publisher's image CDN.
+The publisher's article URL is still the primary source link.
+
+**Release dependency:** Adding the browser display alone cannot magically
+create image metadata in previously collected stories. The shared scheduled
+Cloudflare RSS Worker must be separately reviewed/deployed with the updated
+RSS parser before live thumbnails are delivered. Do not redeploy the Worker
+with the Pages build or the repository's editorial-inbox wrangler.toml.
+Prior snapshots and cached cards gracefully show the typographic fallback.
+
+RSS distribution alone does not establish image-republication rights.
+Verify source terms/licensing before commercial release and disable imagery
+from sources where embedding is not permitted. No image files are downloaded
+or stored by SignalDesk in this implementation.

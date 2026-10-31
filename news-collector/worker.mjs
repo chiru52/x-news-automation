@@ -10,6 +10,7 @@ import feeds from "../config/sources.json" with {type:"json"};
 import {ARCHIVE_TTL_SECONDS, archiveDate, historyKey, mergeDailyArchive, historyParams, queryArchive} from "./archive.mjs";
 import {sameNewsEvent, editorialSignals} from "./intelligence.mjs";
 import {recoverRecentStories,coverageSummary} from "./source-reliability.mjs";
+import {imageFromRssEntry, safeNewsImage} from "../dashboard/news-image.mjs";
 
 export const CRON = "*/15 * * * *";
 const MAX_AGE_MS = 36 * 60 * 60 * 1000;
@@ -110,10 +111,12 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
         date < nowMs - MAX_AGE_MS || date > nowMs + MAX_FUTURE_MS ||
         SPAM.test(title) || !WORDS.test(title)) continue;
     const preview=plain(entry.description ?? entry.summary ?? "",170);
+    const image_url=imageFromRssEntry(entry);
     result.push({
       title, source_url:link, publisher:feed.name, feed_url:feed.url,
       category:feed.category, published_at:new Date(date).toISOString(),
       source_preview:preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
+      image_url,
       region:feed.region === "india" || INDIA_MARKERS.test(title) ||
         INDIA_PREVIEW_CONTEXT.test(preview) || INDIA_LOCAL_CONTEXT.test(preview) ? "india" : "global",
     });
@@ -146,6 +149,7 @@ export async function publicItem(article, allArticles=[article], nowMs=Date.now(
   return {
     id,title:article.title,description:"Publisher report. Verify all claims before sharing.",
     source_preview:article.source_preview,
+    image_url:safeNewsImage(article.image_url),
     context_status:article.source_preview ? "rss_preview" : "headline_only",
     publisher:article.publisher,source_url:article.source_url,post,
     category:article.category,region:isIndiaStory(article) ? "india" : "global",

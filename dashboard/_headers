@@ -6,4 +6,4 @@
   Cross-Origin-Resource-Policy: same-origin
   X-Frame-Options: DENY
   Permissions-Policy: camera=(), microphone=(), geolocation=()
-  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://nmvsdgpsmvycwarnomot.supabase.co https://signaldesk-news-feed.littlekingchess.workers.dev; img-src 'none'; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
+  Content-Security-Policy: default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'self'; connect-src 'self' https://nmvsdgpsmvycwarnomot.supabase.co https://signaldesk-news-feed.littlekingchess.workers.dev; img-src https:; font-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'
