@@ -32,6 +32,7 @@ test("identical news stream supports layered and gallery modes plus original car
   assert.match(html,/class="explorer-editor"/);
   assert.match(app,/buildFullCard:\s*card/);
   assert.match(app,/newsExplorer\.render\(list\)/);
+  assert.match(app,/safeNewsImage\(item.image_url\)/);
   assert.match(app,/newsExplorer\.hide\(\)/);
   assert.match(css,/news-explorer\[data-mode="gallery"\]/);
   assert.match(css,/prefers-reduced-motion:reduce/);
