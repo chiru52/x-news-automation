@@ -1072,7 +1072,7 @@ function render() {
   }else{
     newsExplorer.hide();
     target.hidden=false;
-    target.replaceChildren(...list.slice(0,visibleCount).map(card));
+    target.replaceChildren(...list.slice(0, visibleCount).map(card));
   }
   target.setAttribute("aria-busy","false");
   const remaining = Math.max(0,list.length-visibleCount);
