@@ -524,3 +524,11 @@
 .workspace-transfer-actions button{border:1px solid var(--line);border-radius:9px;padding:10px 12px;min-height:38px;background:var(--white);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 .workspace-transfer-actions button:hover,.workspace-transfer-actions button:focus-visible{border-color:var(--purple);outline-color:var(--purple)}
 .workspace-transfer #workspace-transfer-status{flex:1 0 100%;margin:0}
+
+/* Explain India coverage without inventing missing stories or freshness. */
+.india-coverage{display:flex;align-items:flex-start;flex-wrap:wrap;justify-content:space-between;gap:12px;margin:0 0 18px;padding:15px 18px;border:1px solid var(--line);border-radius:14px;background:var(--white)}
+.india-coverage[hidden]{display:none}
+.india-coverage>div{flex:1 1 280px}
+.india-coverage strong{font-size:13px;color:var(--ink)}
+.india-coverage p{font-size:12px;line-height:1.65;color:var(--muted);margin:5px 0 0}
+.india-coverage button{font-size:12px}
