@@ -3,12 +3,14 @@ import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
 import {createNewsExplorer, canUseExplorer} from "./news-explorer.mjs";
 import {safeNewsImage} from "./news-image.mjs";
+import {initializeSourceCatalogue} from "./editorial-sources.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
 import {describeIndiaCoverage} from "./coverage-note.mjs";
 import {createWorkspaceTransfer, restoreWorkspaceTransfer, validateWorkspaceTransfer} from "./workspace-transfer.mjs";
 const $ = (id) => document.getElementById(id);
+initializeSourceCatalogue($("source-directory-list"));
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
   saas: {label: "Startups & SaaS", cls: "saas"},
