@@ -48,7 +48,7 @@ class LiveNewsWorkerDiagnosticsTests(unittest.TestCase):
         results = run(fake_get, now=now)
         self.assertEqual(len(results), 5)
         self.assertEqual([path for path, _ in seen], [
-            "/health", "/health", "/health", "/feed", "/archive?days=1"
+            "/health", "/health", "/health", "/feed", "/archive?days=7"
         ])
         self.assertTrue(all(x["cors"] == "PASS" for x in results))
 
