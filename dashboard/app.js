@@ -12,7 +12,10 @@ const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
   saas: {label: "Startups & SaaS", cls: "saas"},
-  markets: {label: "Markets & finance", cls: "markets"}
+  markets: {label: "Markets & finance", cls: "markets"},
+  world: {label: "World affairs", cls: "world"},
+  policy: {label: "Policy & governance", cls: "policy"},
+  factcheck: {label: "Fact-check / analysis", cls: "factcheck"}
 };
 let feedFromLive=false, feedCoverage=null;
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
@@ -182,12 +185,12 @@ function boundedFeedCoverage(value) {
   const fields=["sources_checked","sources_failed","sources_with_recent_stories",
     "india_sources_failed","retained_news","retained_india"];
   if(fields.some(field=>!Number.isInteger(value[field])||value[field]<0||
-    value[field]>40))return null;
-  if(!value.sources_checked||value.sources_checked>20||
+    value[field]>100))return null;
+  if(!value.sources_checked||value.sources_checked>32||
     value.sources_failed>value.sources_checked||
     value.sources_with_recent_stories>value.sources_checked-value.sources_failed||
     value.india_sources_failed>value.sources_failed||
-    value.retained_news>30||value.retained_india>15)return null;
+    value.retained_news>50||value.retained_india>50)return null;
   const stats=Object.fromEntries(fields.map(field=>[field,value[field]]));
   // Backward compatible with existing deployed collector snapshots.
   if(value.india_sources_checked!==undefined||value.india_sources_with_recent_stories!==undefined){
@@ -214,7 +217,8 @@ async function readFeedData() {
     const staticDate=new Date(staticData.generated_at).getTime();
     // Only accept a recent, bounded, schema-compatible shared cache snapshot.
     if (dynamic.schema_version!==1 || !Array.isArray(dynamic.news) ||
-        dynamic.news.length<5 || dynamic.news.length>40 ||
+        dynamic.news.length>50 ||
+        (!dynamic.news.length && (!Array.isArray(dynamic.india_news)||dynamic.india_news.length<5)) ||
         !Number.isFinite(dynamicDate) || Date.now()-dynamicDate>90*60*1000 ||
         dynamicDate>Date.now()+10*60*1000) return {data:staticData,fromLive:false};
     // Source diagnostics can be newer than the static build even when news is not.
@@ -222,7 +226,7 @@ async function readFeedData() {
     return {data:{
       schema_version:1,generated_at:dynamic.generated_at,
       news:dynamic.news,
-      india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 15 ? dynamic.india_news : [],
+      india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 50 ? dynamic.india_news : [],
       drafts:staticData.drafts,
       coverage:boundedFeedCoverage(dynamic.coverage),
       warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
@@ -1105,7 +1109,7 @@ function render() {
 function parseItem(item, kind, index) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return null;
   const id = clean(item.id, 120);
-  if (!id || !["technology", "saas", "markets"].includes(item.category)) return null;
+  if (!id || !["technology", "saas", "markets", "world", "policy", "factcheck"].includes(item.category)) return null;
   return {
     id: kind + ":" + id,
     region: kind === "news" && item.region === "india" ? "india" : "global",
