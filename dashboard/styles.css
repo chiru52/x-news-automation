@@ -813,3 +813,24 @@ body.news-focus-mode .footer{margin-top:15px}
   body.news-focus-mode .news-explorer:not([data-mode="gallery"]) .explorer-canvas{height:250px}
   body.news-focus-mode .news-explorer:not([data-mode="gallery"]) .explorer-tile{height:205px}
 }
+
+/* Unbiased source transparency: a directory of publisher links, not fetched stories. */
+.source-directory{padding:13px 18px;margin:0 0 16px;border:1px solid var(--line);border-radius:13px;background:var(--white)}
+.source-directory>summary{cursor:pointer;color:var(--ink);font-weight:700;font-size:12px}
+.source-directory>summary span{margin-left:8px;color:var(--muted);font-size:10px;font-weight:500}
+.source-directory>p{font-size:11px;color:var(--muted);max-width:720px;line-height:1.6}
+.source-directory-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.source-group h4{font-size:13px;margin:6px 0 12px;color:var(--ink)}
+.source-directory-row{display:flex;gap:8px;justify-content:space-between;align-items:baseline;padding:8px 0;border-bottom:1px solid var(--line)}
+.source-directory-row a{font-size:11px;color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+.source-directory-row span{font-size:10px;text-align:right;color:var(--muted)}
+.source-directory-row .source-status-active{color:#287247;font-weight:700}
+@media(max-width:750px){.source-directory-list{grid-template-columns:1fr}.source-directory-row{align-items:flex-start}.source-directory>summary span{display:block;margin:4px 0}}
+
+/* Distinguish regional policy and source fact-checks from business headlines. */
+.category-pill.world{background:#e2eef5;color:#275d77}
+.category-pill.policy{background:#ede9dc;color:#765b2a}
+.category-pill.factcheck{background:#e5efe3;color:#396a40}
+.explorer-tile[data-category="world"] .explorer-artwork{background:linear-gradient(130deg,#273d5d,#71a3bf)}
+.explorer-tile[data-category="policy"] .explorer-artwork{background:linear-gradient(130deg,#635a40,#bba77b)}
+.explorer-tile[data-category="factcheck"] .explorer-artwork{background:linear-gradient(130deg,#244637,#78af88)}

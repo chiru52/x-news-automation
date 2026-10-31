@@ -72,6 +72,10 @@ jobs:
         run: node --test tests/signaldesk-ai-gateway.test.mjs
       - name: Install pinned RSS XML parser for offline Worker tests
         run: npm install --prefix news-collector --no-audit --no-fund
+      - name: Test requested publisher source catalogue and regional 50-story limits
+        run: |
+          node --check dashboard/editorial-sources.mjs
+          node --test tests/signaldesk-editorial-sources.test.mjs
       - name: Test bounded source recovery and feed coverage diagnostics offline
         run: |
           node --check news-collector/source-reliability.mjs

@@ -1,0 +1,154 @@
+[
+  {
+    "group": "global",
+    "name": "WION",
+    "site": "https://www.wionews.com/",
+    "focus": "International affairs with Indian perspective",
+    "feed": null,
+    "status": "feed_not_confirmed"
+  },
+  {
+    "group": "global",
+    "name": "Firstpost World",
+    "site": "https://www.firstpost.com/world/",
+    "focus": "Geopolitics and world analysis",
+    "feed": null,
+    "status": "feed_not_confirmed"
+  },
+  {
+    "group": "global",
+    "name": "BBC India",
+    "site": "https://www.bbc.com/news/world/asia/india",
+    "focus": "India reporting from international desk",
+    "feed": "https://feeds.bbci.co.uk/news/world/asia/india/rss.xml",
+    "status": "permission_required"
+  },
+  {
+    "group": "global",
+    "name": "Reuters India",
+    "site": "https://www.reuters.com/world/india/",
+    "focus": "International reporting about India",
+    "feed": null,
+    "status": "no_official_rss"
+  },
+  {
+    "group": "global",
+    "name": "Al Jazeera English",
+    "site": "https://www.aljazeera.com/",
+    "focus": "World affairs and Global South",
+    "feed": "https://www.aljazeera.com/xml/rss/all.xml",
+    "status": "permission_required"
+  },
+  {
+    "group": "global",
+    "name": "The Hindu World",
+    "site": "https://www.thehindu.com/news/international/",
+    "focus": "Diplomacy and international policy",
+    "feed": "https://www.thehindu.com/news/international/feeder/default.rss",
+    "status": "rights_review"
+  },
+  {
+    "group": "global",
+    "name": "Indian Express World",
+    "site": "https://indianexpress.com/section/world/",
+    "focus": "International reporting",
+    "feed": "https://indianexpress.com/section/world/feed/",
+    "status": "permission_required"
+  },
+  {
+    "group": "global",
+    "name": "Observer Research Foundation",
+    "site": "https://www.orfonline.org/",
+    "focus": "Long-form international research and analysis",
+    "feed": null,
+    "status": "feed_not_confirmed"
+  },
+  {
+    "group": "india",
+    "name": "The Hindu India",
+    "site": "https://www.thehindu.com/news/national/",
+    "focus": "India, business, policy",
+    "feed": "https://www.thehindu.com/news/national/feeder/default.rss",
+    "status": "rights_review"
+  },
+  {
+    "group": "india",
+    "name": "Indian Express India",
+    "site": "https://indianexpress.com/",
+    "focus": "Indian public affairs and economy",
+    "feed": "https://indianexpress.com/feed/",
+    "status": "permission_required"
+  },
+  {
+    "group": "india",
+    "name": "NDTV India",
+    "site": "https://www.ndtv.com/india",
+    "focus": "Breaking India news",
+    "feed": "https://feeds.feedburner.com/ndtvnews-india-news",
+    "status": "permission_required"
+  },
+  {
+    "group": "india",
+    "name": "Scroll.in",
+    "site": "https://scroll.in/",
+    "focus": "Investigations and national affairs",
+    "feed": "https://feeds.feedburner.com/ScrollinArticles.rss",
+    "status": "permission_required"
+  },
+  {
+    "group": "india",
+    "name": "The Wire",
+    "site": "https://thewire.in/",
+    "focus": "Investigations and policy",
+    "feed": "https://cms.thewire.in/feed",
+    "status": "permission_required"
+  },
+  {
+    "group": "india",
+    "name": "ThePrint",
+    "site": "https://theprint.in/",
+    "focus": "Politics and public policy",
+    "feed": "https://theprint.in/feed/",
+    "status": "rights_review"
+  },
+  {
+    "group": "india",
+    "name": "Newslaundry",
+    "site": "https://www.newslaundry.com/",
+    "focus": "Investigations and media accountability",
+    "feed": null,
+    "status": "feed_not_confirmed"
+  },
+  {
+    "group": "india",
+    "name": "The News Minute",
+    "site": "https://www.thenewsminute.com/",
+    "focus": "South India journalism",
+    "feed": null,
+    "status": "feed_not_confirmed"
+  },
+  {
+    "group": "india",
+    "name": "Alt News",
+    "site": "https://www.altnews.in/",
+    "focus": "Fact-checking and media verification, distinct from breaking news",
+    "feed": "https://www.altnews.in/feed/",
+    "status": "attributed_cc_by_3"
+  },
+  {
+    "group": "india",
+    "name": "Mint",
+    "site": "https://www.livemint.com/",
+    "focus": "Business and financial markets",
+    "feed": "https://www.livemint.com/rss/markets",
+    "status": "permission_required"
+  },
+  {
+    "group": "india",
+    "name": "Moneycontrol",
+    "site": "https://www.moneycontrol.com/",
+    "focus": "Markets and company reporting",
+    "feed": null,
+    "status": "feed_not_confirmed"
+  }
+]

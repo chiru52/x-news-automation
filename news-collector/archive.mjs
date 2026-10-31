@@ -31,7 +31,7 @@ function safeHistoryItem(item){
      typeof item.id!=="string" || !/^[a-f0-9]{24}$/.test(item.id) ||
      typeof item.title!=="string" || item.title.length>260 ||
      typeof item.source_url!=="string" || !item.source_url.startsWith("https://") ||
-     !["technology","saas","markets"].includes(item.category) ||
+     !["technology","saas","markets","world","policy","factcheck"].includes(item.category) ||
      !["india","global"].includes(item.region) ||
      (item.image_url !== undefined && item.image_url !== "" &&
        safeNewsImage(item.image_url) !== item.image_url) ||
@@ -68,7 +68,7 @@ export function historyParams(url, nowMs=Date.now()){
      new Set([...url.searchParams.keys()]).size!==url.searchParams.size ||
      url.searchParams.size>8 || !["newest","oldest"].includes(sort) || q.length>100 || publisher.length>100 ||
      !["all","india","global"].includes(region) ||
-     !["all","technology","saas","markets"].includes(category) ||
+     !["all","technology","saas","markets","world","policy","factcheck"].includes(category) ||
      !Number.isInteger(page) || page<0 || page>59 ||
      ![7,30].includes(days) || date!==null && !validHistoryDate(date,nowMs))
     return null;

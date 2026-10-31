@@ -16,7 +16,7 @@ class SourceReliabilityUITests(unittest.TestCase):
         self.assertIn('" feeds supplied recent stories"',js)
         self.assertIn('recent headlines retained during outages',js)
         self.assertIn('recoverRecentStories(',worker)
-        self.assertIn('if(freshSelected.length < MIN_STORIES)',worker)
+        self.assertIn('if(freshSelected.length+freshIndia.length < MIN_STORIES)',worker)
         self.assertNotIn("api.x.com",worker)
         self.assertNotIn("api.openai.com",worker)
         self.assertIn('if (request.method!=="GET" && request.method!=="HEAD")',worker)

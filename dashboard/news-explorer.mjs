@@ -13,7 +13,7 @@ export function relativePosition(index, active, length) {
   return distance;
 }
 export function appearanceFor(category) {
-  return ["technology", "markets", "saas"].includes(category) ? category : "technology";
+  return ["technology", "markets", "saas", "world", "policy", "factcheck"].includes(category) ? category : "technology";
 }
 export function canUseExplorer(view) {
   return ["all", "global", "india", "trending"].includes(view);
