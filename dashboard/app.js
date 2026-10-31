@@ -1,6 +1,7 @@
 import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
+import {createNewsExplorer, canUseExplorer} from "./news-explorer.mjs";
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
@@ -936,6 +937,42 @@ function card(item) {
   save.addEventListener("click", () => handleSaved(item, save));
   return node;
 }
+const newsExplorer=createNewsExplorer($("news-explorer"),{
+  buildFullCard: card,
+  dateLabel: item=>formatDate(item.published_at||item.updated_at,{short:true}),
+  onModeChange: mode=>{
+    try { localStorage.setItem("signaldesk:explorer-mode:v1",mode); }
+    catch (_) { /* Cosmetic preference only. */ }
+  }
+});
+try {
+  if(localStorage.getItem("signaldesk:explorer-mode:v1")==="gallery")
+    newsExplorer.setMode("gallery");
+} catch (_) { /* Cosmetic preference is optional. */ }
+let explorerFocusEnabled=true;
+try { explorerFocusEnabled=localStorage.getItem("signaldesk:explorer-focus:v1")!=="off"; }
+catch (_) { /* Cosmetic preference is optional. */ }
+function applyExplorerFocus(show) {
+  document.body.classList.toggle("news-focus-mode",Boolean(show&&explorerFocusEnabled));
+  const button=$("explorer-focus");
+  button.textContent=explorerFocusEnabled?"Back to workspace ↗":"Expand explorer ↗";
+  button.setAttribute("aria-pressed",String(Boolean(show&&explorerFocusEnabled)));
+  document.querySelectorAll("[data-explorer-section]").forEach(btn=>{
+    const current=btn.dataset.explorerSection===selectedView;
+    btn.classList.toggle("active",current);
+    if(current)btn.setAttribute("aria-current","page");
+    else btn.removeAttribute("aria-current");
+  });
+}
+$("explorer-focus").addEventListener("click",()=>{
+  explorerFocusEnabled=!explorerFocusEnabled;
+  try{localStorage.setItem("signaldesk:explorer-focus:v1",explorerFocusEnabled?"on":"off");}
+  catch (_) { /* Cosmetic preference only. */ }
+  applyExplorerFocus(!$("news-explorer").hidden);
+});
+document.querySelectorAll("[data-explorer-section]").forEach(btn=>{
+  btn.addEventListener("click",()=>setView(btn.dataset.explorerSection));
+});
 function render() {
   updateCounts();
   const indiaNote=$("india-coverage");
@@ -960,6 +997,8 @@ function render() {
   $("review-desk-toggle").setAttribute("aria-expanded",String(inReview));
   document.querySelector(".toolbar").classList.toggle("review-mode",inReview||inTopic);
   if(inTopic||inReview){
+    applyExplorerFocus(false);
+    newsExplorer.hide();
     $("more-container").hidden=true;
     $("empty").hidden=true;
     $("clear-filters").hidden=true;
@@ -968,6 +1007,9 @@ function render() {
     return;
   }
   if(archiveMode()) {
+    applyExplorerFocus(false);
+    newsExplorer.hide();
+    $("cards").hidden=false;
     $("feed-title").textContent="News Archive";
     $("feed-description").textContent="Browse archived public headlines from the last 7–30 days. Collection started when history was enabled.";
     $("result-count").textContent=historyTotal+" historical matches";
@@ -1021,10 +1063,20 @@ function render() {
   const noun = ["all","trending","global","india"].includes(selectedView) ? "story" : "item";
   $("result-count").textContent = list.length + " " + noun + (list.length === 1 ? "" : "s");
   const target = $("cards");
-  target.replaceChildren(...list.slice(0, visibleCount).map(card));
-  target.setAttribute("aria-busy", "false");
-  const remaining = Math.max(0, list.length - visibleCount);
-  $("more-container").hidden = remaining === 0;
+  const useExplorer=canUseExplorer(selectedView) && list.length>0;
+  applyExplorerFocus(useExplorer);
+  if(useExplorer){
+    target.hidden=true;
+    target.replaceChildren();
+    newsExplorer.render(list);
+  }else{
+    newsExplorer.hide();
+    target.hidden=false;
+    target.replaceChildren(...list.slice(0,visibleCount).map(card));
+  }
+  target.setAttribute("aria-busy","false");
+  const remaining = Math.max(0,list.length-visibleCount);
+  $("more-container").hidden = useExplorer || remaining === 0;
   $("more-counter").textContent = Math.min(list.length, visibleCount) + " of " + list.length + " shown";
   $("load-more").textContent = "Show " + Math.min(12, remaining) + " more";
   $("empty").hidden = list.length > 0;
