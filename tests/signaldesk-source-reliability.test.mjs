@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import feeds from "../config/sources.json" with {type:"json"};
+import extra from "../config/extra-news-sources.json" with {type:"json"};
 import {parseFeed,collect,handleRequest} from "../news-collector/worker.mjs";
 import {recoverRecentStories,coverageSummary} from "../news-collector/source-reliability.mjs";
 
@@ -71,7 +72,7 @@ test("temporary India feed failure retains only recent coverage without new KV w
   assert.equal(second.ok,true);
   assert.equal(second.failed_sources,1);
   const data=JSON.parse(cache.map.get("signaldesk:news:snapshot:v1"));
-  assert.equal(data.coverage.sources_checked,feeds.length);
+  assert.equal(data.coverage.sources_checked,feeds.length+extra.length);
   assert.equal(data.coverage.sources_failed,1);
   assert.equal(data.coverage.india_sources_failed,1);
   assert.ok(data.coverage.retained_india>0);
