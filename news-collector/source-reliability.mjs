@@ -16,14 +16,14 @@ function safeHttps(raw) {
 }
 export function recoverRecentStories(snapshot,failedFeeds,nowMs) {
   if(!snapshot||snapshot.schema_version!==1||!Array.isArray(snapshot.news)||
-    !Array.isArray(snapshot.india_news)||snapshot.news.length>30||
-    snapshot.india_news.length>15||!Array.isArray(failedFeeds)||failedFeeds.length>20)return [];
+    !Array.isArray(snapshot.india_news)||snapshot.news.length>50||
+    snapshot.india_news.length>50||!Array.isArray(failedFeeds)||failedFeeds.length>32)return [];
   const snapshotTime=new Date(snapshot.generated_at).getTime();
   if(!Number.isFinite(snapshotTime)||snapshotTime>nowMs+FUTURE_ALLOWANCE_MS||
      nowMs-snapshotTime>PREVIOUS_MAX_AGE_MS)return [];
   const byName=new Map(failedFeeds.filter(feed=>feed&&
     typeof feed.name==="string"&&safeHttps(feed.url)&&
-    ["technology","saas","markets"].includes(feed.category)).map(feed=>[feed.name,feed]));
+    ["technology","saas","markets","world","policy","factcheck"].includes(feed.category)).map(feed=>[feed.name,feed]));
   const accepted=[],seen=new Set();
   for(const item of [...snapshot.india_news,...snapshot.news]){
     if(!item||typeof item!=="object"||!byName.has(item.publisher)||
@@ -46,7 +46,7 @@ export function recoverRecentStories(snapshot,failedFeeds,nowMs) {
       image_url:safeNewsImage(item.image_url),
       carried_from_previous:true,
     });
-    if(accepted.length>=30)break;
+    if(accepted.length>=100)break;
   }
   return accepted;
 }
