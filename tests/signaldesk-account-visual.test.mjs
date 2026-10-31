@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 
 const html=readFileSync(new URL("../dashboard/account.html",import.meta.url),"utf8");
-const css=readFileSync(new URL("../dashboard/styles.css",import.meta.url),"utf8");
+const css=readFileSync(new URL("../dashboard/account-visual.css",import.meta.url),"utf8");
 const auth=readFileSync(new URL("../dashboard/account.mjs",import.meta.url),"utf8");
 
 test("account entry points and form wiring remain intact",()=>{
@@ -14,6 +14,7 @@ test("account entry points and form wiring remain intact",()=>{
   for(const route of ["#sign-in","#sign-up","#forgot"])
     assert.ok(html.includes('href="'+route+'"'),"Missing auth route "+route);
   assert.ok(html.includes('src="./account.mjs?v=96"'),"Keep original auth module wired");
+  assert.ok(html.includes('href="./account-visual.css"'),"Load presentation-only stylesheet");
   assert.ok(auth.includes('const cleanMode=()=>["sign-in","sign-up","forgot","update-password"]'),
     "Preserve all authentication modes");
 });
