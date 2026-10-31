@@ -21,6 +21,21 @@ const QUESTIONS = Object.freeze({
     "Is this a confirmed event or a prediction about future prices?",
     "What is the date, jurisdiction and primary filing or data source?",
     "What assumptions or risks would change the interpretation?"
+  ],
+  world: [
+    "Which original reporting supports this claim, and when did it happen?",
+    "Does the headline distinguish a confirmed event from a possibility?",
+    "Are governments or affected parties providing contradictory accounts?"
+  ],
+  policy: [
+    "What is the primary policy, bill, court order, or official document?",
+    "Is the change approved, proposed, or under discussion?",
+    "Who is affected, and when would the rule take effect?"
+  ],
+  factcheck: [
+    "What precise claim is the publisher verifying or debunking?",
+    "Does the evidence actually support the stated fact-check conclusion?",
+    "Could resharing the claim without context spread misinformation?"
   ]
 });
 function cleanText(value, limit) {
