@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import requested from "../config/editorial-sources.json" with {type:"json"};
 import feeds from "../config/sources.json" with {type:"json"};
+import extra from "../config/extra-news-sources.json" with {type:"json"};
 import {selectStories,selectIndiaStories,parseFeed} from "../news-collector/worker.mjs";
 import {renderSourceCatalogue} from "../dashboard/editorial-sources.mjs";
 import {readFileSync} from "node:fs";
@@ -29,11 +30,12 @@ test("all 8 Global and 11 India requested publishers appear exactly once, with w
   assert.equal(typeof renderSourceCatalogue,"function");
 });
 test("public collector does not silently fetch denied sources",()=>{
-  assert.equal(feeds.length,19);
-  assert.ok(feeds.some(x=>x.name==="Alt News Fact Checks"&&x.region==="india"&&
+  assert.equal(feeds.length,18);
+  assert.equal(extra.length,1);
+  assert.ok(extra.some(x=>x.name==="Alt News Fact Checks"&&x.region==="india"&&
     x.category==="factcheck"&&x.disable_images===true));
   for(const restricted of requested.filter(x=>x.status==="permission_required"&&x.feed)){
-    assert.ok(!feeds.some(f=>f.url===restricted.feed),restricted.name);
+    assert.ok(![...feeds,...extra].some(f=>f.url===restricted.feed),restricted.name);
   }
 });
 test("global and India selection are separate and max out at 50 articles each",()=>{
@@ -54,7 +56,7 @@ test("fact check is labelled separately and never carries uncontrolled RSS image
     '<pubDate>Fri, 30 Oct 2026 11:45:00 GMT</pubDate>'+
     '<media:thumbnail url="https://third-party.example/photo.jpg" />'+
     '</item></channel></rss>';
-  const actual=parseFeed(xml,feeds.find(x=>x.name==="Alt News Fact Checks"),NOW);
+  const actual=parseFeed(xml,extra.find(x=>x.name==="Alt News Fact Checks"),NOW);
   assert.equal(actual.length,1);
   assert.equal(actual[0].category,"factcheck");
   assert.equal(actual[0].region,"india");
