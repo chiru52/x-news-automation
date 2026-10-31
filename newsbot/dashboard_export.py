@@ -23,7 +23,7 @@ REPO = "varadachiru/x-news-automation"
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "dashboard"
 INDIA_SOURCES = explicit_india_sources(json.loads((ROOT / "config/sources.json").read_text(encoding="utf-8")))
-CATEGORIES = frozenset(("technology", "saas", "markets"))
+CATEGORIES = frozenset(("technology", "saas", "markets", "world", "policy", "factcheck"))
 MAX_ISSUES = 200
 MAX_ITEMS = 200
 SAFE_TEXT = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
@@ -228,7 +228,7 @@ def validate_public_bundle(data: dict) -> None:
         raise ValueError("Public dashboard timestamp required")
     for kind, keys in (("news", PUBLIC_NEWS), ("india_news", PUBLIC_NEWS), ("drafts", PUBLIC_DRAFT)):
         entries = data[kind]
-        if not isinstance(entries, list) or len(entries) > (15 if kind == "india_news" else MAX_ITEMS):
+        if not isinstance(entries, list) or len(entries) > (50 if kind in ("india_news","news") else MAX_ITEMS):
             raise ValueError("Malformed or oversized public news feed")
         for entry in entries:
             if not isinstance(entry, dict) or set(entry) != keys:
@@ -271,7 +271,7 @@ def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=No
     if dest.resolve() == ASSETS.resolve():
         raise ValueError("Refusing to overwrite source assets")
     news = read_news(queue)
-    india_news = [item for item in read_news(queue, "india_articles") if item["region"] == "india"][:15]
+    india_news = [item for item in read_news(queue, "india_articles") if item["region"] == "india"][:50]
     drafts = read_drafts(issues)
     time_value = generated_at or datetime.now(timezone.utc).isoformat()
     result = {
