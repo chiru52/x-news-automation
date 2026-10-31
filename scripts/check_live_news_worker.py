@@ -22,7 +22,7 @@ TIMEOUT_SECONDS = 12
 
 def read_public(path: str, origin: str | None):
     """Make one bounded GET to a fixed public Worker route, never a write."""
-    if path not in ("/health", "/feed", "/archive?days=1"):
+    if path not in ("/health", "/feed", "/archive?days=7"):
         raise ValueError("Only known read-only endpoints allowed")
     headers = {"Accept": "application/json", "User-Agent": "SignalDeskReadOnlyHealthAudit/1.0"}
     if origin:
@@ -82,7 +82,7 @@ def run(fetcher=read_public, now: dt.datetime | None = None):
         ("/health", PREVIEW, True, "Preview health origin"),
         ("/health", UNTRUSTED, False, "Untrusted origin rejected"),
         ("/feed", PREVIEW, True, "Preview live feed"),
-        ("/archive?days=1", PREVIEW, True, "Preview 1-day archive"),
+        ("/archive?days=7", PREVIEW, True, "Preview 7-day archive"),
     ]
     summary = ["# SignalDesk live Worker — read-only diagnostic", "",
                "This run does not deploy, change Cloudflare, write KV, or publish to X.", "",
