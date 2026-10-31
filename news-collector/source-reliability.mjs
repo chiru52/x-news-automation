@@ -54,6 +54,9 @@ export function coverageSummary(sources,results,carriedNews=0,carriedIndia=0){
     sources_checked:sources.length,
     sources_failed:failed.length,
     sources_with_recent_stories:results.filter(entry=>!entry.error&&entry.articles.length>0).length,
+    india_sources_checked:sources.filter(feed=>feed.region==="india").length,
+    india_sources_with_recent_stories:results.filter(entry=>
+      entry.feed?.region==="india"&&!entry.error&&entry.articles.length>0).length,
     india_sources_failed:failed.filter(entry=>entry.feed?.region==="india").length,
     retained_news:carriedNews,
     retained_india:carriedIndia,
