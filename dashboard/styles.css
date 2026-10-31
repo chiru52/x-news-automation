@@ -585,3 +585,11 @@
 @media(prefers-reduced-motion:reduce){
   .topbar .mobile-menu-toggle{transition:none;}
 }
+
+/* Read-only India coverage explanation; no extra RSS or API calls. */
+.india-coverage{display:flex;align-items:flex-start;flex-wrap:wrap;justify-content:space-between;gap:12px;margin:0 0 18px;padding:15px 18px;border:1px solid var(--line);border-radius:14px;background:var(--white)}
+.india-coverage[hidden]{display:none}
+.india-coverage>div{flex:1 1 280px}
+.india-coverage strong{font-size:13px;color:var(--ink)}
+.india-coverage p{font-size:12px;line-height:1.65;color:var(--muted);margin:5px 0 0}
+.india-coverage button{font-size:12px}

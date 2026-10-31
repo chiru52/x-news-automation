@@ -40,6 +40,10 @@ jobs:
           node --test tests/signaldesk-workspace-transfer.test.mjs
       - name: Test browser refresh clock alignment offline
         run: node --test tests/signaldesk-refresh-clock.test.mjs
+      - name: Test truthful India coverage diagnostics without network
+        run: |
+          node --check dashboard/coverage-note.mjs
+          node --test tests/signaldesk-coverage-note.test.mjs
       - name: Test Global/India/Trending news sections offline
         run: node --test tests/signaldesk-news-sections.test.mjs
       - name: Test independent publisher coverage and conservative deduplication
