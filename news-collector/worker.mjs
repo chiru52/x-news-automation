@@ -17,15 +17,15 @@ const MAX_AGE_MS = 36 * 60 * 60 * 1000;
 const MAX_FUTURE_MS = 10 * 60 * 1000;
 const MAX_FEED_BYTES = 400_000;
 const MAX_ITEMS_PER_FEED = 75;
-const MAX_STORIES = 30;
-const MAX_INDIA_STORIES = 15;
+const MAX_STORIES = 50;
+const MAX_INDIA_STORIES = 50;
 const MIN_STORIES = 5;
-const MAX_PER_SOURCE = 4;
+const MAX_PER_SOURCE = 7;
 const MAX_CONCURRENT = 4;
 const FETCH_TIMEOUT_MS = 9_000;
 const SNAPSHOT_KEY = "signaldesk:news:snapshot:v1";
-const SAFE_CATEGORIES = ["technology", "saas", "markets"];
-const WORDS = /(ai|artificial intelligence|technology|software|startup|saas|enterprise|cloud|launch|product|funding|invest|revenue|earnings|market|shares|stocks|business|security|developer|openai|anthropic|nvidia|microsoft|google|apple|finance|bank|economy|nifty|sensex|rbi|sebi|ipo|nse|bse|rupee|bengaluru|mumbai|indian)/i;
+const SAFE_CATEGORIES = ["technology", "saas", "markets", "world", "policy", "factcheck"];
+const WORDS = /(fact.?check|misinformation|disinformation|election|parliament|geopolitic|diplomac|government|policy|tariff|trade|war|conflict|summit|treaty|foreign|economy|inflation|business|ai|artificial intelligence|technology|software|startup|saas|enterprise|cloud|launch|product|funding|invest|revenue|earnings|market|shares|stocks|business|security|developer|openai|anthropic|nvidia|microsoft|google|apple|finance|bank|economy|nifty|sensex|rbi|sebi|ipo|nse|bse|rupee|bengaluru|mumbai|indian)/i;
 const SPAM = /\b(subscribe now|sponsored|advertisement|coupon|giveaway|deal of the day|best discounts)\b/i;
 const INDIA_MARKERS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi|fintech india)\b/i;
 const INDIA_PREVIEW_CONTEXT = /\b(?:in india|across india|india-based|indian startup|indian government|reserve bank of india|india\x27s market|indian stock market)\b/i;
@@ -116,7 +116,7 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
       title, source_url:link, publisher:feed.name, feed_url:feed.url,
       category:feed.category, published_at:new Date(date).toISOString(),
       source_preview:preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
-      image_url,
+      image_url:feed.disable_images ? "" : image_url,
       region:feed.region === "india" || INDIA_MARKERS.test(title) ||
         INDIA_PREVIEW_CONTEXT.test(preview) || INDIA_LOCAL_CONTEXT.test(preview) ? "india" : "global",
     });
@@ -132,6 +132,9 @@ function makePost(item) {
     technology:"I'm curious what changes for people actually using the technology.",
     saas:"What matters next is whether customers see a real difference.",
     markets:"I'd look at the underlying figures before drawing conclusions.",
+    world:"I'd check several original reports before reaching a conclusion.",
+    policy:"I'd read the underlying policy or official statement before reacting.",
+    factcheck:"This is a publisher fact-check. I'd read the evidence before repeating any claim.",
   }[item.category];
   if (isQuestion) thought="It's still a question. I'd check the actual details before making a call.";
   if (/earnings/i.test(item.title)) thought="I'd compare the actual earnings numbers before jumping to conclusions.";
@@ -166,7 +169,7 @@ export function selectIndiaStories(stories) {
   for(const story of candidates){
     if(!SAFE_CATEGORIES.includes(story.category)) continue;
     if(selected.some(previous=>sameNewsEvent(previous,story))) continue;
-    if((perSource.get(story.publisher)||0)>=5) continue;
+    if((perSource.get(story.publisher)||0)>=8) continue;
     selected.push(story);
     perSource.set(story.publisher,(perSource.get(story.publisher)||0)+1);
     if(selected.length>=MAX_INDIA_STORIES) break;
@@ -174,7 +177,7 @@ export function selectIndiaStories(stories) {
   return selected;
 }
 export function selectStories(stories) {
-  const filtered=stories.slice().sort((a,b)=>
+  const filtered=stories.filter(story=>!isIndiaStory(story)).sort((a,b)=>
     new Date(b.published_at)-new Date(a.published_at));
   const sourceCounts=new Map(),accepted=[];
   const buckets=Object.fromEntries(SAFE_CATEGORIES.map(c=>[c,[]]));
@@ -214,7 +217,8 @@ async function collectOne(feed, fetcher, nowMs) {
 }
 export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   if (!env?.NEWS_CACHE?.put) throw Error("Shared KV binding missing");
-  const sources=feeds.filter(x=>SAFE_CATEGORIES.includes(x.category)).slice(0,20);
+  // Keep the same Cron and two KV writes per successful cycle; no visitor-triggered feeds.
+  const sources=feeds.filter(x=>SAFE_CATEGORIES.includes(x.category)).slice(0,32);
   const results=[];
   for(let i=0;i<sources.length;i+=MAX_CONCURRENT) {
     results.push(...await Promise.all(sources.slice(i,i+MAX_CONCURRENT).map(s=>collectOne(s,fetcher,nowMs))));
@@ -223,7 +227,8 @@ export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   // Never refresh a snapshot on cached stories alone. At least five truly new
   // eligible headlines must arrive before a fresh snapshot is published.
   const freshSelected=selectStories(freshArticles);
-  if(freshSelected.length < MIN_STORIES)
+  const freshIndia=selectIndiaStories(freshArticles);
+  if(freshSelected.length+freshIndia.length < MIN_STORIES)
     return {ok:false,reason:"insufficient_new_stories",count:freshSelected.length};
   const failedFeeds=results.filter(x=>x.error).map(x=>x.feed);
   let carried=[];
