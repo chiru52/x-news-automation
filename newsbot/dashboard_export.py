@@ -48,7 +48,7 @@ def safe_image_url(value):
     """Only public HTTPS publisher-supplied article thumbnails, never scrape pages."""
     import re
     if (not isinstance(value, str) or not 0 < len(value) <= 1400 or
-            any(c.isspace() or ord(c) < 32 or c in '<>"\\\'' for c in value)):
+            any(c.isspace() or ord(c) < 32 or c in ('<', '>', '"', "'", chr(92)) for c in value)):
         return ""
     try:
         parts = urlsplit(value)
@@ -57,8 +57,8 @@ def safe_image_url(value):
                 parts.username or parts.password or parts.port is not None or
                 host == "localhost" or host.endswith(".localhost") or
                 host.endswith((".local", ".internal", ".test")) or
-                ":" in host or re.fullmatch(r"\\d+(?:\\.\\d+){3}", host) or
-                re.search(r"\\.(?:svgz?|gif|ico|html?|js|xml|pdf)$", parts.path, re.I)):
+                ":" in host or re.fullmatch(r"\d+(?:\.\d+){3}", host) or
+                re.search(r"\.(?:svgz?|gif|ico|html?|js|xml|pdf)$", parts.path, re.I)):
             return ""
         return value
     except (ValueError, AttributeError):
