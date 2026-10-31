@@ -51,10 +51,10 @@ test("selection avoids duplicates, caps source and balances topics",()=>{
         stories.push(item(category+"-"+feed+"-"+j,category,"feed-"+category+"-"+feed));
   }
   const picks=selectStories(stories);
-  assert.equal(picks.length,30);
+  assert.equal(picks.length,50);
   const tally=Object.fromEntries(["technology","saas","markets"].map(c=>[c,picks.filter(x=>x.category===c).length]));
-  assert.deepEqual(tally,{technology:10,saas:10,markets:10});
-  assert.ok(new Set(picks.map(x=>x.source_url)).size===30);
+  assert.deepEqual(tally,{technology:17,saas:17,markets:16});
+  assert.ok(new Set(picks.map(x=>x.source_url)).size===50);
   assert.ok(Math.max(...Object.values(Object.groupBy(picks,x=>x.publisher)).map(x=>x.length))<=4);
 });
 test("India headlines can be classified by strong RSS preview context but not generic Indian publisher names",()=>{
@@ -133,7 +133,7 @@ test("cron is the only thing fetching RSS; visitors only read cache",async()=>{
   assert.ok(network>0 && network<=20);
   const r=await handleRequest(new Request("https://feed.example/feed"),{NEWS_CACHE:kv});
   assert.equal(r.status,503);
-  assert.equal(network,18);
+  assert.equal(network,19);
 });
 test("collector stores one safe shared snapshot and reader never starts collection",async()=>{
   const cache=new Map();const calls=[];
