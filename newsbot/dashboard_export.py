@@ -44,6 +44,27 @@ def source_url(value):
     return url
 
 
+def safe_image_url(value):
+    """Only public HTTPS publisher-supplied article thumbnails, never scrape pages."""
+    import re
+    if (not isinstance(value, str) or not 0 < len(value) <= 1400 or
+            any(c.isspace() or ord(c) < 32 or c in '<>"\\\'' for c in value)):
+        return ""
+    try:
+        parts = urlsplit(value)
+        host = parts.hostname or ""
+        if (parts.scheme != "https" or not host or len(host) > 250 or
+                parts.username or parts.password or parts.port is not None or
+                host == "localhost" or host.endswith(".localhost") or
+                host.endswith((".local", ".internal", ".test")) or
+                ":" in host or re.fullmatch(r"\\d+(?:\\.\\d+){3}", host) or
+                re.search(r"\\.(?:svgz?|gif|ico|html?|js|xml|pdf)$", parts.path, re.I)):
+            return ""
+        return value
+    except (ValueError, AttributeError):
+        return ""
+
+
 def categorize(text, fallback="technology"):
     candidate = clean(text, 500).lower()
     if any(phrase in candidate for phrase in ("stock", "earnings", "shares", "trading",
@@ -100,6 +121,7 @@ def read_news(queue: dict, field: str = "articles") -> list[dict]:
             "title": title,
             "description": "Publisher report. Verify all claims before sharing.",
             "source_preview": source_preview,
+            "image_url": safe_image_url(article.get("image_url") or article.get("thumbnail")),
             "context_status": "rss_preview" if source_preview else "headline_only",
             "publisher": clean(article.get("source"), 100),
             "source_url": url,
@@ -186,7 +208,7 @@ def fetch_private_issues() -> list[dict]:
 # Explicit public contract. Never export private GitHub issue bodies, full
 # publisher evidence, analysis, transcripts, URLs into private issues or tokens.
 PUBLIC_TOP = {"schema_version","generated_at","news","india_news","drafts","warnings"}
-PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","region","published_at","status","trend_score","coverage_feeds","trend_reason","source_preview","context_status"}
+PUBLIC_NEWS = {"id","title","description","publisher","source_url","post","category","region","published_at","status","trend_score","coverage_feeds","trend_reason","source_preview","context_status","image_url"}
 PUBLIC_DRAFT = {"id","title","description","publisher","source_url","post","category","updated_at","status"}
 PRIVATE_MARKERS = (
     "github_pat_", "ghp_", "gho_", "ghs_", "ghu_", "ghr_",
@@ -226,6 +248,8 @@ def validate_public_bundle(data: dict) -> None:
             if kind in ("news", "india_news"):
                 if entry["region"] not in ("india", "global") or (kind == "india_news" and entry["region"] != "india"):
                     raise ValueError("Invalid news region")
+                if entry["image_url"] and safe_image_url(entry["image_url"]) != entry["image_url"]:
+                    raise ValueError("Unsafe RSS thumbnail URL")
                 if entry["context_status"] not in ("rss_preview", "headline_only"):
                     raise ValueError("Unsupported RSS source context status")
                 if (len(entry["source_preview"]) > 170 or
@@ -260,7 +284,7 @@ def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=No
     }
     validate_public_bundle(result)
     dest.mkdir(parents=True, exist_ok=True)
-    for filename in ("index.html", "account.html", "account.mjs", "auth-config.json", "styles.css", "account-visual.css", "app.js", "studio.mjs", "perspective.mjs", "cloud-sync.mjs", "workspace-transfer.mjs", "review-desk.mjs", "refresh-clock.mjs", "news-sections.mjs", "coverage-note.mjs", "news-explorer.mjs", "archive-client.mjs", "feed-config.json", "_headers"):
+    for filename in ("index.html", "account.html", "account.mjs", "auth-config.json", "styles.css", "account-visual.css", "app.js", "studio.mjs", "perspective.mjs", "cloud-sync.mjs", "workspace-transfer.mjs", "review-desk.mjs", "refresh-clock.mjs", "news-sections.mjs", "coverage-note.mjs", "news-image.mjs", "news-explorer.mjs", "archive-client.mjs", "feed-config.json", "_headers"):
         shutil.copyfile(ASSETS / filename, dest / filename)
     (dest / "data.json").write_text(
         json.dumps(result, ensure_ascii=False, separators=(",", ":")),
