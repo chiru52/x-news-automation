@@ -59,7 +59,7 @@ class IndiaCopiedDashboardTests(unittest.TestCase):
         self.assertNotIn("api.openai.com",self.worker)
         self.assertNotIn("api.x.com",self.worker)
         self.assertIn('if (request.method!=="GET" && request.method!=="HEAD")',self.worker)
-        self.assertIn('const MAX_INDIA_STORIES = 15;',self.worker)
+        self.assertIn('const MAX_INDIA_STORIES = 50;',self.worker)
         for filename in (".github/workflows/deploy-news-collector.yml",
                          ".github/workflows/build-news-dashboard.yml"):
             text=(ROOT/filename).read_text("utf-8")
