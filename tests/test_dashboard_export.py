@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 from newsbot.dashboard_export import (
     build_bundle, categorize, clean, read_drafts, read_news, source_url,
-    fetch_private_issues, validate_public_bundle, REPO,
+    fetch_private_issues, validate_public_bundle, safe_image_url, REPO,
 )
 
 SOURCE = "https://publisher.example/story"
@@ -55,6 +55,21 @@ class DashboardExportTests(unittest.TestCase):
         self.assertEqual(result[0]["status"], "unverified")
         self.assertTrue(result[0]["id"])
         self.assertFalse(any("GH_TOKEN" in str(v) for v in result[0].values()))
+
+    def test_article_images_are_only_source_supplied_and_https(self):
+        item = dict(queue()["articles"][0])
+        item["image_url"] = "https://cdn.publisher.example/editorial/photo.webp"
+        q = queue()
+        q["articles"] = [item]
+        articles = read_news(q)
+        self.assertEqual(articles[0]["image_url"], item["image_url"])
+        item["image_url"] = "http://publisher.example/insecure.jpg"
+        self.assertEqual(read_news(q)[0]["image_url"], "")
+        item["image_url"] = "https://cdn.publisher.example/image.svg"
+        self.assertEqual(read_news(q)[0]["image_url"], "")
+        item.pop("image_url")
+        self.assertEqual(read_news(q)[0]["image_url"], "")
+        self.assertEqual(safe_image_url("https://localhost/photo.jpg"), "")
 
     def test_news_export_removes_syndicated_repeats(self):
         q = queue()
