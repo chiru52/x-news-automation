@@ -188,6 +188,47 @@
           <p id="feed-disclaimer" class="feed-disclaimer" hidden>Trending is an editorial ranking of the current RSS feed, not X popularity, verified facts, or independent source confirmation.</p>
           <div id="alert" role="status" class="notice" hidden></div>
           <div id="copy-undo" class="copy-undo" role="status" hidden><span id="copy-undo-message"></span><div class="copy-undo-actions"><button id="view-copied" type="button">View copied articles</button><button id="undo-copy" type="button">Undo</button></div></div>
+          <!-- Reference-inspired: stacked moving cards ⇄ dense gallery, one source of news truth. -->
+          <section class="news-explorer" id="news-explorer" aria-label="Interactive news explorer" hidden>
+            <div class="explorer-heading">
+              <span class="explorer-kicker">SIGNALDESK / THE NEWS STUDIO</span>
+              <h2>Explore beyond <em>the headline.</em></h2>
+              <p>One story at a time. Move with the news, or see the whole picture.</p>
+              <div class="explorer-utility"><span class="explorer-count" aria-live="polite"></span><button type="button" id="explorer-focus" class="explorer-focus" aria-pressed="false">Expand explorer ↗</button></div>
+            </div>
+            <div class="explorer-stage">
+              <div class="explorer-canvas" tabindex="0" role="group" aria-label="Moving news cards. Use left and right arrows to browse stories."></div>
+              <aside class="explorer-detail" aria-label="Selected story and editorial tools" hidden>
+                <div class="explorer-detail-top"><span class="explorer-selected-count"></span><button type="button" class="explorer-close" aria-label="Close story details">✕</button></div>
+                <div class="explorer-summary">
+                  <p class="explorer-detail-kicker">CURRENT STORY / ORIGINAL SOURCE</p>
+                  <h3 class="explorer-selected-title"></h3>
+                  <p class="explorer-selected-publisher"></p>
+                  <p class="explorer-selected-description"></p>
+                  <div class="explorer-detail-actions">
+                    <a class="explorer-source" target="_blank" rel="noopener noreferrer">Read publisher ↗</a>
+                    <button type="button" class="explorer-show-tools" aria-expanded="false" aria-controls="explorer-tools">Open all editorial tools</button>
+                  </div>
+                </div>
+                <section class="explorer-tools" id="explorer-tools" hidden><div class="explorer-editor"></div></section>
+                <p class="explorer-verify">RSS previews are unverified. Read the original report before sharing. Nothing is posted automatically.</p>
+              </aside>
+            </div>
+            <div class="explorer-bottom">
+              <div class="explorer-arrows" role="group" aria-label="Move between stories"><button class="explorer-prev" type="button" aria-label="Previous story">←</button><button class="explorer-next" type="button" aria-label="Next story">→</button></div>
+              <div class="explorer-switch" role="group" aria-label="News display mode">
+                <button type="button" class="active" data-explorer-mode="layered" aria-pressed="true">Layered</button>
+                <button type="button" data-explorer-mode="gallery" aria-pressed="false">Gallery</button>
+              </div>
+              <nav class="explorer-sections" aria-label="Explore news regions">
+                <button type="button" data-explorer-section="all">All stories</button>
+                <button type="button" data-explorer-section="trending">Trending</button>
+                <button type="button" data-explorer-section="global">Global</button>
+                <button type="button" data-explorer-section="india">India</button>
+              </nav>
+            </div>
+            <button type="button" class="explorer-shade" aria-label="Close gallery story details" hidden></button>
+          </section>
           <div id="cards" class="cards" aria-live="polite" aria-busy="true"></div>
           <div id="more-container" class="more-container" hidden><button id="load-more" type="button" class="load-more">Show more stories</button><span id="more-counter" class="more-counter"></span></div>
           <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><div class="empty-actions"><button type="button" id="clear-filters" class="secondary-action" hidden>Clear filters</button><button type="button" id="empty-view-copied" class="secondary-action" hidden>View copied articles</button></div></div>
