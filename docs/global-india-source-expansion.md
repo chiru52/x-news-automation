@@ -3,7 +3,7 @@
 ## Scope
 - `config/editorial-sources.json` records **all 8 Global** and **all 11 India** requested source entries. The directory is available inside the dashboard with direct links and truthful statuses. The same publisher may have a Global and India section; these are source entries, not 19 separate legal entities.
 - The collector and static export now support **up to 50 Global and 50 India** articles per fresh snapshot. This is a ceiling, *not a guarantee* of 100 qualifying news stories. All Story/Trending continues to deduplicate news from both regions.
-- The existing RSS collection occurs exclusively through the same scheduled Worker Cron, not visitor requests. No new scheduled Actions, billing service or extra KV writes. The source-limit is increased to 32 for future **approved** outlets; actual feed list currently has 19.
+- The existing RSS collection occurs exclusively through the same scheduled Worker Cron, not visitor requests. No new scheduled Actions, billing service or extra KV writes. The source-limit is increased to 32 for future **approved** outlets; the original bot source list stays unchanged; actual Worker feed list currently has 19 (18 original + 1 supplemental).
 - The only newly activated source is **Alt News**, with `category=factcheck` (not market news), India geography and publisher-asset imagery turned off. Attribution and article-specific third-party licensing must still be respected. Other requested sources are catalogued, not secretly scraped.
 
 ## Verification / licensing gate
@@ -44,7 +44,7 @@
 Feed candidates were discovered from publisher pages and dated RSS directories but **not all were tested from a Cloudflare Worker runtime**. Neither a listed RSS URL nor a public website grants right to copy content or third-party images. The directory exists precisely to make these gates visible.
 
 ## Before a broader production release
-1. Obtain any required publisher syndication permission or substitute explicitly licensed sources. Record evidence in the catalogue before adding to `config/sources.json`.
+1. Obtain any required publisher syndication permission or substitute explicitly licensed sources. Record evidence in the catalogue before adding to `config/extra-news-sources.json`.
 2. Audit the currently used original 18 feeds and their terms too; this PR doesn't certify existing feeds.
 3. Test representative RSS updates in a separate Worker with identical approved bindings and no auto-publishing. Confirm < 50 regional stories when fewer qualify.
 4. Confirm 15-minute schedule, CPU usage, archive writes and cached fallback within free-plan quotas.
