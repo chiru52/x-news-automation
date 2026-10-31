@@ -270,7 +270,7 @@ def validate_public_bundle(data: dict) -> None:
 def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=None):
     if dest.resolve() == ASSETS.resolve():
         raise ValueError("Refusing to overwrite source assets")
-    news = read_news(queue)
+    news = [item for item in read_news(queue) if item["region"] == "global"][:50]
     india_news = [item for item in read_news(queue, "india_articles") if item["region"] == "india"][:50]
     drafts = read_drafts(issues)
     time_value = generated_at or datetime.now(timezone.utc).isoformat()
