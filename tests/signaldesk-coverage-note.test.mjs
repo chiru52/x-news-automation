@@ -22,3 +22,13 @@ test("India coverage avoids invented source outage diagnostics when unavailable"
   assert.match(s,/1 India story from 1 publisher/);
   assert.doesNotMatch(s,/4 India-focused feeds/);
 });
+
+test("India source health counts are labelled as dedicated feeds, not all India coverage",()=>{
+  const text=describeIndiaCoverage({
+    items:[news("India Publisher")],fromLive:true,
+    coverage:{india_sources_checked:2,india_sources_with_recent_stories:1,india_sources_failed:1}
+  });
+  assert.match(text,/1\/2 dedicated India feeds supplied recent eligible stories/);
+  assert.match(text,/1 India-focused feed reported unavailable/);
+  assert.doesNotMatch(text,/all sources|complete coverage/i);
+});
