@@ -7,6 +7,7 @@
  */
 import { XMLParser } from "fast-xml-parser";
 import feeds from "../config/sources.json" with {type:"json"};
+import newSources from "../config/extra-news-sources.json" with {type:"json"};
 import {ARCHIVE_TTL_SECONDS, archiveDate, historyKey, mergeDailyArchive, historyParams, queryArchive} from "./archive.mjs";
 import {sameNewsEvent, editorialSignals} from "./intelligence.mjs";
 import {recoverRecentStories,coverageSummary} from "./source-reliability.mjs";
@@ -218,7 +219,7 @@ async function collectOne(feed, fetcher, nowMs) {
 export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   if (!env?.NEWS_CACHE?.put) throw Error("Shared KV binding missing");
   // Keep the same Cron and two KV writes per successful cycle; no visitor-triggered feeds.
-  const sources=feeds.filter(x=>SAFE_CATEGORIES.includes(x.category)).slice(0,32);
+  const sources=[...feeds,...newSources].filter(x=>SAFE_CATEGORIES.includes(x.category)).slice(0,32);
   const results=[];
   for(let i=0;i<sources.length;i+=MAX_CONCURRENT) {
     results.push(...await Promise.all(sources.slice(i,i+MAX_CONCURRENT).map(s=>collectOne(s,fetcher,nowMs))));
