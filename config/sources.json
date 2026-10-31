@@ -90,5 +90,13 @@
     "name": "YourStory India",
     "url": "https://yourstory.com/feed",
     "category": "saas"
+  },
+  {
+    "name": "Alt News Fact Checks",
+    "url": "https://www.altnews.in/feed/",
+    "category": "factcheck",
+    "region": "india",
+    "disable_images": true,
+    "attribution": "CC BY 3.0; check third-party exceptions"
   }
 ]
