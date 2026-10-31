@@ -28,6 +28,8 @@ const WORDS = /(ai|artificial intelligence|technology|software|startup|saas|ente
 const SPAM = /\b(subscribe now|sponsored|advertisement|coupon|giveaway|deal of the day|best discounts)\b/i;
 const INDIA_MARKERS = /\b(?:india|indian|bengaluru|bangalore|mumbai|delhi|hyderabad|chennai|pune|gurugram|noida|rbi|sebi|nifty|sensex|nse|bse|rupee|rupees|lakh|crore|isro|aadhaar|upi|fintech india)\b/i;
 const INDIA_PREVIEW_CONTEXT = /\b(?:in india|across india|india-based|indian startup|indian government|reserve bank of india|india\x27s market|indian stock market)\b/i;
+// Strong India-specific institutions and market terms in RSS summaries; generic publisher country doesn't qualify.
+const INDIA_LOCAL_CONTEXT = /\b(?:rbi|reserve bank of india|sebi|nifty|sensex|bse|nse|npci|aadhaar|upi|rupees?|lakhs?|crores?|bengaluru|bangalore|hyderabad|gurugram|mumbai|new delhi)\b/i;
 function isIndiaStory(article) {
   // A country-specific source may supply stories without naming India in the
   // headline. Generic Indian technology publishers are NOT proof of relevance.
@@ -112,7 +114,8 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
       title, source_url:link, publisher:feed.name, feed_url:feed.url,
       category:feed.category, published_at:new Date(date).toISOString(),
       source_preview:preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
-      region:feed.region === "india" || INDIA_MARKERS.test(title) || INDIA_PREVIEW_CONTEXT.test(preview) ? "india" : "global",
+      region:feed.region === "india" || INDIA_MARKERS.test(title) ||
+        INDIA_PREVIEW_CONTEXT.test(preview) || INDIA_LOCAL_CONTEXT.test(preview) ? "india" : "global",
     });
   }
   return result;
