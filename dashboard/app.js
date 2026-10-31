@@ -4,6 +4,7 @@ import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-secti
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
+import {describeIndiaCoverage} from "./coverage-note.mjs";
 import {createWorkspaceTransfer, restoreWorkspaceTransfer, validateWorkspaceTransfer} from "./workspace-transfer.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
@@ -11,6 +12,7 @@ const CATEGORIES = {
   saas: {label: "Startups & SaaS", cls: "saas"},
   markets: {label: "Markets & finance", cls: "markets"}
 };
+let feedFromLive=false, feedCoverage=null;
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
 let reviewOpen=false,reviewLeftId="",reviewRightId="";
 let topicWriterOpen=false;
@@ -926,6 +928,16 @@ function card(item) {
 }
 function render() {
   updateCounts();
+  const indiaNote=$("india-coverage");
+  indiaNote.hidden=selectedView!=="india";
+  if(!indiaNote.hidden){
+    const indiaItems=availableNews().filter(isIndiaNews);
+    const copiedIndia=records.filter(item=>item.kind==="news"&&isIndiaNews(item)&&workflowStage(item)==="copied");
+    $("india-coverage-text").textContent=describeIndiaCoverage({
+      items:indiaItems,copiedItems:copiedIndia,fromLive:feedFromLive,
+      coverage:feedCoverage,filtered:selectedCategory!=="all"||Boolean(query)
+    });
+  }
   const inTopic=selectedView==="workflow"&&topicWriterOpen;
   const inReview=selectedView==="workflow"&&reviewOpen&&!inTopic;
   $("workspace-transfer").hidden=selectedView!=="workflow"||inTopic||inReview;
@@ -1092,6 +1104,8 @@ async function initialize(background = false) {
     }).format(date);
 
     const coverage=fromLive?boundedFeedCoverage(data.coverage):null;
+    feedFromLive=fromLive;
+    feedCoverage=coverage;
     const coverageText=coverage
       ? " · "+coverage.sources_with_recent_stories+"/"+coverage.sources_checked+
         " feeds supplied recent stories"+
@@ -1421,6 +1435,7 @@ $("search-input").addEventListener("input", event => {
 $("search-input").addEventListener("keydown", event=>{
   if(event.key==="Enter" && archiveMode()) {event.preventDefault();loadHistory(0);}
 });
+$("india-archive-link").addEventListener("click",()=>setView("archive"));
 $("archive-toggle").addEventListener("click",()=>{
   const now=Date.now();
   const today=new Date(now).toISOString().slice(0,10);
