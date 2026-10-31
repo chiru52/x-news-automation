@@ -177,3 +177,12 @@ test("stale cache and failed collection cannot overwrite usable last data",async
   assert.equal(result.ok,false);
   assert.equal(writes,0);
 });
+
+test("India-specific RBI regulatory context in RSS summary qualifies but generic tech does not",()=>{
+  const india=rss("AI software company updates enterprise product")
+    .replace("The publisher says the new product launch is expected this year.",
+      "RBI updates are expected to influence software developers and banking technology.");
+  assert.equal(parseFeed(india,source,NOW)[0].region,"india");
+  const generic=rss("AI software company updates enterprise product");
+  assert.equal(parseFeed(generic,source,NOW)[0].region,"global");
+});
