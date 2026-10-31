@@ -26,6 +26,8 @@ jobs:
         run: node --test tests/signaldesk-account-visual.test.mjs
       - name: Verify centered sidebar and mobile logo alignment
         run: node --test tests/signaldesk-sidebar-alignment.test.mjs
+      - name: Test single sticky mobile header and navigation accessibility
+        run: node --test tests/signaldesk-sticky-mobile-header.test.mjs
       - name: Validate SignalDesk client JavaScript syntax offline
         run: node --check dashboard/app.js
       - name: Test private cloud backup and restore offline
