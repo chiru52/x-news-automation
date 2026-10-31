@@ -1,7 +1,8 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>SignalDesk — Account</title><link rel="stylesheet" href="./styles.css"><script type="module" src="./account.mjs?v=96"></script></head>
 <body class="account-page"><div class="account-layout"><main class="account-panel">
-<a class="account-back" href="./">← Back to SignalDesk</a><div class="account-mark">S.</div>
+<div class="account-topline"><a class="account-brand" href="./" aria-label="SignalDesk home"><span class="account-mark" aria-hidden="true">S<span>.</span></span><span>SignalDesk</span></a><a class="account-back" href="./">← Back to news</a></div>
+<div class="account-welcome"><span class="account-eyebrow">YOUR EDITORIAL WORKSPACE</span></div>
 <h1 id="account-heading">Sign in to SignalDesk</h1>
 <p id="account-intro">Your news feed remains available without an account.</p>
 <nav class="account-links" aria-label="Account options"><a id="account-sign-in" href="#sign-in">Sign in</a><a id="account-sign-up" href="#sign-up">Create account</a><a id="account-recover" href="#forgot">Forgot password</a></nav>
@@ -13,4 +14,44 @@
 </form>
 <section id="account-signed-in" hidden><p id="account-email"></p><a href="./" class="account-back" id="account-continue">Continue to SignalDesk</a><div class="account-settings"><h2>Profile information</h2><p id="account-created"></p><form id="profile-form"><label for="profile-name">Display name</label><input id="profile-name" maxlength="80" autocomplete="nickname"/><button type="submit">Save profile</button></form><h2>Change password</h2><p>Enter your current password to update it securely.</p><form id="account-password-form" autocomplete="off"><label for="account-current-password">Current password</label><input id="account-current-password" type="password" autocomplete="current-password" required minlength="6" maxlength="128"/><label for="account-new-password">New password</label><input id="account-new-password" type="password" autocomplete="new-password" required minlength="6" maxlength="128"/><label for="account-confirm-password">Confirm new password</label><input id="account-confirm-password" type="password" autocomplete="new-password" required minlength="6" maxlength="128"/><button type="submit">Update password</button></form><p id="account-settings-status" role="status" aria-live="polite"></p><p>Saved stories and drafts remain on this browser; cross-device sync is coming later.</p></div><button id="account-sign-out" type="button">Sign out</button></section>
 <p class="account-note">Your browser-only saved articles and drafts are not synchronized yet. Nothing is posted to X automatically.</p>
-</main><aside class="account-showcase" aria-label="SignalDesk news preview"><div class="showcase-orb"></div><span class="showcase-kicker">SIGNALDESK · LIVE INTELLIGENCE</span><h2>Discover what matters.<br/>Stay ahead of the story.</h2><div class="showcase-feed"><div class="showcase-story"><span>AI & technology</span><strong>New ideas reshape how we work</strong><small>Fresh signals · Research before sharing</small></div><div class="showcase-story"><span>Global news</span><strong>Stay connected to world events</strong><small>Global + India · One editorial space</small></div><div class="showcase-story"><span>Markets & finance</span><strong>Turn headlines into perspective</strong><small>Save · Review · Share when ready</small></div></div><p>Browse freely. Your account is always optional.</p></aside></div></body></html>
+</main><aside class="account-showcase" aria-hidden="true">
+  <div class="visual-glow visual-glow--one"></div><div class="visual-glow visual-glow--two"></div>
+  <div class="visual-topline"><span class="visual-top-label"><span class="visual-top-dot"></span> INTELLIGENCE, WITH INTENTION</span><span class="visual-top-number">SIGNALDESK / EDITION 01</span></div>
+  <div class="visual-stage">
+    <article class="visual-scene visual-scene--one">
+      <div class="visual-copy"><span class="visual-step-label">01 &nbsp; / &nbsp; DISCOVER</span><h2>Find the signal.<br/><em>Skip the noise.</em></h2><p>One calm place for the global and India stories worth a closer look.</p></div>
+      <div class="visual-window visual-window--discover">
+        <div class="mock-topbar"><span class="mock-wordmark"><span class="mock-logo">S.</span> SIGNALDESK</span><span class="mock-top-right"><span class="mock-live-dot"></span> NEWS DESK</span></div>
+        <div class="mock-tabs"><span class="mock-tab-active">All stories</span><span>Trending</span><span>Global</span><span>India</span></div>
+        <div class="mock-window-heading"><span class="mock-mini-label">THE DAILY EDIT</span><strong>What deserves your attention?</strong></div>
+        <div class="mock-article"><span class="mock-category mock-category--violet">TECHNOLOGY</span><strong>The stories behind the next wave of innovation</strong><div class="mock-meta"><span>Explore the context</span><span>↗</span></div></div>
+        <div class="mock-article mock-article--compact"><span class="mock-category mock-category--peach">INDIA & MARKETS</span><strong>Understand the developments shaping decisions</strong><div class="mock-meta"><span>Read before sharing</span><span>↗</span></div></div>
+      </div>
+      <span class="visual-float-note visual-float-note--one"><span class="float-symbol">✦</span> A clearer daily view</span>
+    </article>
+    <article class="visual-scene visual-scene--two">
+      <div class="visual-copy"><span class="visual-step-label">02 &nbsp; / &nbsp; THINK</span><h2>Read the story.<br/><em>Find your angle.</em></h2><p>Save your research, shape an original perspective, and keep the context close.</p></div>
+      <div class="visual-window visual-window--notes">
+        <div class="mock-topbar"><span class="mock-wordmark"><span class="mock-logo">S.</span> MY WORKFLOW</span><span class="mock-top-right">EDITORIAL NOTES</span></div>
+        <div class="mock-note-heading"><span class="mock-mini-label">PERSPECTIVE DESK</span><strong>Make the headline your starting point.</strong></div>
+        <div class="mock-note-source"><span class="mock-note-ico">↗</span><div><small>ORIGINAL SOURCE</small><strong>Read the reporting first</strong></div><span class="mock-source-check">SOURCE</span></div>
+        <div class="mock-note-body"><span class="mock-mini-label">YOUR POINT OF VIEW</span><p>What stands out here? Why might this matter to people beyond the headline?</p><div class="mock-writing-lines"><i></i><i></i><i></i></div></div>
+        <div class="mock-note-footer"><span>✎ &nbsp; Work in your own voice</span><span>Draft saved locally</span></div>
+      </div>
+      <span class="visual-float-note visual-float-note--two"><span class="float-symbol">◇</span> Your voice stays yours</span>
+    </article>
+    <article class="visual-scene visual-scene--three">
+      <div class="visual-copy"><span class="visual-step-label">03 &nbsp; / &nbsp; SHARE MINDFULLY</span><h2>Thoughtful posts.<br/><em>Your decision.</em></h2><p>Review every claim, polish your words, and choose when something is ready.</p></div>
+      <div class="visual-window visual-window--workflow">
+        <div class="mock-topbar"><span class="mock-wordmark"><span class="mock-logo">S.</span> EDITORIAL WORKFLOW</span><span class="mock-top-right">MANUAL CONTROL</span></div>
+        <div class="mock-window-heading"><span class="mock-mini-label">FROM DISCOVERY TO DRAFT</span><strong>Every step stays in your hands.</strong></div>
+        <div class="mock-workflow-step"><span class="mock-step-symbol">✓</span><div><strong>Saved for later</strong><small>Keep the stories you want to explore</small></div><span class="mock-workflow-tag">01</span></div>
+        <div class="mock-workflow-step"><span class="mock-step-symbol">✓</span><div><strong>Review &amp; refine</strong><small>Check sources and develop your point of view</small></div><span class="mock-workflow-tag">02</span></div>
+        <div class="mock-workflow-step mock-workflow-step--active"><span class="mock-step-symbol">✦</span><div><strong>Ready when you are</strong><small>Copy a reviewed draft — never auto-post</small></div><span class="mock-workflow-tag">03</span></div>
+        <div class="mock-ready-bar"><span class="mock-ready-check">✓</span> Final approval belongs to you <span>→</span></div>
+      </div>
+      <span class="visual-float-note visual-float-note--three"><span class="float-symbol">✓</span> You stay in control</span>
+    </article>
+  </div>
+  <div class="visual-footer"><div class="visual-progress" aria-hidden="true"><span class="visual-progress-track"><i></i></span><span class="visual-progress-track"><i></i></span><span class="visual-progress-track"><i></i></span></div><span>ILLUSTRATIVE PRODUCT PREVIEW · NO AUTO-POSTING</span></div>
+</aside></div></body></html>
