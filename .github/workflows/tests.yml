@@ -22,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Verify responsive animated sign-in presentation without auth changes
+        run: node --test tests/signaldesk-account-visual.test.mjs
       - name: Validate SignalDesk client JavaScript syntax offline
         run: node --check dashboard/app.js
       - name: Test private cloud backup and restore offline
