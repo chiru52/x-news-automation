@@ -983,6 +983,7 @@ document.querySelectorAll("[data-explorer-section]").forEach(btn=>{
 });
 function render() {
   updateCounts();
+  $("source-directory").hidden=!canUseExplorer(selectedView);
   const indiaNote=$("india-coverage");
   indiaNote.hidden=selectedView!=="india";
   if(!indiaNote.hidden){
