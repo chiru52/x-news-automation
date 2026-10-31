@@ -44,7 +44,7 @@ const BASE_HEADERS = {
   "cache-control":"public, max-age=60, stale-while-revalidate=300",
   "x-content-type-options":"nosniff",
   "referrer-policy":"no-referrer",
-  "access-control-allow-origin":"https://news.littlekingchess.com",
+  // Every cached response varies by browser origin; no wildcard access.
   "vary":"Origin",
 };
 function res(status, body, headers={}) {
@@ -253,7 +253,7 @@ export async function collect(env, {fetcher=fetch,nowMs=Date.now()}={}) {
   }
   return {ok:true,count:news.length,archive_written,failed_sources:results.filter(x=>x.error).length};
 }
-export async function handleRequest(request,env) {
+async function handleReadOnlyRequest(request,env) {
   const u=new URL(request.url);
   if (request.method!=="GET" && request.method!=="HEAD")
     return res(405,{error:"Read-only endpoint"});
@@ -287,6 +287,22 @@ export async function handleRequest(request,env) {
       return res(503,{error:"Cached feed is stale"});
     return res(200,data);
   } catch { return res(503,{error:"Cached feed unavailable"}); }
+}
+// Exact public dashboard origins, without credentials or wildcard CORS.
+const ALLOWED_DASHBOARD_ORIGINS=new Set([
+  "https://news.littlekingchess.com",
+  "https://signaldesk-preview.pages.dev",
+]);
+export async function handleRequest(request,env){
+  const response=await handleReadOnlyRequest(request,env);
+  const origin=request.headers.get("Origin");
+  if(!ALLOWED_DASHBOARD_ORIGINS.has(origin))return response;
+  const headers=new Headers(response.headers);
+  headers.set("Access-Control-Allow-Origin",origin);
+  headers.set("Vary","Origin");
+  return new Response(request.method==="HEAD"?null:response.body,{
+    status:response.status,statusText:response.statusText,headers,
+  });
 }
 export default {
   fetch:handleRequest,
