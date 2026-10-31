@@ -72,6 +72,17 @@
               <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
             </div>
           </div>
+          <section id="workspace-transfer" class="workspace-transfer" aria-label="Local workspace transfer" hidden>
+            <div class="workspace-transfer-text"><strong>Keep your editorial work when changing websites</strong>
+              <p>Export your saved stories, copied articles, edits, notes and Topic Writer draft to a private file. Import it on another SignalDesk website. Nothing is uploaded.</p>
+            </div>
+            <div class="workspace-transfer-actions">
+              <button type="button" id="workspace-export">Export workspace</button>
+              <button type="button" id="workspace-import">Import backup</button>
+              <input id="workspace-transfer-file" type="file" accept=".json,application/json" hidden aria-label="Choose SignalDesk workspace backup"/>
+            </div>
+            <p id="workspace-transfer-status" role="status" aria-live="polite"></p>
+          </section>
           <section id="topic-writer" class="topic-writer" aria-labelledby="topic-writer-heading" hidden>
             <div class="review-desk-head">
               <div><span class="section-kicker">MY WORKFLOW · PERSONAL WRITING</span><h3 id="topic-writer-heading">Topic &amp; Perspective Writer</h3>

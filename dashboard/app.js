@@ -4,6 +4,7 @@ import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-secti
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
+import {createWorkspaceTransfer, restoreWorkspaceTransfer, validateWorkspaceTransfer} from "./workspace-transfer.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -927,6 +928,7 @@ function render() {
   updateCounts();
   const inTopic=selectedView==="workflow"&&topicWriterOpen;
   const inReview=selectedView==="workflow"&&reviewOpen&&!inTopic;
+  $("workspace-transfer").hidden=selectedView!=="workflow"||inTopic||inReview;
   $("topic-writer").hidden=!inTopic;
   $("review-desk").hidden=!inReview;
   $("cards").hidden=inReview||inTopic;
@@ -1329,6 +1331,47 @@ function openTopicWriterFromStory(item){
   saveTopicDraft();updateTopicControls();
   openTopicWriter();
 }
+
+// Explicit offline transfer for browser-local editorial work across website origins.
+const transferStatus=$("workspace-transfer-status"),transferFile=$("workspace-transfer-file");
+$("workspace-export").addEventListener("click",()=>{
+  try{
+    const payload=createWorkspaceTransfer(localStorage);
+    const json=JSON.stringify(payload,null,2);
+    const url=URL.createObjectURL(new Blob([json],{type:"application/json"}));
+    const link=document.createElement("a");
+    link.href=url;
+    link.download="signaldesk-workspace-"+new Date().toISOString().slice(0,10)+".json";
+    document.body.append(link);
+    link.click();
+    link.remove();
+    window.setTimeout(()=>URL.revokeObjectURL(url),2000);
+    transferStatus.textContent="Workspace backup downloaded locally. Keep this file private.";
+  }catch(error){
+    transferStatus.textContent=error instanceof Error?error.message:"Workspace export failed.";
+  }
+});
+$("workspace-import").addEventListener("click",()=>transferFile.click());
+transferFile.addEventListener("change",async()=>{
+  const file=transferFile.files?.[0];
+  transferFile.value="";
+  if(!file)return;
+  if(file.size>500000){
+    transferStatus.textContent="Backup exceeds the 500 KB limit. Nothing was changed.";
+    return;
+  }
+  try{
+    const payload=JSON.parse(await file.text());
+    validateWorkspaceTransfer(payload);
+    // Import replaces local work only after file validation and explicit confirmation.
+    if(!window.confirm("Replace this browser's saved articles, copied history, notes, edits, and Topic Writer draft with the selected backup? Export existing work first."))return;
+    const details=restoreWorkspaceTransfer(localStorage,payload);
+    transferStatus.textContent="Imported "+details.saved+" saved articles and "+details.copied+" copied entries. Reloading.";
+    window.location.reload();
+  }catch(error){
+    transferStatus.textContent=error instanceof Error?error.message:"Backup import failed. No changes were applied.";
+  }
+});
 
 $("topic-writer-toggle").addEventListener("click",()=>{
   if(topicWriterOpen)closeTopicWriter();

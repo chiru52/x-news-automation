@@ -513,3 +513,14 @@
 @media(max-width:600px){.topic-writer-form,.topic-writer-preview{padding:16px}
   .topic-writer-form input,.topic-writer-form select,.topic-writer-form textarea,
   .topic-writer-preview textarea{font-size:16px}}
+
+/* Browser-local workspace backup for preview -> production migration. */
+.workspace-transfer{display:flex;align-items:center;flex-wrap:wrap;gap:12px;padding:14px 18px;margin:0 0 20px;border:1px solid var(--line);border-radius:14px;background:var(--white)}
+.workspace-transfer[hidden]{display:none}
+.workspace-transfer-text{flex:1 1 300px;min-width:0}
+.workspace-transfer-text strong{font-size:13px;color:var(--ink)}
+.workspace-transfer-text p,.workspace-transfer #workspace-transfer-status{color:var(--muted);font-size:12px;line-height:1.6;margin:5px 0 0}
+.workspace-transfer-actions{display:flex;flex-wrap:wrap;gap:8px}
+.workspace-transfer-actions button{border:1px solid var(--line);border-radius:9px;padding:10px 12px;min-height:38px;background:var(--white);color:var(--ink);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.workspace-transfer-actions button:hover,.workspace-transfer-actions button:focus-visible{border-color:var(--purple);outline-color:var(--purple)}
+.workspace-transfer #workspace-transfer-status{flex:1 0 100%;margin:0}
