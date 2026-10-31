@@ -1677,6 +1677,7 @@ const mobileMenuBackdrop=$("mobile-menu-backdrop");
 const mobileMenuMedia=window.matchMedia("(max-width:850px)");
 function setMobileMenuOpen(open,restoreFocus=false){
   const visible=Boolean(open)&&mobileMenuMedia.matches;
+  if(visible)setProfileOpen(false);
   document.querySelector(".sidebar").classList.toggle("mobile-nav-open",visible);
   mobileMenuBackdrop.hidden=!visible;
   mobileMenuToggle.setAttribute("aria-expanded",String(visible));
@@ -1699,7 +1700,10 @@ mobileMenuMedia.addEventListener("change",()=>setMobileMenuOpen(false));
 $("profile-account-link").addEventListener("click",event=>{event.preventDefault();openAccountWorkspace()});
 document.querySelectorAll(".nav-items [data-view]").forEach(button=>button.addEventListener("click",closeAccountWorkspace));
 updateOptionalAccountProfile();
-profileToggle.addEventListener("click",()=>setProfileOpen(profileMenu.hidden));
+profileToggle.addEventListener("click",()=>{
+  if(mobileMenuToggle.getAttribute("aria-expanded")==="true")setMobileMenuOpen(false);
+  setProfileOpen(profileMenu.hidden);
+});
 document.addEventListener("click",(event)=>{
   if(!event.target.closest(".profile-wrap")) setProfileOpen(false);
 });
