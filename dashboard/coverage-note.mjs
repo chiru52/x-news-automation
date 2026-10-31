@@ -14,7 +14,12 @@ export function describeIndiaCoverage({items=[],copiedItems=[],fromLive=false,co
   const failures=fromLive&&coverage&&Number.isInteger(coverage.india_sources_failed)&&coverage.india_sources_failed>0
     ?" "+coverage.india_sources_failed+" India-focused "+(coverage.india_sources_failed===1?"feed":"feeds")+" reported unavailable in the latest collection."
     :"";
+  const health=fromLive&&coverage&&
+    Number.isInteger(coverage.india_sources_checked)&&
+    Number.isInteger(coverage.india_sources_with_recent_stories)
+    ?" "+coverage.india_sources_with_recent_stories+"/"+coverage.india_sources_checked+
+       " dedicated India feeds supplied recent eligible stories.":"";
   const copiedHint=copied?" "+copied+" India "+(copied===1?"article is":"articles are")+" in Copied Articles.":"";
   const filterHint=filtered?" Topic or keyword filters may reduce the visible results.":"";
-  return summary+" "+source+failures+copiedHint+filterHint+" For older headlines, use News Archive.";
+  return summary+" "+source+health+failures+copiedHint+filterHint+" For older headlines, use News Archive.";
 }

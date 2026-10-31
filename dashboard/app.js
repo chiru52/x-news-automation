@@ -186,7 +186,17 @@ function boundedFeedCoverage(value) {
     value.sources_with_recent_stories>value.sources_checked-value.sources_failed||
     value.india_sources_failed>value.sources_failed||
     value.retained_news>30||value.retained_india>15)return null;
-  return Object.fromEntries(fields.map(field=>[field,value[field]]));
+  const stats=Object.fromEntries(fields.map(field=>[field,value[field]]));
+  // Backward compatible with existing deployed collector snapshots.
+  if(value.india_sources_checked!==undefined||value.india_sources_with_recent_stories!==undefined){
+    const total=value.india_sources_checked,healthy=value.india_sources_with_recent_stories;
+    if(!Number.isInteger(total)||!Number.isInteger(healthy)||total<0||total>value.sources_checked||
+       healthy<0||healthy>total||value.india_sources_failed>total||
+       healthy>total-value.india_sources_failed)return stats;
+    stats.india_sources_checked=total;
+    stats.india_sources_with_recent_stories=healthy;
+  }
+  return stats;
 }
 async function readFeedData() {
   const r=await fetch("./data.json",{cache:"no-store"});
