@@ -2,6 +2,7 @@
  * Only recover already-public, recent headlines for a publisher whose feed
  * actually failed this collection. Never manufacture current article dates.
  */
+import {safeNewsImage} from "../dashboard/news-image.mjs";
 const PREVIOUS_MAX_AGE_MS=90*60*1000;
 const HEADLINE_MAX_AGE_MS=36*60*60*1000;
 const FUTURE_ALLOWANCE_MS=10*60*1000;
@@ -42,6 +43,7 @@ export function recoverRecentStories(snapshot,failedFeeds,nowMs) {
       published_at:item.published_at,
       source_preview:typeof item.source_preview==="string"&&
         item.source_preview.length<=170?item.source_preview:"",
+      image_url:safeNewsImage(item.image_url),
       carried_from_previous:true,
     });
     if(accepted.length>=30)break;
