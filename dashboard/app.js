@@ -4,7 +4,7 @@ import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-secti
 import {archiveEndpoint, archiveQuery, archiveResponse} from "./archive-client.mjs";
 import {reviewCandidates, reviewPost, reviewCounts} from "./review-desk.mjs";
 import {composeTopicDraft, reviewTopicDraft} from "./perspective.mjs";
-import {createWorkspaceTransfer, restoreWorkspaceTransfer} from "./workspace-transfer.mjs";
+import {createWorkspaceTransfer, restoreWorkspaceTransfer, validateWorkspaceTransfer} from "./workspace-transfer.mjs";
 const $ = (id) => document.getElementById(id);
 const CATEGORIES = {
   technology: {label: "AI & technology", cls: "technology"},
@@ -1362,6 +1362,7 @@ transferFile.addEventListener("change",async()=>{
   }
   try{
     const payload=JSON.parse(await file.text());
+    validateWorkspaceTransfer(payload);
     // Import replaces local work only after file validation and explicit confirmation.
     if(!window.confirm("Replace this browser's saved articles, copied history, notes, edits, and Topic Writer draft with the selected backup? Export existing work first."))return;
     const details=restoreWorkspaceTransfer(localStorage,payload);
