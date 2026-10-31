@@ -183,7 +183,7 @@ export function researchGuide(item) {
   const url = safeArticleUrl(item?.source_url);
   const title = cleanText(item?.title, MAX_HEADLINE);
   const publisher = cleanText(item?.publisher, 90) || "Original publisher";
-  const category = ["technology","saas","markets"].includes(item?.category)
+  const category = ["technology","saas","markets","world","policy","factcheck"].includes(item?.category)
     ? item.category : "technology";
   // This came only from RSS description metadata; it must never be described
   // as independently checked, a full article reading or an AI summary.
