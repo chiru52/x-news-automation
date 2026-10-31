@@ -3,6 +3,7 @@
  * No private GitHub drafts, user edits, login records or copied history.
  * All writes happen during the existing 15-minute Cron, never browser requests.
  */
+import {safeNewsImage} from "../dashboard/news-image.mjs";
 export const ARCHIVE_PREFIX="signaldesk:news:archive:v1:";
 export const ARCHIVE_DAYS=30;
 export const MAX_PER_DAY=120;
@@ -32,6 +33,8 @@ function safeHistoryItem(item){
      typeof item.source_url!=="string" || !item.source_url.startsWith("https://") ||
      !["technology","saas","markets"].includes(item.category) ||
      !["india","global"].includes(item.region) ||
+     (item.image_url !== undefined && item.image_url !== "" &&
+       safeNewsImage(item.image_url) !== item.image_url) ||
      item.status!=="unverified" || typeof item.post!=="string" ||
      item.post.length>900) return false;
   const date=new Date(item.published_at).getTime();
