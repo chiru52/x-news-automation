@@ -107,3 +107,15 @@ test("diagnostics are aggregate counts with no publisher URL or secret",()=>{
   assert.equal(summary.retained_india,2);
   assert.equal(JSON.stringify(summary).includes("https://"),false);
 });
+
+test("source health reports dedicated India feed participation without additional URLs or source data",()=>{
+  const results=feeds.map(feed=>({
+    feed,error:feed.region==="india"&&feed.name===india.name,
+    articles:feed.region==="india"&&feed.name===india.name?[]:[{title:"Headline"}]
+  }));
+  const stats=coverageSummary(feeds,results);
+  assert.equal(stats.india_sources_checked,feeds.filter(feed=>feed.region==="india").length);
+  assert.equal(stats.india_sources_failed,1);
+  assert.equal(stats.india_sources_with_recent_stories,stats.india_sources_checked-1);
+  assert.equal(JSON.stringify(stats).includes("https://"),false);
+});
