@@ -2,6 +2,7 @@ import io
 import json
 import unittest
 from unittest.mock import patch
+from pathlib import Path
 
 from scripts.signaldesk_cloudflare_readonly import (
     BASE, ROUTES, SCRIPT, cloudflare_get, evaluate_inventory
@@ -110,6 +111,20 @@ class ReadOnlyCloudflareInventoryTests(unittest.TestCase):
                 cloudflare_get("schedules", account_id="bad", token="sensitive")
             with self.assertRaises(ValueError):
                 cloudflare_get("schedules", account_id=ACCOUNT, token="")
+
+    def test_inventory_workflow_is_manual_only_and_does_not_unlock_legacy_deployer(self):
+        root = Path(__file__).resolve().parents[1]
+        workflow = (root / ".github/workflows/signaldesk-cloudflare-readonly-inventory.yml").read_text()
+        legacy = (root / ".github/workflows/deploy-news-collector.yml").read_text()
+        self.assertIn("workflow_dispatch:", workflow)
+        self.assertNotIn("push:", workflow)
+        self.assertNotIn("schedule:", workflow)
+        self.assertIn("if: github.repository == 'chiru52/x-news-automation'", workflow)
+        self.assertIn("SIGNALDESK_CLOUDFLARE_READ_TOKEN", workflow)
+        self.assertNotIn("cloudflare/wrangler-action", workflow)
+        self.assertNotIn("setup_cloudflare.py", workflow)
+        self.assertNotIn("gh workflow run", workflow)
+        self.assertIn("if: github.repository == 'varadachiru/x-news-automation'", legacy)
 
 
 if __name__ == "__main__":
