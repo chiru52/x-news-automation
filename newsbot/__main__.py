@@ -48,8 +48,6 @@ def main() -> int:
             # remain unchanged. Never accept arbitrary visitor-supplied URLs.
             extras = json.loads(Path("config/extra-news-sources.json").read_text(encoding="utf-8"))
             approved_primary_feeds = {
-                "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1":
-                    ("india", "policy", "Government of India — PIB (official releases)"),
                 "https://www.federalreserve.gov/feeds/press_all.xml":
                     ("global", "markets", "US Federal Reserve (official releases)"),
             }
