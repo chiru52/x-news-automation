@@ -8,7 +8,7 @@ def good_rows():
         {"label": label, "http_status": 200, "cors": "PASS",
          "details": "Feed PASS: 30 Global / 10 India records, snapshot age 6 minutes"
          if label == "Preview live feed" else
-         "Read-only health confirmed"
+         "Read-only collector contract verified"
          if label in ("Production health origin", "Preview health origin",
                       "Untrusted origin rejected") else
          "Archive endpoint returned HTTP 200 (data completeness not verified)"}
@@ -38,7 +38,7 @@ class SignalDeskReleasePreflightTests(unittest.TestCase):
         rows = good_rows()
         for row in rows:
             if row["label"] == "Production health origin":
-                row["details"] = "Health JSON returned; safety flags not confirmed"
+                row["details"] = "Health flags or deployed collector contract do not match current tested code"
             if row["label"] == "Preview live feed":
                 row["details"] = "Feed FAIL: Snapshot age outside allowed range"
         decision = evaluate_readiness(rows)

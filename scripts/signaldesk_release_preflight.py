@@ -29,7 +29,7 @@ def evaluate_readiness(observations: list[dict]) -> dict:
             continue
         details = row.get("details", "")
         if label.endswith("health origin") or label == "Untrusted origin rejected":
-            if details != "Read-only health confirmed":
+            if details != "Read-only collector contract verified":
                 blockers.append(label)
         elif label == "Preview live feed" and not details.startswith("Feed PASS: "):
             blockers.append(label)

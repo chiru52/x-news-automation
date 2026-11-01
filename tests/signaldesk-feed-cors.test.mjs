@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {handleRequest} from "../news-collector/worker.mjs";
+import {handleRequest, COLLECTOR_CONTRACT} from "../news-collector/worker.mjs";
 
 const base="https://signaldesk-news-feed.littlekingchess.workers.dev";
 const env={NEWS_CACHE:{get:async()=>null}};
@@ -49,4 +49,18 @@ test("HEAD responses have no body and retain allowed origin",async()=>{
   assert.equal(r.status,200);
   assert.equal(await r.text(),"");
   assert.equal(r.headers.get("access-control-allow-origin"),"https://signaldesk-preview.pages.dev");
+});
+
+test("versioned read-only health proves the current exact-origin India-72h Worker code is deployed",async()=>{
+  assert.equal(COLLECTOR_CONTRACT,"rss-v2-india72-exact-origin");
+  const response=await handleRequest(request("/health","https://signaldesk-preview.pages.dev"),env);
+  assert.equal(response.status,200);
+  const body=await response.json();
+  assert.equal(body.collector_contract,COLLECTOR_CONTRACT);
+  assert.equal(body.status,"read_only");
+  assert.equal(body.x_posting_enabled,false);
+  assert.equal(body.ai_generation_enabled,false);
+  assert.equal(body.api_token,undefined);
+  assert.equal(response.headers.get("access-control-allow-origin"),
+    "https://signaldesk-preview.pages.dev");
 });

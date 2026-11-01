@@ -26,7 +26,10 @@ cannot and does not authorize a production change.
    only the hardcoded public Worker and public preview URLs; no credentials,
    Cloudflare API requests, KV writes or X actions.
 2. Read the run summary. Its five health/CORS/feed/archive checks must all
-   PASS. A red result stops release review; a green result is **not approval**.
+   PASS **after a candidate deployment**. Before an approved rollout, the
+   currently deployed older Worker may intentionally fail the contract/CORS
+   checks. That failure confirms the deployed version needs an update; it is
+   **not permission to bypass controls** or to auto-deploy.
 3. In the Cloudflare dashboard (read-only), confirm actual Worker identity,
    account, installed `NEWS_CACHE` binding, 15-minute Cron, routes, existing
    last known good deployment, and the preview/production CORS allowlist.
@@ -54,3 +57,24 @@ cannot and does not authorize a production change.
   KV health, feed licensing, live publishing provenance or Cloudflare quotas.
 - This preflight does **not** modify production and makes **no guarantee**
   that India reaches 50 valid articles.
+
+## Phase 1A: Story-integrity and deployed-code fingerprint (2026-11-01)
+
+- A recent `generated_at` alone does **not** prove recent reporting. The
+  read-only release probe now checks all at-most-100 article objects: valid
+  attributed HTTPS source links, unique IDs and URLs, exact region labels,
+  category allowlist, unverified state, safe image URLs, and actual publisher
+  timestamps (Global <=36 hours, India <=72 hours, future allowance 10 min).
+  The audit logs only bounded error categories and counts, **never** titles,
+  URLs or other source text.
+- `/health` exposes a fixed, public, non-secret contract marker
+  `rss-v2-india72-exact-origin`. A 200 response with an outdated or absent
+  marker cannot pass live release verification. This catches GitHub/Pages code
+  being newer than the actual Worker deployment.
+- No new Cloudflare requests or KV writes are added to the scheduled Worker;
+  existing browser GETs remain cached, no RSS is fetched per visitor.
+- The checks and contract live in source until a separate operator-approved
+  Worker deployment. **Merging this PR does not change Cloudflare.**
+- Candidate code validation (green offline tests), current-deployment diagnosis
+  (possibly red), explicit production authorization, controlled Worker deploy,
+  then post-deployment read-only green validation are **separate gates**.
