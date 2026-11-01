@@ -31,8 +31,8 @@ test("removes repeated URLs and near duplicate titles, keeping distinct reportin
   const main=story("live");
   const tracked={...story("copy"),source_url:main.source_url+"?utm_source=rss#content"};
   const duplicate={...story("duplicate"),title:main.title};
-  const {data,dailyAdditions}=supplementLiveNews(snap([],[tracked,duplicate,story("new")]),snap([],[main]),NOW);
-  assert.deepEqual(data.india_news.map(x=>x.id),["live","new"]);
+  const {data,dailyAdditions}=supplementLiveNews(snap([],[tracked,duplicate,story("new-27")]),snap([],[main]),NOW);
+  assert.deepEqual(data.india_news.map(x=>x.id),["live","new-27"]);
   assert.equal(dailyAdditions.india,1);
 });
 test("respects region caps: Global seven, India eight per publisher, fifty overall",()=>{
