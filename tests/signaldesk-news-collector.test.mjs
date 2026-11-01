@@ -186,3 +186,20 @@ test("India-specific RBI regulatory context in RSS summary qualifies but generic
   const generic=rss("AI software company updates enterprise product");
   assert.equal(parseFeed(generic,source,NOW)[0].region,"global");
 });
+
+test("headline-only official RBI source never redistributes RSS summaries or photos",()=>{
+  const xml='<?xml version="1.0"?><rss><channel><item>'+
+    '<title>Reserve Bank announces new banking policy in India</title>'+
+    '<link>https://www.rbi.org.in/test-official-announcement</link>'+
+    '<pubDate>'+new Date(NOW-3*60*60000).toUTCString()+'</pubDate>'+
+    '<description>Publisher summary content that must not be redistributed</description>'+
+    '</item></channel></rss>';
+  const feed={name:"Reserve Bank of India (official press releases)",
+    url:"https://www.rbi.org.in/pressreleases_rss.xml",
+    category:"markets",region:"india",disable_images:true,headline_only:true};
+  const data=parseFeed(xml,feed,NOW);
+  assert.equal(data.length,1);
+  assert.equal(data[0].source_preview,"");
+  assert.equal(data[0].image_url,"");
+  assert.equal(data[0].region,"india");
+});
