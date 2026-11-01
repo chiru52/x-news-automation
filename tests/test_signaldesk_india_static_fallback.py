@@ -92,6 +92,25 @@ class IndiaStaticFallbackTests(unittest.TestCase):
         self.assertTrue(extras[0]["disable_images"])
         self.assertEqual(extras[0]["category"],"factcheck")
 
+    def test_supplemental_factcheck_remains_in_india_during_public_export(self):
+        from newsbot.dashboard_export import read_news
+        queue = {"publishing_enabled": False, "india_articles": [{
+            "title": "Fact check: Viral media claim about India",
+            "source": "Alt News Fact Checks",
+            "link": "https://www.altnews.in/illustrative-example/",
+            "category": "factcheck",
+            "published_at": NOW.isoformat(),
+            "suggested_post": "Review original evidence.",
+            "summary": "Publisher has a fact-check of a public claim.",
+            "publishable": False,
+            "image_url": "",
+        }]}
+        stories = read_news(queue, "india_articles")
+        self.assertEqual(len(stories), 1)
+        self.assertEqual(stories[0]["region"], "india")
+        self.assertEqual(stories[0]["category"], "factcheck")
+        self.assertEqual(stories[0]["image_url"], "")
+
     def test_daily_bundle_carries_india_feed_and_deduplicates_in_browser_by_id(self):
         external = article("global-1", "BBC Technology",
                            "Global enterprise software and AI cloud developer product")
