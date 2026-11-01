@@ -11,7 +11,7 @@ import json
 from pathlib import Path
 
 from newsbot.core import fetch_feed, parse_feed
-from newsbot.regions import explicit_india_sources, is_india_article
+from newsbot.regions import explicit_india_sources, is_india_article, select_india_preview_articles
 
 ROOT = Path(__file__).resolve().parents[1]
 INDIA_NAMES = (
@@ -26,7 +26,7 @@ INDIA_NAMES = (
 def inspect_one(feed, now=None, getter=fetch_feed):
     now = now or datetime.now(timezone.utc)
     result = {"source": feed["name"], "status": "unknown", "parsed": 0,
-              "recent": 0, "india": 0, "images": 0}
+              "recent": 0, "india": 0, "images": 0, "preview_selected": 0}
     try:
         data = getter(feed["url"], timeout=7, max_bytes=800_000)
         items = parse_feed(data, feed["name"], feed.get("category", "technology"))
@@ -37,6 +37,7 @@ def inspect_one(feed, now=None, getter=fetch_feed):
         region_names = explicit_india_sources([feed])
         result["india"] = sum(is_india_article(a, region_names) for a in recent)
         result["images"] = sum(bool(a.image_url) for a in recent)
+        result["preview_selected"] = len(select_india_preview_articles(recent, [feed], now))
         result["status"] = "ok" if recent else "no_recent_items"
     except Exception as exc:
         result["status"] = "error:" + type(exc).__name__
@@ -50,10 +51,10 @@ def run():
     with ThreadPoolExecutor(max_workers=4) as pool:
         results = list(pool.map(inspect_one, wanted))
     print("SignalDesk one-off RSS source check: headline metadata only; no writes/publishing.")
-    print("source | status | parsed | recent in 36h | India-qualified | RSS images")
+    print("source | status | parsed | recent in 36h | India-qualified | RSS images | preview-selected")
     for item in results:
         print(" | ".join(str(item[x]) for x in
-                         ("source", "status", "parsed", "recent", "india", "images")))
+                         ("source", "status", "parsed", "recent", "india", "images", "preview_selected")))
     return results
 
 
