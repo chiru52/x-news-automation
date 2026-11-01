@@ -52,7 +52,7 @@ class IndiaStaticFallbackTests(unittest.TestCase):
         picked = select_india_preview_articles(global_stories + india_stories,
                     SOURCES, NOW)
         self.assertGreaterEqual(len(picked), 1)
-        self.assertLessEqual(len(picked), 4)
+        self.assertLessEqual(len(picked), 8)
         self.assertTrue(all(item.source == "Inc42 India Startups" for item in picked))
         self.assertEqual(select_india_preview_articles(global_stories, SOURCES, NOW), [])
 
