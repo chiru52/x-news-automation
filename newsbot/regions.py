@@ -42,8 +42,10 @@ def select_india_preview_articles(articles, sources, now, *,
                                   exclude_promotional=True):
     """Use the existing safe editorial selector, but on India candidates only.
 
-    This extra public daily selection never changes live/posting quotas or
-    persistent state and does not pad with unrelated international stories.
+    The India-specific evidence filter determines eligibility, not the narrow
+    technology/markets/SaaS keyword list used by the original X draft bot.
+    This never changes publishing quotas or persisted history and does not pad
+    India results with unrelated international articles.
     """
     from .core import select_articles
     india_sources = explicit_india_sources(sources)
@@ -52,7 +54,8 @@ def select_india_preview_articles(articles, sources, now, *,
     return select_articles(
         eligible, empty_preview_state, now,
         daily_limit=max_articles, lookback_hours=lookback_hours,
-        timezone_name="UTC", rank_by_relevance=True,
+        timezone_name="UTC", rank_by_relevance=False,
+        category_order=("technology", "markets", "saas", "world", "policy", "factcheck"),
         max_per_source_per_day=4, max_saas_funding_per_day=4,
         exclude_promotional_headlines=exclude_promotional,
         max_us_index_futures_per_day=1,
