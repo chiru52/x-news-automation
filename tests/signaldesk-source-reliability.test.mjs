@@ -50,7 +50,10 @@ test("a recent cache entry can be recovered only for its failed approved publish
   assert.equal(restored[0].published_at,sample.published_at);
   assert.equal(recoverRecentStories(previous,[],NOW).length,0);
   assert.equal(recoverRecentStories({...previous,generated_at:new Date(NOW-2*3600000).toISOString()},[india],NOW).length,0);
-  assert.equal(recoverRecentStories({...previous,india_news:[{...sample,published_at:new Date(NOW-40*3600000).toISOString()}]},[india],NOW).length,0);
+  // India carries dated 50h headlines from failed feeds, Global still caps at 36h.
+  assert.equal(recoverRecentStories({...previous,india_news:[{...sample,published_at:new Date(NOW-50*3600000).toISOString()}]},[india],NOW).length,1);
+  assert.equal(recoverRecentStories({...previous,india_news:[{...sample,published_at:new Date(NOW-73*3600000).toISOString()}]},[india],NOW).length,0);
+  assert.equal(recoverRecentStories({...previous,india_news:[],news:[{...sample,region:"global",published_at:new Date(NOW-50*3600000).toISOString()}]},[india],NOW).length,0);
   assert.equal(recoverRecentStories({...previous,india_news:[{...sample,status:"published"}]},[india],NOW).length,0);
   assert.equal(recoverRecentStories({...previous,india_news:[{...sample,source_url:"http://example.com/unsafe"}]},[india],NOW).length,0);
 });
