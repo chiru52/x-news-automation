@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {relativePosition, appearanceFor, canUseExplorer} from "../dashboard/news-explorer.mjs";
+import {relativePosition, appearanceFor, canUseExplorer, detailPresentation} from "../dashboard/news-explorer.mjs";
 
 const html=readFileSync(new URL("../dashboard/index.html",import.meta.url),"utf8");
 const app=readFileSync(new URL("../dashboard/app.js",import.meta.url),"utf8");
@@ -52,4 +52,34 @@ test("no automated X publishing, remote fonts, or image API used by explorer",()
   assert.doesNotMatch(module,/\bfetch\s*\(|XMLHttpRequest|sendBeacon|api\.x\.com|twitter\.com\/intent|import\s*\(/i);
   assert.doesNotMatch(module,/innerHTML\s*=|insertAdjacentHTML|eval\s*\(/i);
   assert.doesNotMatch(css,/url\(['"]?https?:\/\//i);
+});
+
+test("selecting a story opens editorial immediately in gallery and layered views",()=>{
+  assert.deepEqual(detailPresentation("gallery",false,true),{open:false,shade:false,tools:false});
+  assert.deepEqual(detailPresentation("gallery",true,true),{open:true,shade:true,tools:true});
+  assert.deepEqual(detailPresentation("layered",false,true),{open:true,shade:false,tools:true});
+  assert.deepEqual(detailPresentation("layered",true,true),{open:true,shade:false,tools:true});
+  assert.deepEqual(detailPresentation("layered",false,false),{open:false,shade:false,tools:false});
+});
+test("focused story is one click with an accessible editorial section and no second reveal",()=>{
+  const module=readFileSync(new URL("../dashboard/news-explorer.mjs",import.meta.url),"utf8");
+  assert.match(module,/tile\.addEventListener\("click",\s*\(\)\s*=>\s*\{[\s\S]*?select\(item\.id, true\)/);
+  assert.match(module,/tools\.hidden = !presentation\.tools/);
+  assert.doesNotMatch(module,/explorer-show-tools|Open all editorial tools/);
+  assert.doesNotMatch(html,/explorer-show-tools|Open all editorial tools/);
+  assert.match(html,/class="explorer-detail-body"/);
+  assert.match(html,/class="explorer-tools" id="explorer-tools" aria-label="Editorial tools for selected story"/);
+  assert.match(html,/class="explorer-tools-heading"/);
+  assert.match(css,/\.news-explorer\[data-mode="gallery"\] \.explorer-detail-body\s*\{/);
+  assert.match(css,/\.explorer-editor \.story-card>\.card-title/);
+  assert.match(css,/\.news-explorer \[hidden\]/);
+});
+test("draft editor is preserved on same story and user interactions stop automatic advancement",()=>{
+  const module=readFileSync(new URL("../dashboard/news-explorer.mjs",import.meta.url),"utf8");
+  assert.match(module,/if \(renderedId !== item\.id\) \{\s*editorial\.replaceChildren\(buildFullCard\(item\)\)/);
+  assert.match(module,/detail\.addEventListener\("pointerdown",\s*\(\)\s*=>\s*\{\s*manualPause = paused = true/);
+  assert.match(module,/if \(!manualPause\) paused = false/);
+  assert.match(app,/editor\.addEventListener\("input",\s*\(\)\s*=>\s*\{\s*rememberEdit\(item\.id,/);
+  assert.match(app,/const currentDraft = \(\) => edits\.has\(item\.id\) \? edits\.get\(item\.id\) : suggestion/);
+  assert.doesNotMatch(module,/publishToX|sendPost|twitter\.com\/intent/);
 });

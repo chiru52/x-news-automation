@@ -19,6 +19,13 @@ const COVER_LABELS=Object.freeze({technology:"TECHNOLOGY",markets:"MARKETS",saas
 export function canUseExplorer(view) {
   return ["all", "global", "india", "trending"].includes(view);
 }
+/** The selected story opens its existing editor immediately in every mode.
+ * Gallery keeps it in a dismissible drawer; layered shows the right pane.
+ */
+export function detailPresentation(mode, drawerOpen, hasStory) {
+  const open=Boolean(hasStory) && (mode==="layered" || (mode==="gallery" && drawerOpen));
+  return {open,shade:open && mode==="gallery",tools:open};
+}
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -45,13 +52,13 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   const count = root.querySelector(".explorer-count");
   const selectedCount = root.querySelector(".explorer-selected-count");
   const tools = root.querySelector(".explorer-tools");
-  const reveal = root.querySelector(".explorer-show-tools");
   const close = root.querySelector(".explorer-close");
   const shade = root.querySelector(".explorer-shade");
   const prev = root.querySelector(".explorer-prev");
   const next = root.querySelector(".explorer-next");
   const modes = [...root.querySelectorAll("[data-explorer-mode]")];
   let mode = "layered", current = [], selectedId = null, drawerOpen = false, paused = false;
+  let manualPause = false, renderedId = null;
   let touchStart = null;
   const nodes = new Map();
   const reduceMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -62,7 +69,7 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
     tile.type = "button";
     tile.dataset.itemId = item.id;
     tile.dataset.category = appearanceFor(item.category);
-    tile.setAttribute("aria-label", "Explore story " + (index + 1) + ": " + item.title);
+    tile.setAttribute("aria-label", "Open editorial tools for story " + (index + 1) + ": " + item.title);
     const artwork = element("span", "explorer-artwork");
     artwork.setAttribute("aria-hidden", "true");
     // When the publisher RSS feed includes an article-specific image, use it;
@@ -94,7 +101,7 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
     );
     tile.append(artwork, body);
     tile.addEventListener("click", () => {
-      paused = true;
+      manualPause = paused = true;
       select(item.id, true);
     });
     return tile;
@@ -119,11 +126,11 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   }
   function showDetails() {
     const item = current.find(x => x.id === selectedId);
-    if (!item) { detail.hidden = true; shade.hidden = true; return; }
-    const show = mode === "layered" || drawerOpen;
-    detail.hidden = !show;
-    shade.hidden = !(mode === "gallery" && drawerOpen);
-    if (!show) return;
+    if (!item) { detail.hidden = true; shade.hidden = true; renderedId = null; return; }
+    const presentation=detailPresentation(mode,drawerOpen,true);
+    detail.hidden = !presentation.open;
+    shade.hidden = !presentation.shade;
+    if (!presentation.open) return;
     title.textContent = item.title || "Untitled news";
     publisher.textContent = (item.publisher || "Publisher") +
       " · " + (typeof dateLabel === "function" ? dateLabel(item) : "") +
@@ -133,10 +140,13 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
     const href = validPublisherLink(item.source_url);
     source.hidden = !href;
     if (href) source.href = href;
-    editorial.replaceChildren(buildFullCard(item));
-    tools.hidden = true;
-    reveal.setAttribute("aria-expanded", "false");
-    reveal.textContent = "Open all editorial tools";
+    // The first selection is the editorial action. Preserve the mounted
+    // composer when reopening the same story so in-progress edits remain.
+    if (renderedId !== item.id) {
+      editorial.replaceChildren(buildFullCard(item));
+      renderedId = item.id;
+    }
+    tools.hidden = !presentation.tools;
     detail.dataset.open = String(mode === "layered" || drawerOpen);
     if (mode === "gallery" && drawerOpen) close.focus({preventScroll:true});
   }
@@ -168,7 +178,9 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   function setMode(nextMode) {
     if (!["layered", "gallery"].includes(nextMode) || nextMode === mode) return;
     drawerOpen = false;
-    paused = false;
+    // Switching layouts is an intentional interaction: don't resume an
+    // automatic carousel while the user is preparing or reviewing a draft.
+    manualPause = paused = true;
     const transition = document.startViewTransition;
     if (typeof transition === "function" && !(reduceMotion && reduceMotion.matches)) {
       document.startViewTransition(() => { mode = nextMode; paintView(); });
@@ -176,16 +188,10 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
     if (typeof onModeChange === "function") onModeChange(mode);
   }
   modes.forEach(button => button.addEventListener("click", () => setMode(button.dataset.explorerMode)));
-  prev.addEventListener("click",() => { paused=true; step(-1); });
-  next.addEventListener("click",() => { paused=true; step(1); });
+  prev.addEventListener("click",() => { manualPause=paused=true; step(-1); });
+  next.addEventListener("click",() => { manualPause=paused=true; step(1); });
   close.addEventListener("click",() => { drawerOpen=false; showDetails(); canvas.focus({preventScroll:true}); });
   shade.addEventListener("click",() => { drawerOpen=false; showDetails(); });
-  reveal.addEventListener("click",() => {
-    const next = tools.hidden;
-    tools.hidden = !next;
-    reveal.setAttribute("aria-expanded", String(next));
-    reveal.textContent = next ? "Hide editorial tools" : "Open all editorial tools";
-  });
   root.addEventListener("keydown", event => {
     if (event.key === "Escape" && drawerOpen) {
       drawerOpen = false; showDetails(); canvas.focus({preventScroll:true});
@@ -193,20 +199,21 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
         !(event.target instanceof HTMLInputElement) &&
         !(event.target instanceof HTMLTextAreaElement) &&
         !(event.target instanceof HTMLSelectElement)) {
-      event.preventDefault(); paused = true;
+      event.preventDefault(); manualPause = paused = true;
       step(event.key === "ArrowRight" ? 1 : -1);
     }
   });
   canvas.addEventListener("mouseenter",()=> { paused = true; });
-  canvas.addEventListener("mouseleave",()=> { paused = false; });
-  detail.addEventListener("focusin",()=> { paused = true; });
+  canvas.addEventListener("mouseleave",()=> { if (!manualPause) paused = false; });
+  detail.addEventListener("focusin",()=> { manualPause = paused = true; });
+  detail.addEventListener("pointerdown",()=> { manualPause = paused = true; });
   canvas.addEventListener("touchstart",event => {
     touchStart=event.changedTouches[0]?.clientX ?? null;
   },{passive:true});
   canvas.addEventListener("touchend",event => {
     const end=event.changedTouches[0]?.clientX ?? null;
     if(mode === "layered" && touchStart !== null && end !== null && Math.abs(end-touchStart)>55) {
-      paused = true; step(end < touchStart ? 1 : -1);
+      manualPause = paused = true; step(end < touchStart ? 1 : -1);
     }
     touchStart=null;
   },{passive:true});
@@ -220,6 +227,8 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   return {
     render(items) {
       current = Array.isArray(items) ? items.slice(0,100) : [];
+      // A refreshed feed may update metadata for an unchanged story ID.
+      renderedId = null;
       if (!current.some(x => x.id === selectedId)) selectedId = current[0]?.id ?? null;
       const ids = new Set(current.map(x => x.id));
       for (const [id, tile] of nodes) {
