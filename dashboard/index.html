@@ -208,17 +208,21 @@
               <div class="explorer-canvas" tabindex="0" role="group" aria-label="Moving news cards. Use left and right arrows to browse stories."></div>
               <aside class="explorer-detail" aria-label="Selected story and editorial tools" hidden>
                 <div class="explorer-detail-top"><span class="explorer-selected-count"></span><button type="button" class="explorer-close" aria-label="Close story details">✕</button></div>
-                <div class="explorer-summary">
-                  <p class="explorer-detail-kicker">CURRENT STORY / ORIGINAL SOURCE</p>
-                  <h3 class="explorer-selected-title"></h3>
-                  <p class="explorer-selected-publisher"></p>
-                  <p class="explorer-selected-description"></p>
-                  <div class="explorer-detail-actions">
-                    <a class="explorer-source" target="_blank" rel="noopener noreferrer">Read publisher ↗</a>
-                    <button type="button" class="explorer-show-tools" aria-expanded="false" aria-controls="explorer-tools">Open all editorial tools</button>
+                <div class="explorer-detail-body">
+                  <div class="explorer-summary">
+                    <p class="explorer-detail-kicker">CURRENT STORY / ORIGINAL SOURCE</p>
+                    <h3 class="explorer-selected-title"></h3>
+                    <p class="explorer-selected-publisher"></p>
+                    <p class="explorer-selected-description"></p>
+                    <div class="explorer-detail-actions">
+                      <a class="explorer-source" target="_blank" rel="noopener noreferrer">Read publisher ↗</a>
+                    </div>
                   </div>
+                  <section class="explorer-tools" id="explorer-tools" aria-label="Editorial tools for selected story">
+                    <div class="explorer-tools-heading"><h4>Editorial tools</h4><span>Draft edits save on this device</span></div>
+                    <div class="explorer-editor"></div>
+                  </section>
                 </div>
-                <section class="explorer-tools" id="explorer-tools" hidden><div class="explorer-editor"></div></section>
                 <p class="explorer-verify">RSS previews are unverified. Read the original report before sharing. Nothing is posted automatically.</p>
               </aside>
             </div>
