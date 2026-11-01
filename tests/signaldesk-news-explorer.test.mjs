@@ -85,7 +85,7 @@ test("draft editor is preserved on same story and user interactions stop automat
 });
 
 test("Layered uses the empty header-side space for a full editorial panel",()=>{
-  const section=css.split("/* Layered editorial layout:",2)[1]||"";
+  const section=(css.split("/* Layered editorial layout:",2)[1]||"").split("/* Discovery toolbar:",1)[0];
   assert.ok(section,"Layered-only layout override is present");
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-stage\s*\{\s*display:contents;/);
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-detail\s*\{\s*grid-column:2;\s*grid-row:1 \/ span 2;/);
@@ -94,7 +94,7 @@ test("Layered uses the empty header-side space for a full editorial panel",()=>{
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-bottom\s*\{\s*grid-column:1 \/ -1;\s*grid-row:3;/);
 });
 test("Layered removes the small internal scroller, compacts heading and preserves responsive layout",()=>{
-  const section=css.split("/* Layered editorial layout:",2)[1]||"";
+  const section=(css.split("/* Layered editorial layout:",2)[1]||"").split("/* Discovery toolbar:",1)[0];
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-detail\s*\{\s*max-height:none;\s*overflow:visible;/);
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-heading h2\s*\{\s*font-size:clamp\(35px,3\.65vw,50px\)/);
   assert.match(section,/@media\(min-width:960px\)/);
@@ -148,4 +148,47 @@ test("studio rail remains available in focus, with accessible mobile slideout an
   assert.match(app,/setMobileMenuOpen\(false\)/);
   assert.match(app,/\$\("sidebar-settings"\)\.addEventListener\("click"/);
   assert.doesNotMatch(section,/api\.x\.com|cloudflare\/workers|@import|url\(['"]?https?:\/\//);
+});
+
+test("one top toolbar retains search, every topic and accessible layout icon switches",()=>{
+  const bar=html.split('<div class="toolbar">',2)[1]?.split('</div>\n          </div>',1)[0]||"";
+  assert.match(bar,/id="search-input"/);
+  for(const topic of ["all","technology","world","policy","factcheck","saas","markets"])
+    assert.match(bar,new RegExp('data-filter="'+topic+'"'));
+  assert.equal((html.match(/data-explorer-mode="layered"/g)||[]).length,1);
+  assert.equal((html.match(/data-explorer-mode="gallery"/g)||[]).length,1);
+  assert.match(html,/aria-label="Layered view" title="Layered view"/);
+  assert.match(html,/aria-label="Gallery view" title="Gallery view"/);
+  assert.match(html,/class="studio-view-switch explorer-switch"/);
+  assert.match(app,/\.studio-view-switch"\)\.hidden = !canUseExplorer\(selectedView\)/);
+  const explorer=readFileSync(new URL("../dashboard/news-explorer.mjs",import.meta.url),"utf8");
+  assert.match(explorer,/document\.querySelectorAll\("\[data-explorer-mode\]"\)/);
+  assert.match(explorer,/document\.body\.dataset\.newsLayout = mode/);
+  assert.match(explorer,/modes\.forEach\(button => button\.addEventListener\("click"/);
+});
+test("source directory follows the story explorer, and gallery gets container-responsive five columns",()=>{
+  assert.ok(html.indexOf('id="source-directory"')>html.indexOf('id="news-explorer"'));
+  assert.ok(html.indexOf('id="source-directory"')>html.indexOf('id="empty"'));
+  assert.match(html,/News sources &amp; coverage/);
+  const section=css.split("/* Discovery toolbar:",2)[1]||"";
+  assert.match(section,/grid-template-columns:minmax\(190px,340px\) minmax\(0,1fr\) auto/);
+  assert.match(section,/body\.news-focus-mode\[data-news-layout="gallery"\] \.feed-section>\.toolbar/);
+  assert.match(section,/position:sticky;top:6px/);
+  assert.match(section,/container:story-gallery \/ inline-size/);
+  assert.match(section,/@container story-gallery \(min-width:1420px\)/);
+  assert.match(section,/grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+  assert.match(section,/@media\(max-width:980px\)/);
+  assert.match(section,/top:calc\(var\(--signaldesk-header-height,64px\) \+ 3px\)/);
+});
+test("topic chips show true availability and cannot lead to a dead-end empty state",()=>{
+  assert.match(app,/const counts=rows \? topicAvailability\(rows\) : null/);
+  assert.match(app,/button\.dataset\.topicCount=String\(count\)/);
+  assert.match(app,/button\.disabled=category!=="all" && count===0 && category!==selectedCategory/);
+  assert.match(app,/updateTopicAvailability\(list\)/);
+  assert.match(app,/const totalBeforeTopic=list\.length/);
+  assert.match(app,/if\(selectedCategory!=="all"\)list=list\.filter\(item=>item\.category===selectedCategory\)/);
+  assert.match(app,/dataset\.topicTotal=String\(totalBeforeTopic\)/);
+  assert.match(css,/\.toolbar \.filter:disabled/);
+  assert.match(css,/\.toolbar \.filter\[data-topic-count\]::after/);
+  assert.match(app,/updateTopicAvailability\(\)/); // archive/overview retain usable controls
 });

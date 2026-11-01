@@ -1120,3 +1120,119 @@ body.news-focus-mode .footer{margin-top:15px}
 @media(prefers-reduced-motion:reduce){
   .shell,body.news-focus-mode .shell,.sidebar .nav-items{transition:none}
 }
+
+
+/* Discovery toolbar: search remains left, topics center, accessible layout
+   icons right. The same switch controls the original explorer; no duplicates. */
+body.news-focus-mode .feed-section>.toolbar{
+  display:grid;
+  grid-template-columns:minmax(190px,340px) minmax(0,1fr) auto;
+  gap:10px;
+  align-items:center;
+  padding:8px 2px 12px;
+  margin-bottom:9px;
+}
+body.news-focus-mode .toolbar .search-wrap{
+  width:100%;min-width:0;
+}
+body.news-focus-mode .toolbar .filters{
+  min-width:0;display:flex;flex-wrap:nowrap;gap:3px;
+  overflow-x:auto;scrollbar-width:thin;overscroll-behavior-x:contain;
+  padding:3px 0;justify-content:flex-end;
+}
+body.news-focus-mode .toolbar .filter{
+  display:inline-flex;align-items:center;gap:4px;
+  white-space:nowrap;flex:none;padding:8px 9px;
+}
+.toolbar .filter[data-topic-count]::after{
+  content:attr(data-topic-count);font-size:9px;opacity:.65;
+  padding:2px 0;font-variant-numeric:tabular-nums;
+}
+.toolbar .filter:disabled{
+  opacity:.38;cursor:not-allowed;
+}
+.toolbar .filter:disabled:hover{background:transparent;color:var(--muted)}
+.studio-view-switch{
+  display:flex;align-items:center;gap:2px;padding:3px;
+  border:1px solid var(--line);border-radius:10px;
+  background:var(--white);flex-shrink:0;
+}
+.studio-view-switch button{
+  display:grid;place-items:center;width:36px;height:34px;min-width:36px;
+  padding:6px;border:0;border-radius:8px;background:transparent;
+  color:var(--muted);cursor:pointer;
+}
+.studio-view-switch button svg{width:19px;height:19px}
+.studio-view-switch button.active{background:#20392f;color:#fff}
+.studio-view-switch button:focus-visible{outline:2px solid #7246cb;outline-offset:2px}
+.studio-view-switch button:not(.active):hover{background:var(--purple-light);color:var(--purple)}
+/* Gallery stays browsable as the user scrolls; the mobile header remains above it. */
+body.news-focus-mode[data-news-layout="gallery"] .feed-section>.toolbar{
+  position:sticky;top:6px;z-index:19;
+  background:var(--bg);border-bottom:1px solid var(--line);
+  border-radius:10px;
+}
+[data-theme="dark"] .studio-view-switch button.active{background:#a8c7aa;color:#182d1c}
+[data-theme="dark"] .studio-view-switch{background:#292333;border-color:#4c405b}
+/* Content-container thresholds, rather than viewport widths, adapt to either
+   a collapsed or fully expanded navigation rail. */
+.news-explorer[data-mode="gallery"] .explorer-stage{
+  container:story-gallery / inline-size;
+}
+.news-explorer[data-mode="gallery"] .explorer-canvas{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+}
+@container story-gallery (min-width:650px){
+  .news-explorer[data-mode="gallery"] .explorer-canvas{
+    grid-template-columns:repeat(3,minmax(0,1fr));
+  }
+}
+@container story-gallery (min-width:1030px){
+  .news-explorer[data-mode="gallery"] .explorer-canvas{
+    grid-template-columns:repeat(4,minmax(0,1fr));
+  }
+}
+@container story-gallery (min-width:1420px){
+  .news-explorer[data-mode="gallery"] .explorer-canvas{
+    grid-template-columns:repeat(5,minmax(0,1fr));
+  }
+}
+@container story-gallery (max-width:439px){
+  .news-explorer[data-mode="gallery"] .explorer-canvas{
+    grid-template-columns:minmax(0,1fr);
+  }
+}
+/* Use full image area in compact five-column gallery without truncating every
+   headline to a single line. Never affect the selected-story modal. */
+.news-explorer[data-mode="gallery"] .explorer-tile{
+  min-height:194px;height:206px;
+}
+.news-explorer[data-mode="gallery"] .explorer-tile-title{
+  font-size:11px;line-height:1.3;-webkit-line-clamp:3;
+}
+.news-explorer[data-mode="gallery"] .explorer-artwork{height:59%;flex-basis:59%}
+.news-explorer[data-mode="gallery"] .explorer-stage{padding:12px 18px 18px}
+.news-explorer[data-mode="gallery"] .explorer-tile-category{margin-top:auto}
+@media(max-width:980px){
+  body.news-focus-mode .feed-section>.toolbar{
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:7px 8px;
+  }
+  body.news-focus-mode .toolbar .search-wrap{grid-column:1/-1;grid-row:1}
+  body.news-focus-mode .toolbar .filters{
+    grid-column:1;grid-row:2;justify-content:flex-start;
+  }
+  body.news-focus-mode .toolbar .studio-view-switch{
+    grid-column:2;grid-row:2;
+  }
+}
+@media(max-width:850px){
+  body.news-focus-mode[data-news-layout="gallery"] .feed-section>.toolbar{
+    top:calc(var(--signaldesk-header-height,64px) + 3px);
+  }
+}
+@media(max-width:490px){
+  .studio-view-switch button{width:34px;min-width:34px;height:32px}
+  .news-explorer[data-mode="gallery"] .explorer-tile{height:198px;min-height:198px}
+  .news-explorer[data-mode="gallery"] .explorer-stage{padding:12px 10px}
+}
