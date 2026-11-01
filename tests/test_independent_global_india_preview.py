@@ -44,12 +44,44 @@ class IndependentRegionalPreviewTests(unittest.TestCase):
         self.assertTrue(all(x.source.startswith("Global") for x in selected))
         self.assertTrue(all(x.source.startswith("India") for x in india))
         self.assertLessEqual(max(Counter(x.source for x in selected).values()),7)
-        self.assertLessEqual(max(Counter(x.source for x in india).values()),4)
+        self.assertLessEqual(max(Counter(x.source for x in india).values()),8)
 
     def test_no_india_news_is_mislabelled_as_global_just_to_fill_quota(self):
         items=[self.article(i,"india","India Feed") for i in range(15)]
         selected=global_preview_candidates(items,[{"name":"India Feed","region":"india"}])
         self.assertEqual(selected,[])
+
+    def test_india_72h_weekend_window_excludes_older_stories_and_global_does_not_expand(self):
+        now=datetime(2026,11,1,5,0,tzinfo=timezone.utc)
+        source="India Feed"
+        ages=[0,12,35,48,60,71,73,80]
+        items=[
+            Article(title="India official policy update "+str(age),
+                    link="https://publisher.example/india/"+str(age),
+                    source=source,category="policy",
+                    published_at=(now-timedelta(hours=age)).isoformat())
+            for age in ages
+        ]
+        sources=[{"name":source,"region":"india"}]
+        india=select_india_preview_articles(items,sources,now)
+        self.assertEqual({x.link.rsplit("/",1)[-1] for x in india},
+                         {"0","12","35","48","60","71"})
+        self.assertFalse(any(x.link.endswith("/73") or x.link.endswith("/80") for x in india))
+        # All of these explicitly India stories remain excluded from Global.
+        self.assertEqual(global_preview_candidates(items,sources),[])
+
+    def test_india_per_publisher_limit_eight_and_no_made_up_50(self):
+        now=datetime(2026,11,1,5,0,tzinfo=timezone.utc)
+        items=[
+            Article(title="India banking report number "+str(i),
+                    link="https://publisher.example/banking/"+str(i),
+                    source="India Bank",category="markets",
+                    published_at=(now-timedelta(minutes=i*2)).isoformat())
+            for i in range(25)
+        ]
+        result=select_india_preview_articles(items,[{"name":"India Bank","region":"india"}],now)
+        self.assertEqual(len(result),8)
+        self.assertEqual({x.source for x in result},{"India Bank"})
 
     def test_non_preview_original_pipeline_and_posting_limits_stay_intact(self):
         main=(ROOT/"newsbot/__main__.py").read_text()

@@ -592,7 +592,7 @@ function setView(view) {
     all: "Global and India news together, including trending stories. Each article appears only once.",
     trending: "Top editorial news signals from both Global and India — not social-media popularity.",
     global: "International news, excluding articles specifically relevant to India.",
-    india: "India-related startups, AI, technology and markets, regardless of publisher country.",
+    india: "India-related news from the past 72 hours (including weekends), newest first. Publisher links and publication dates are shown; source coverage varies.",
     workflow: "Review article stages and find prepared X drafts in one workspace. Saved only in this browser.",
     copied: "Stories marked Copied or copied to your clipboard. This does not mean they were posted on X.",
     saved: "Your bookmarked articles and drafts, stored only in this browser.",
@@ -1075,6 +1075,7 @@ function render() {
   const useExplorer=canUseExplorer(selectedView) && list.length>0;
   applyExplorerFocus(useExplorer);
   if(useExplorer){
+    $("news-explorer").dataset.scope=selectedView;
     target.hidden=true;
     target.replaceChildren();
     newsExplorer.render(list);

@@ -13,6 +13,12 @@ test("layer position cycles through news without duplicating or dropping an item
   assert.equal(relativePosition(0,0,1),0);
   assert.equal(relativePosition(0,0,0),99);
 });
+test("India view shows rolling freshness window without changing Global",()=>{
+  const ui=readFileSync(new URL("../dashboard/news-explorer.mjs",import.meta.url),"utf8");
+  assert.match(ui,/root\.dataset\.scope === "india" \? " · PAST 72 HOURS"/);
+  assert.match(app,/dataset\.scope=selectedView/);
+  assert.match(app,/past 72 hours/);
+});
 test("news explorer only replaces the public news views, never workflow, saved or archive",()=>{
   for(const view of ["all","global","india","trending"])assert.equal(canUseExplorer(view),true);
   for(const view of ["workflow","copied","saved","archive","account"])assert.equal(canUseExplorer(view),false);
