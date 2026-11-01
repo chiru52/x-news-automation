@@ -58,16 +58,11 @@ def select_india_preview_articles(articles, sources, now, *,
     older stories happened today. It never changes publishing quotas or persisted
     history and never pads with unrelated international articles.
     """
-    from .core import select_articles
+    from .preview_ranking import rank_preview_stories
     india_sources = explicit_india_sources(sources)
     eligible = [a for a in articles if is_india_article(a, india_sources)]
-    empty_preview_state = {"seen": {}, "seen_titles": {}, "daily_drafts": {}}
-    return select_articles(
-        eligible, empty_preview_state, now,
-        daily_limit=max_articles, lookback_hours=lookback_hours,
-        timezone_name="UTC", rank_by_relevance=False,
-        category_order=("technology", "markets", "saas", "world", "policy", "factcheck"),
-        max_per_source_per_day=INDIA_PREVIEW_SOURCE_CAP, max_saas_funding_per_day=4,
-        exclude_promotional_headlines=exclude_promotional,
-        max_us_index_futures_per_day=1,
+    return rank_preview_stories(
+        eligible, now, limit=max_articles, lookback_hours=lookback_hours,
+        max_per_source=INDIA_PREVIEW_SOURCE_CAP, max_saas_funding=4,
+        exclude_promotional=exclude_promotional, max_us_futures=1,
     )

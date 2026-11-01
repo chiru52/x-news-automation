@@ -59,3 +59,20 @@ export function newsInSection(items, view, trending=topNews(items)) {
     (view !== "trending" || trendingIds.has(item.id))
   );
 }
+
+/** Public static Global/India queues are already ranked at collection time.
+ * Preserve that rank in both views. Live Worker feeds without this ranking
+ * continue to use timestamp order; workflow and archive are unaffected.
+ */
+export function orderPublicNews(items, view, fromLive=false) {
+  const value=Array.isArray(items)?[...items]:[];
+  if(!fromLive && (view==="global" || view==="india")) {
+    return value.sort((a,b)=>(a.index??0)-(b.index??0) ||
+      dateValue(b)-dateValue(a));
+  }
+  if(view==="trending")return value.sort((a,b)=>
+    (b.trend_score||0)-(a.trend_score||0) ||
+    dateValue(b)-dateValue(a) || (a.index||0)-(b.index||0));
+  return value.sort((a,b)=>dateValue(b)-dateValue(a) ||
+    (a.index||0)-(b.index||0));
+}
