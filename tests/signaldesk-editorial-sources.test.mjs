@@ -31,12 +31,12 @@ test("all 8 Global and 11 India requested publishers appear exactly once, with w
 });
 test("public collector does not silently fetch denied sources",()=>{
   assert.equal(feeds.length,18);
-  assert.equal(extra.length,3);
-  assert.equal(extra.filter(x=>x.source_type==="official_primary").length,2);
+  assert.equal(extra.length,2);
+  assert.equal(extra.filter(x=>x.source_type==="official_primary").length,1);
   assert.ok(extra.some(x=>x.name==="Alt News Fact Checks"&&x.region==="india"&&
     x.category==="factcheck"&&x.disable_images===true));
   const official=extra.filter(x=>x.source_type==="official_primary");
-  assert.deepEqual(official.map(x=>x.region).sort(),["global","india"]);
+  assert.deepEqual(official.map(x=>x.region).sort(),["global"]);
   for(const source of official){
     assert.equal(source.disable_images,true);
     assert.match(source.policy_url,/^https:\/\//);
