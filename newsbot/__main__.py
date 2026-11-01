@@ -51,6 +51,8 @@ def main() -> int:
             approved_primary_feeds = {
                 "https://www.federalreserve.gov/feeds/press_all.xml":
                     ("global", "markets", "US Federal Reserve (official releases)"),
+                "https://www.rbi.org.in/pressreleases_rss.xml":
+                    ("india", "markets", "Reserve Bank of India (official press releases)"),
             }
             def allowed_preview_source(entry):
                 if not isinstance(entry, dict) or entry.get("disable_images") is not True:
