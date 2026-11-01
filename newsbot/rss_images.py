@@ -14,7 +14,8 @@ ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif"}
 def safe_image_url(value):
     if not isinstance(value, str) or not 0 < len(value) <= 1400:
         return ""
-    if any(ord(c) <= 32 or ord(c) >= 127 or c in '<>"\'\\' for c in value):
+    if (any(ord(c) <= 32 or ord(c) >= 127 or c in ("<", ">", "\"", "\'", chr(92)) for c in value) or
+            re.search(r"%(?:0[0-9a-f]|1[0-9a-f]|7f)", value, re.I)):
         return ""
     try:
         parts = urlsplit(value)
