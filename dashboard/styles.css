@@ -1236,3 +1236,34 @@ body.news-focus-mode[data-news-layout="gallery"] .feed-section>.toolbar{
   .news-explorer[data-mode="gallery"] .explorer-tile{height:198px;min-height:198px}
   .news-explorer[data-mode="gallery"] .explorer-stage{padding:12px 10px}
 }
+
+/* Mobile header alignment: the left-opening drawer has its trigger at the
+   beginning of the same header row, followed by the SignalDesk brand.
+   Theme and account are the only right-hand controls. Desktop is unchanged. */
+.mobile-header-start{display:none}
+@media(max-width:850px){
+  .topbar .mobile-header-start{
+    display:flex;align-items:center;gap:9px;flex:1 1 auto;
+    min-width:0;
+  }
+  .topbar .mobile-header-start .mobile-brand{
+    display:flex;align-items:center;flex:0 1 auto;
+    min-width:0;max-width:100%;
+  }
+  .topbar .mobile-header-start .mobile-brand strong{
+    overflow:hidden;text-overflow:ellipsis;
+  }
+  .topbar .mobile-menu-toggle{
+    flex-shrink:0;touch-action:manipulation;
+  }
+  .topbar .mobile-menu-icon .mobile-menu-close{display:none}
+  .topbar .mobile-menu-toggle[aria-expanded="true"] .mobile-menu-hamburger{display:none}
+  .topbar .mobile-menu-toggle[aria-expanded="true"] .mobile-menu-close{display:block}
+  .topbar .top-right{margin-left:auto;flex-shrink:0}
+}
+@media(max-width:390px){
+  .topbar .mobile-header-start{gap:6px}
+}
+@media(prefers-reduced-motion:reduce){
+  .topbar .mobile-menu-icon svg path{transition:none}
+}
