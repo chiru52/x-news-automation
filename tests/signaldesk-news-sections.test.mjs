@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {NEWS_VIEWS,isIndiaArticle,eligibleNews,topNews,newsInSection} from "../dashboard/news-sections.mjs";
+import {NEWS_VIEWS,isIndiaArticle,eligibleNews,topNews,newsInSection,orderPublicNews} from "../dashboard/news-sections.mjs";
 
 const news=(id,title,region,score,source="publisher.example")=>({
   id:"news:"+id,kind:"news",title,region,
@@ -77,4 +77,24 @@ test("Copied stories vanish from discovery while prepared drafts remain separate
   assert.equal(newsInSection(available,"global").length,1);
   assert.equal(newsInSection(available,"india").length,0);
   assert.equal(sample.filter(x=>x.kind==="draft").length,1);
+});
+
+test("static regional news preserves editorial Top 50 rank in layered and gallery",()=>{
+  const newest={...news("newer","New short headline","global",1),
+    published_at:"2026-11-01T10:00:00Z",index:1};
+  const moreImportant={...news("rank1","Publisher's higher-ranked policy story","global",1),
+    published_at:"2026-11-01T07:00:00Z",index:0};
+  assert.deepEqual(orderPublicNews([newest,moreImportant],"global",false)
+    .map(x=>x.id),[moreImportant.id,newest.id]);
+  assert.deepEqual(orderPublicNews([newest,moreImportant],"global",true)
+    .map(x=>x.id),[newest.id,moreImportant.id]);
+  assert.deepEqual(orderPublicNews([newest,moreImportant],"all",false)
+    .map(x=>x.id),[newest.id,moreImportant.id]);
+  const india=[{...moreImportant,region:"india"},{...newest,region:"india"}];
+  assert.deepEqual(orderPublicNews(india,"india",false).map(x=>x.index),[0,1]);
+});
+test("trending still prioritizes editorial signals, not static regional order",()=>{
+  const a={...news("a","High ranked but low trending","global",10),index:0};
+  const b={...news("b","Lower ranked but higher trending","global",95),index:1};
+  assert.deepEqual(orderPublicNews([a,b],"trending",false).map(x=>x.id),[b.id,a.id]);
 });
