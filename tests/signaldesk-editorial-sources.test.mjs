@@ -37,6 +37,9 @@ test("public collector does not silently fetch denied sources",()=>{
     x.category==="factcheck"&&x.disable_images===true));
   const official=extra.filter(x=>x.source_type==="official_primary");
   assert.deepEqual(official.map(x=>x.region).sort(),["global","india"]);
+  const rbi = official.find(x=>x.name==="Reserve Bank of India (official press releases)");
+  assert.equal(rbi?.headline_only,true);
+  assert.equal(rbi?.disable_images,true);
   for(const source of official){
     assert.equal(source.disable_images,true);
     assert.match(source.policy_url,/^https:\/\//);
