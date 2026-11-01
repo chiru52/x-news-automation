@@ -76,3 +76,17 @@ export function orderPublicNews(items, view, fromLive=false) {
   return value.sort((a,b)=>dateValue(b)-dateValue(a) ||
     (a.index||0)-(b.index||0));
 }
+
+/** Counts for the same already-filtered and deduplicated candidate list shown
+ * in the UI, *before* selecting a topic. Never pad absent categories.
+ * This only describes the current view, not the entire internet or RSS index.
+ */
+export function topicAvailability(items) {
+  const counts={all:0,technology:0,world:0,policy:0,factcheck:0,saas:0,markets:0};
+  for(const item of Array.isArray(items)?items:[]) {
+    if(!item || typeof item!=="object")continue;
+    counts.all++;
+    if(Object.hasOwn(counts,item.category) && item.category!=="all")counts[item.category]++;
+  }
+  return counts;
+}
