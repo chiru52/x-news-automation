@@ -5,6 +5,7 @@
 import {safeNewsImage} from "../dashboard/news-image.mjs";
 const PREVIOUS_MAX_AGE_MS=90*60*1000;
 const HEADLINE_MAX_AGE_MS=36*60*60*1000;
+const INDIA_HEADLINE_MAX_AGE_MS=72*60*60*1000;
 const FUTURE_ALLOWANCE_MS=10*60*1000;
 function safeHttps(raw) {
   if(typeof raw!=="string"||raw.length>2000||/\s/.test(raw))return false;
@@ -33,7 +34,7 @@ export function recoverRecentStories(snapshot,failedFeeds,nowMs) {
       !["india","global"].includes(item.region)||item.status!=="unverified"||
       item.category!==byName.get(item.publisher).category)continue;
     const published=new Date(item.published_at).getTime();
-    if(!Number.isFinite(published)||nowMs-published>HEADLINE_MAX_AGE_MS||
+    if(!Number.isFinite(published)||nowMs-published>(item.region==="india"?INDIA_HEADLINE_MAX_AGE_MS:HEADLINE_MAX_AGE_MS)||
       published>nowMs+FUTURE_ALLOWANCE_MS)continue;
     seen.add(item.id);
     accepted.push({
