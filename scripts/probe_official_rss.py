@@ -16,6 +16,8 @@ ALLOWED={
   "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
   "https://www.federalreserve.gov/feeds/press_all.xml",
   "https://www.rbi.org.in/pressreleases_rss.xml",
+  "https://www.rbi.org.in/notifications_rss.xml",
+  "https://www.rbi.org.in/speeches_rss.xml",
 }
 def probe():
     extras=json.loads((ROOT/"config/extra-news-sources.json").read_text(encoding="utf-8"))
