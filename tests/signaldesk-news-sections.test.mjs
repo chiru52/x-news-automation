@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import {NEWS_VIEWS,isIndiaArticle,eligibleNews,topNews,newsInSection,orderPublicNews} from "../dashboard/news-sections.mjs";
+import {NEWS_VIEWS,isIndiaArticle,eligibleNews,topNews,newsInSection,orderPublicNews,topicAvailability} from "../dashboard/news-sections.mjs";
 
 const news=(id,title,region,score,source="publisher.example")=>({
   id:"news:"+id,kind:"news",title,region,
@@ -97,4 +97,19 @@ test("trending still prioritizes editorial signals, not static regional order",(
   const a={...news("a","High ranked but low trending","global",10),index:0};
   const b={...news("b","Lower ranked but higher trending","global",95),index:1};
   assert.deepEqual(orderPublicNews([a,b],"trending",false).map(x=>x.id),[b.id,a.id]);
+});
+
+test("topic counts reflect only real candidates and never invent World or Policy results",()=>{
+  const rows=[
+    {...news("a","AI funding","global",90),category:"technology"},
+    {...news("b","India payments","india",80),category:"technology"},
+    {...news("c","Markets close higher","global",75),category:"markets"},
+  ];
+  const available=topicAvailability(rows);
+  assert.deepEqual(available,{all:3,technology:2,world:0,policy:0,factcheck:0,saas:0,markets:1});
+  assert.equal(topicAvailability(rows.filter(x=>x.region==="india")).technology,1);
+  assert.equal(topicAvailability(rows.filter(x=>x.title.includes("NO MATCH"))).all,0);
+  assert.deepEqual(topicAvailability(null),{all:0,technology:0,world:0,policy:0,factcheck:0,saas:0,markets:0});
+  assert.equal(topicAvailability([{category:"unknown"}]).all,1);
+  assert.equal(topicAvailability([{category:"unknown"}]).world,0);
 });
