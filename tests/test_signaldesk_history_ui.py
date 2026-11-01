@@ -17,7 +17,7 @@ class HistoryUITests(unittest.TestCase):
     def test_history_has_last_sidebar_menu(self):
         nav=self.page.split('<nav class="nav-items"',1)[1].split('>',1)[1].split("</nav>",1)[0]
         self.assertEqual(re.findall(r'data-view="([^"]+)"',nav),
-                         ["all","trending","global","india","workflow","copied","saved","archive"])
+                         ["all","trending","global","india","overview","workflow","copied","saved","archive"])
         for field in ("archive-toggle","archive-controls","archive-days",
                       "archive-date","archive-region","archive-publisher",
                       "archive-search","archive-status","archive-prev","archive-next"):
@@ -41,12 +41,12 @@ class HistoryUITests(unittest.TestCase):
         self.assertIn('loadHistory(0)',section)
         self.assertNotIn('setView(',section)
 
-    def test_archive_layout_hides_duplicate_global_metrics_only_in_archive(self):
+    def test_archive_layout_keeps_metrics_in_optional_overview_only(self):
         self.assertIn('id="dashboard-intro"',self.page)
         self.assertIn('id="dashboard-metrics"',self.page)
         self.assertIn('id="archive-statistics"',self.page)
-        self.assertIn('$("dashboard-metrics").hidden = archiveMode()',self.js)
-        self.assertIn('$("dashboard-intro").hidden = archiveMode()',self.js)
+        self.assertIn('$("dashboard-metrics").hidden = selectedView !== "overview"',self.js)
+        self.assertIn('$("dashboard-intro").hidden = selectedView !== "overview"',self.js)
 
     def test_archive_is_deliberate_fetch_only_without_background_polling(self):
         self.assertIn('async function loadHistory(page=0)',self.js)

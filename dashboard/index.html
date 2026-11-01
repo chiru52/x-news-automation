@@ -5,26 +5,29 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light dark">
   <meta name="robots" content="index, follow">
-  <title>SignalDesk — Your AI news workspace</title>
+  <title>SignalDesk — Your news studio</title>
   <meta name="description" content="Public AI news dashboard: browse sources and copy suggested X posts. No automatic posting.">
   <link rel="stylesheet" href="./styles.css">
   <script type="module" src="./app.js"></script>
 </head>
 <body>
   <div class="shell">
-    <aside class="sidebar" aria-label="Workspace navigation">
-      <a href="./" class="brand" aria-label="SignalDesk home — All stories" data-home-link><span class="brand-mark" aria-hidden="true">S</span><span>signal<span class="brand-light">desk</span><small>YOUR EDITORIAL SPACE</small></span></a>
-      <div class="sidebar-section-label">WORKSPACE</div>
+    <aside class="sidebar" aria-label="SignalDesk navigation">
+      <div class="sidebar-top"><a href="./" class="brand" aria-label="SignalDesk home — All stories" data-home-link><span class="brand-mark" aria-hidden="true">S</span><span class="brand-wordmark">signal<span class="brand-light">desk</span><small>THE NEWS STUDIO</small></span></a><button type="button" id="sidebar-toggle" class="sidebar-toggle" aria-controls="sidebar-menu" aria-expanded="false" aria-label="Expand sidebar" title="Expand sidebar"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+      <div class="sidebar-section-label">DISCOVER</div>
       <nav class="nav-items" id="sidebar-menu" aria-label="Main navigation">
-        <button class="nav-item active" data-view="all" aria-current="page"><span class="nav-icon">▦</span> All stories <span id="nav-all-count" class="nav-count">–</span></button>
-        <button class="nav-item" data-view="trending"><span class="nav-icon">↗</span> Trending news <span id="nav-trend-count" class="nav-count">–</span></button>
-        <button class="nav-item" data-view="global"><span class="nav-icon">◎</span> Global news <span id="nav-global-count" class="nav-count">–</span></button>
-        <button class="nav-item" data-view="india"><span class="nav-icon">IN</span> India news <span id="nav-india-count" class="nav-count">–</span></button>
-        <button class="nav-item" data-view="workflow"><span class="nav-icon">☷</span> My workflow <span id="nav-workflow-count" class="nav-count">0</span></button>
-        <button class="nav-item" data-view="copied"><span class="nav-icon">✓</span> Copied articles <span id="nav-copied-count" class="nav-count">0</span></button>
-        <button class="nav-item" data-view="saved"><span class="nav-icon">♡</span> Saved for later <span id="nav-saved-count" class="nav-count">0</span></button>
-        <button class="nav-item nav-archive" data-view="archive"><span class="nav-icon">▤</span> Archive</button>
-</nav>
+        <button class="nav-item active" data-view="all" aria-current="page" aria-label="All stories" title="All stories"><span class="nav-icon">▦</span> <span class="nav-label">All stories</span> <span id="nav-all-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="trending" aria-label="Trending news" title="Trending news"><span class="nav-icon">↗</span> <span class="nav-label">Trending news</span> <span id="nav-trend-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="global" aria-label="Global news" title="Global news"><span class="nav-icon">◎</span> <span class="nav-label">Global news</span> <span id="nav-global-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="india" aria-label="India news" title="India news"><span class="nav-icon">IN</span> <span class="nav-label">India news</span> <span id="nav-india-count" class="nav-count">–</span></button>
+        <button class="nav-item" data-view="overview" aria-label="Overview" title="Overview"><span class="nav-icon" aria-hidden="true">◫</span> <span class="nav-label">Overview</span></button>
+        <div class="sidebar-section-label sidebar-section-work">MY WORKSPACE</div>
+        <button class="nav-item" data-view="workflow" aria-label="My workflow" title="My workflow"><span class="nav-icon">☷</span> <span class="nav-label">My workflow</span> <span id="nav-workflow-count" class="nav-count">0</span></button>
+        <button class="nav-item" data-view="copied" aria-label="Copied articles" title="Copied articles"><span class="nav-icon">✓</span> <span class="nav-label">Copied articles</span> <span id="nav-copied-count" class="nav-count">0</span></button>
+        <button class="nav-item" data-view="saved" aria-label="Saved for later" title="Saved for later"><span class="nav-icon">♡</span> <span class="nav-label">Saved for later</span> <span id="nav-saved-count" class="nav-count">0</span></button>
+        <button class="nav-item nav-archive" data-view="archive" aria-label="Archive" title="Archive"><span class="nav-icon">▤</span> <span class="nav-label">Archive</span></button>
+        <button class="nav-item nav-settings" id="sidebar-settings" type="button" aria-label="Account and settings" title="Account and settings"><span class="nav-icon" aria-hidden="true">⚙</span> <span class="nav-label">Settings</span></button>
+      </nav>
       <div class="sidebar-bottom">
         <div class="safety-mini"><span class="safety-symbol">✓</span><div><strong>You stay in control</strong><span>Nothing is posted automatically.</span></div></div>
         <p class="sidebar-foot">Public news workspace · v1</p>
@@ -40,11 +43,11 @@
       </button></div>
       </header>
       <main class="content"><section id="account-workspace" hidden><h1>Manage account</h1><p>Update your profile and password without leaving your workspace.</p><div id="manage-account-panel" class="manage-account-panel"><div class="manage-account-grid"><section><h2>Profile information</h2><p id="manage-email">Loading your account…</p><p id="manage-created"></p><form id="manage-profile-form"><label for="manage-name">Display name</label><input id="manage-name" maxlength="80" autocomplete="nickname" required/><button type="submit">Save profile</button></form></section><section><h2>Change password</h2><p>Enter your current password to update it securely.</p><form id="manage-password-form" autocomplete="off"><label for="manage-current-password">Current password</label><input id="manage-current-password" type="password" autocomplete="current-password" required minlength="6" maxlength="128"/><label for="manage-new-password">New password</label><input id="manage-new-password" type="password" autocomplete="new-password" required minlength="6" maxlength="128"/><label for="manage-confirm-password">Confirm new password</label><input id="manage-confirm-password" type="password" autocomplete="new-password" required minlength="6" maxlength="128"/><button type="submit">Update password</button></form></section></div><p id="manage-status" role="status" aria-live="polite"></p><p class="manage-local-note">Saved articles and drafts remain in this browser; cross-device sync is not enabled yet.</p></div></section>
-        <section class="intro" id="dashboard-intro">
+        <section class="intro" id="dashboard-intro" hidden>
           <div class="eyebrow"><span class="eyebrow-line"></span> YOUR DAILY INTELLIGENCE</div>
           <div class="intro-heading"><div><h1>The signal, <em>without</em> the noise.</h1><p>Discover what's important. Shape your point of view. Share only when you're ready.</p></div></div>
         </section>
-        <section class="metrics" id="dashboard-metrics" aria-label="Feed overview">
+        <section class="metrics" id="dashboard-metrics" aria-label="Feed overview" hidden>
           <div class="metric"><span class="metric-icon lilac">▤</span><div><span id="count-news-label">News stories</span><strong id="count-news">—</strong></div></div>
           <div class="metric"><span class="metric-icon peach">✧</span><div><span id="count-trending-label">Trending picks</span><strong id="count-trending">—</strong></div></div>
           <div class="metric"><span class="metric-icon mint">✓</span><div><span id="count-ready-label">Ready to copy</span><strong id="count-ready">—</strong></div></div>
@@ -202,7 +205,7 @@
               <span class="explorer-kicker">SIGNALDESK / THE NEWS STUDIO</span>
               <h2>Explore beyond <em>the headline.</em></h2>
               <p>One story at a time. Move with the news, or see the whole picture.</p>
-              <div class="explorer-utility"><span class="explorer-count" aria-live="polite"></span><button type="button" id="explorer-focus" class="explorer-focus" aria-pressed="false">Expand explorer ↗</button></div>
+              <div class="explorer-utility"><span class="explorer-count" aria-live="polite"></span></div>
             </div>
             <div class="explorer-stage">
               <div class="explorer-canvas" tabindex="0" role="group" aria-label="Moving news cards. Use left and right arrows to browse stories."></div>
@@ -232,12 +235,6 @@
                 <button type="button" class="active" data-explorer-mode="layered" aria-pressed="true">Layered</button>
                 <button type="button" data-explorer-mode="gallery" aria-pressed="false">Gallery</button>
               </div>
-              <nav class="explorer-sections" aria-label="Explore news regions">
-                <button type="button" data-explorer-section="all">All stories</button>
-                <button type="button" data-explorer-section="trending">Trending</button>
-                <button type="button" data-explorer-section="global">Global</button>
-                <button type="button" data-explorer-section="india">India</button>
-              </nav>
             </div>
             <button type="button" class="explorer-shade" aria-label="Close gallery story details" hidden></button>
           </section>
