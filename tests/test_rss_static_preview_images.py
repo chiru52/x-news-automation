@@ -53,6 +53,54 @@ class RSSStaticImageTests(unittest.TestCase):
             bundle=build_bundle(queue,[],root/"site")
             self.assertEqual(bundle["news"][0]["image_url"],public[0]["image_url"])
 
+    def test_article_description_embedded_html_image_is_used(self):
+        detail=(
+            '<description><![CDATA[<p>Story preview</p><figure><img '
+            'src="https://cdn.publisher.example/article-cover.webp" width="800" '
+            'height="500" /></figure>]]></description>'
+        )
+        article=parse_feed(rss(detail),"Example")[0]
+        self.assertEqual(article.image_url,
+                         "https://cdn.publisher.example/article-cover.webp")
+        # No content on the channel itself is ever borrowed for a story.
+        article=parse_feed(rss("<description>Plain publisher summary</description>"),"Example")[0]
+        self.assertEqual(article.image_url,"")
+
+    def test_content_encoded_html_and_lazy_srcset(self):
+        prefix='<content:encoded xmlns:content="http://purl.org/rss/1.0/modules/content/"><![CDATA['
+        html='<picture><img src="https://publisher.example/placeholder.png" data-src="https://cdn.publisher.example/photo.jpg" /></picture>'
+        article=parse_feed(rss(prefix+html+']]></content:encoded>'),"Example")[0]
+        self.assertEqual(article.image_url,"https://cdn.publisher.example/photo.jpg")
+        html='<img srcset="https://cdn.publisher.example/photo-small.jpg 120w, https://cdn.publisher.example/photo-large.jpg 800w">'
+        article=parse_feed(rss(prefix+html+']]></content:encoded>'),"Example")[0]
+        self.assertEqual(article.image_url,"https://cdn.publisher.example/photo-large.jpg")
+
+    def test_prefer_explicit_media_and_ignore_tracking_or_unusable_embedded_images(self):
+        detail=(
+            '<description><![CDATA[<img src="https://publisher.example/avatar.jpg"/>'
+            '<img src="https://publisher.example/tracker.png" width="1" height="1">'
+            '<img src="https://publisher.example/valid-photo.webp"/>]]></description>'
+        )
+        article=parse_feed(rss(detail),"Example")[0]
+        self.assertEqual(article.image_url,"https://publisher.example/valid-photo.webp")
+        explicit='<media:thumbnail url="https://cdn.publisher.example/hero.jpg" />'+detail
+        self.assertEqual(parse_feed(rss(explicit),"Example")[0].image_url,
+                         "https://cdn.publisher.example/hero.jpg")
+        for bad in (
+            'src="https://publisher.example/logo.jpg"',
+            'src="https://publisher.example/square-icon.png"',
+            'src="http://publisher.example/insecure.jpg"',
+            'src="https://publisher.example/photo.svg"',
+            'src="https://publisher.example/pixel.jpg" width="2" height="2"',
+        ):
+            article=parse_feed(rss('<description><![CDATA[<img '+bad+'/>]]></description>'),"Example")[0]
+            self.assertEqual(article.image_url,"",bad)
+
+    def test_grouped_media_content(self):
+        image='<media:group><media:content url="https://cdn.publisher.example/report.png" type="image/png" width="700" height="410" /></media:group>'
+        article=parse_feed(rss(image),"Example")[0]
+        self.assertEqual(article.image_url,"https://cdn.publisher.example/report.png")
+
     def test_preview_data_limits_are_50_without_modifying_publishing(self):
         shell=Path("scripts/build_cloudflare_preview.sh").read_text()
         cli=Path("newsbot/__main__.py").read_text()
