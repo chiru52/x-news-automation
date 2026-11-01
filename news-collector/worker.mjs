@@ -14,6 +14,9 @@ import {recoverRecentStories,coverageSummary} from "./source-reliability.mjs";
 import {imageFromRssEntry, safeNewsImage} from "../dashboard/news-image.mjs";
 
 export const CRON = "*/15 * * * *";
+// Public read-only build identity: confirms 72h India and exact-origin CORS
+// are actually deployed, not merely merged to GitHub.
+export const COLLECTOR_CONTRACT = "rss-v2-india72-exact-origin";
 const MAX_AGE_MS = 36 * 60 * 60 * 1000;
 const INDIA_MAX_AGE_MS = 72 * 60 * 60 * 1000; // Match India daily preview, including weekends.
 const MAX_FUTURE_MS = 10 * 60 * 1000;
@@ -277,7 +280,8 @@ async function handleReadOnlyRequest(request,env) {
   if (request.method!=="GET" && request.method!=="HEAD")
     return res(405,{error:"Read-only endpoint"});
   if (u.pathname==="/health")
-    return res(200,{status:"read_only",x_posting_enabled:false,ai_generation_enabled:false});
+    return res(200,{status:"read_only",x_posting_enabled:false,ai_generation_enabled:false,
+      collector_contract:COLLECTOR_CONTRACT});
   if (u.pathname==="/archive") {
     if (!env?.NEWS_CACHE?.get) return res(503,{error:"Archive cache not configured"});
     const params=historyParams(u);
