@@ -13,7 +13,9 @@ SignalDesk's India list previously had limited financial and banking-policy cove
 
 ## Safety checks
 
-A bounded read-only RSS probe verifies that the feed actually responds, contains parseable publication dates and dated headlines inside the 72-hour India window. No fake dates. No additional X permissions, automatic publishing, data storage or individual-article GETs.
+A bounded read-only RSS probe verifies that the feed actually responds, contains parseable publication dates and dated headlines inside the 72-hour India window.
+
+**Verified 2026-11-01 (GitHub Actions public preflight):** 10 RSS items parsed, all 10 within 72 hours, **8 eligible India Top 50 selections** after the per-publisher cap; zero were within the narrower 36-hour window. These are publisher announcements, not a guarantee of eight *additional unique* website cards because cross-source duplicates may be removed. The live production Worker was not changed. The one-off preflight was removed from future PR auditing after verification. No fake dates. No additional X permissions, automatic publishing, data storage or individual-article GETs.
 
 The feed is included only in `config/extra-news-sources.json` and exact allowlisted in the **preview-only** reader. `config/sources.json` (original X editorial bot) remains unchanged. Source is also available to future read-only Worker code only if separately and explicitly deployed. Do not deploy the news Worker from this PR.
 
