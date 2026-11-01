@@ -1,0 +1,32 @@
+name: SignalDesk deployment readiness — GET-only (never deploy)
+
+# Manually triggered, read-only checks; no tokens or production writes.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  public-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Validate preflight decisions offline
+        run: |
+          python -m unittest tests.test_live_news_worker_diagnostics -v
+          python -m unittest tests.test_signaldesk_release_preflight -v
+      - name: Inspect exact public Worker and preview GET endpoints
+        run: python scripts/signaldesk_release_preflight.py
+      - name: Safety summary
+        if: always()
+        run: |
+          echo "This workflow does NOT deploy a Worker, publish Pages, update KV, inspect secrets, or post to X." >> "$GITHUB_STEP_SUMMARY"
+          echo "An existing Worker with unresolved CORS failures intentionally blocks this preflight." >> "$GITHUB_STEP_SUMMARY"
+          echo "A green preflight is not deployment approval. Production deployment requires separate operator authorization." >> "$GITHUB_STEP_SUMMARY"
