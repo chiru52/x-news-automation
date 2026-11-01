@@ -21,11 +21,11 @@ def main() -> int:
     parser.add_argument("--preview", action="store_true",
                         help="Show more review candidates without consuming today\'s real quota")
     parser.add_argument("--dashboard-limit", type=int, default=None,
-                        help="Up to 40 fresh suggestions for public dashboard preview only")
+                        help="Up to 50 fresh suggestions for public dashboard preview only")
     args = parser.parse_args()
     if args.dashboard_limit is not None and (
-            not args.preview or not 9 <= args.dashboard_limit <= 40):
-        parser.error("--dashboard-limit must be 9–40 and requires --preview; publishing quota unchanged")
+            not args.preview or not 9 <= args.dashboard_limit <= 50):
+        parser.error("--dashboard-limit must be 9–50 and requires --preview; publishing quota unchanged")
     settings = json.loads(Path(args.settings).read_text(encoding="utf-8"))
     if settings.get("publishing_enabled") is not False or settings.get("ai_provider") != "none":
         parser.error("SAFETY: stage 1 requires publishing_enabled=false and ai_provider=none")
