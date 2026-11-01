@@ -38,8 +38,9 @@ function trackHistoryItem(item) {
 function setArchiveVisibility() {
   $("archive-entry").hidden = true; // History is accessed from the dedicated Archive navigation.
   $("archive-controls").hidden = !archiveMode();
-  $("dashboard-metrics").hidden = archiveMode();
-  $("dashboard-intro").hidden = archiveMode();
+  // Metrics remain available through Overview, not a competing dashboard home.
+  $("dashboard-metrics").hidden = selectedView !== "overview";
+  $("dashboard-intro").hidden = selectedView !== "overview";
   $("archive-toggle").setAttribute("aria-expanded", String(archiveMode()));
 }
 function exitArchive() {
@@ -508,6 +509,13 @@ function updateCounts() {
     $("count-news").textContent = scoped.length;
     $("count-trending").textContent = scoped.filter(item => item.kind === "draft").length;
     $("count-ready").textContent = scoped.filter(item => workflowStage(item) === "ready").length;
+  } else if (selectedView === "overview") {
+    $("count-news-label").textContent = "News stories";
+    $("count-trending-label").textContent = "Trending picks";
+    $("count-ready-label").textContent = "Ready to copy";
+    $("count-news").textContent = news.length;
+    $("count-trending").textContent = trending.length;
+    $("count-ready").textContent = news.filter(item => workflowStage(item) === "ready").length;
   } else if (selectedView === "copied") {
     $("count-news-label").textContent = "Copied items";
     $("count-trending-label").textContent = "India copied";
@@ -544,7 +552,7 @@ function updateCounts() {
 }
 function updateMobileMenuLabel(view){
   const titles={
-    all:"All stories",trending:"Trending news",global:"Global news",india:"India news",
+    all:"All stories",trending:"Trending news",global:"Global news",india:"India news",overview:"Overview",
     workflow:"My workflow",copied:"Copied articles",saved:"Saved for later",
     archive:"Archive",account:"Manage account"
   };
@@ -588,11 +596,13 @@ function setView(view) {
   });
   const titles = {
     all: "All stories", trending: "Trending news", global: "Global news",
+    overview: "Overview",
     india: "India news", copied: "Copied articles",
     workflow: "My Workflow", saved: "Saved for later", archive: "News Archive"
   };
   const descriptions = {
     all: "Global and India news together, including trending stories. Each article appears only once.",
+    overview: "News coverage, trending signals and ready-to-copy stories at a glance.",
     trending: "Top editorial news signals from both Global and India — not social-media popularity.",
     global: "International news, excluding articles specifically relevant to India.",
     india: "India-related stories from the past 72 hours, ranked by freshness, news events and source diversity. Publisher dates are shown; ranking is not fact-checking.",
@@ -960,32 +970,20 @@ try {
   if(localStorage.getItem("signaldesk:explorer-mode:v1")==="gallery")
     newsExplorer.setMode("gallery");
 } catch (_) { /* Cosmetic preference is optional. */ }
-let explorerFocusEnabled=true;
-try { explorerFocusEnabled=localStorage.getItem("signaldesk:explorer-focus:v1")!=="off"; }
-catch (_) { /* Cosmetic preference is optional. */ }
+// News Explorer is the main screen; the existing workspace tools are pages in
+// the SAME sidebar, not a separate expand/back mode.
 function applyExplorerFocus(show) {
-  document.body.classList.toggle("news-focus-mode",Boolean(show&&explorerFocusEnabled));
-  const button=$("explorer-focus");
-  button.textContent=explorerFocusEnabled?"Back to workspace ↗":"Expand explorer ↗";
-  button.setAttribute("aria-pressed",String(Boolean(show&&explorerFocusEnabled)));
-  document.querySelectorAll("[data-explorer-section]").forEach(btn=>{
-    const current=btn.dataset.explorerSection===selectedView;
-    btn.classList.toggle("active",current);
-    if(current)btn.setAttribute("aria-current","page");
-    else btn.removeAttribute("aria-current");
-  });
+  document.body.classList.toggle("news-focus-mode",Boolean(show));
 }
-$("explorer-focus").addEventListener("click",()=>{
-  explorerFocusEnabled=!explorerFocusEnabled;
-  try{localStorage.setItem("signaldesk:explorer-focus:v1",explorerFocusEnabled?"on":"off");}
-  catch (_) { /* Cosmetic preference only. */ }
-  applyExplorerFocus(!$("news-explorer").hidden);
-});
-document.querySelectorAll("[data-explorer-section]").forEach(btn=>{
-  btn.addEventListener("click",()=>setView(btn.dataset.explorerSection));
-});
 function render() {
   updateCounts();
+  const overview = selectedView === "overview";
+  document.querySelector(".feed-section").hidden = overview;
+  if (overview) {
+    applyExplorerFocus(false);
+    newsExplorer.hide();
+    return;
+  }
   $("source-directory").hidden=!canUseExplorer(selectedView);
   const indiaNote=$("india-coverage");
   indiaNote.hidden=selectedView!=="india";
@@ -1767,6 +1765,27 @@ document.querySelectorAll("[data-home-link]").forEach(link=>link.addEventListene
     allButton?.scrollIntoView({block:"nearest",inline:"start"});
   window.scrollTo({top:0,behavior:"smooth"});
 }));
+// Desktop navigation is an icon rail by default, and expands without losing
+// the selected story. The same #sidebar-menu powers the existing mobile drawer.
+const sidebarToggle=$("sidebar-toggle");
+const SIDEBAR_KEY="signaldesk:sidebar-collapsed:v1";
+let sidebarCollapsed=true;
+try { sidebarCollapsed=localStorage.getItem(SIDEBAR_KEY)!=="false"; }
+catch (_) { /* Optional local preference; icon rail is the safe default. */ }
+function setSidebarCollapsed(collapsed){
+  sidebarCollapsed=Boolean(collapsed);
+  document.body.classList.toggle("sidebar-collapsed",sidebarCollapsed);
+  sidebarToggle.setAttribute("aria-expanded",String(!sidebarCollapsed));
+  const label=sidebarCollapsed?"Expand sidebar":"Collapse sidebar";
+  sidebarToggle.setAttribute("aria-label",label);
+  sidebarToggle.title=label;
+}
+setSidebarCollapsed(sidebarCollapsed);
+sidebarToggle.addEventListener("click",()=>{
+  setSidebarCollapsed(!sidebarCollapsed);
+  try { localStorage.setItem(SIDEBAR_KEY,String(sidebarCollapsed)); }
+  catch (_) { /* Navigation works even when storage is unavailable. */ }
+});
 // Mobile navigation replaces the crowded horizontal news tabs with one menu.
 const mobileMenuToggle=$("mobile-menu-toggle");
 const mobileMenuBackdrop=$("mobile-menu-backdrop");
