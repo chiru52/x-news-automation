@@ -1,6 +1,6 @@
 import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
-import {isIndiaArticle, eligibleNews, topNews, newsInSection} from "./news-sections.mjs";
+import {isIndiaArticle, eligibleNews, topNews, newsInSection, orderPublicNews} from "./news-sections.mjs";
 import {createNewsExplorer, canUseExplorer} from "./news-explorer.mjs";
 import {safeNewsImage} from "./news-image.mjs";
 import {initializeSourceCatalogue} from "./editorial-sources.mjs";
@@ -592,7 +592,7 @@ function setView(view) {
     all: "Global and India news together, including trending stories. Each article appears only once.",
     trending: "Top editorial news signals from both Global and India — not social-media popularity.",
     global: "International news, excluding articles specifically relevant to India.",
-    india: "India-related news from the past 72 hours (including weekends), newest first. Publisher links and publication dates are shown; source coverage varies.",
+    india: "India-related stories from the past 72 hours, ranked by freshness, news events and source diversity. Publisher dates are shown; ranking is not fact-checking.",
     workflow: "Review article stages and find prepared X drafts in one workspace. Saved only in this browser.",
     copied: "Stories marked Copied or copied to your clipboard. This does not mean they were posted on X.",
     saved: "Your bookmarked articles and drafts, stored only in this browser.",
@@ -1057,9 +1057,9 @@ function render() {
   });
   // Combine regional news without duplicates. Prepared drafts remain
   // available in My Workflow even when a related source URL also has news.
-  list.sort(selectedView === "trending"
-    ? (a,b) => b.trend_score - a.trend_score || byFreshness(a,b)
-    : byFreshness);
+  // Preserve the independently curated Top 50 order in static region views.
+  // Unranked live snapshots, All Stories and user workflow stay newest-first.
+  list = orderPublicNews(list, selectedView, feedFromLive);
   if (["all","trending","global","india"].includes(selectedView)) {
     const used = new Set();
     list = list.filter(item => {
