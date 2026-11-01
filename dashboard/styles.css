@@ -891,3 +891,116 @@ body.news-focus-mode .footer{margin-top:15px}
 @media(prefers-reduced-motion:reduce){
   .news-explorer .explorer-tile::after{transition:none}
 }
+
+/* Layered editorial layout: let the story use the previously empty upper-right
+   area, rather than trapping the draft in a 520px-tall nested scrollbar.
+   Gallery's full-width modal and its own scrolling remain unchanged. */
+.news-explorer[data-mode="layered"] .explorer-heading h2{
+  font-size:clamp(35px,3.65vw,50px);
+  line-height:1.04;
+  letter-spacing:-1.8px;
+  color:rgba(40,58,46,.79);
+}
+.news-explorer[data-mode="layered"] .explorer-heading h2 em{
+  color:rgba(40,58,46,.43);
+}
+.news-explorer[data-mode="layered"] .explorer-detail{
+  max-height:none;
+  overflow:visible;
+  align-self:start;
+}
+.news-explorer[data-mode="layered"] .explorer-selected-description{
+  min-height:0;
+}
+.news-explorer[data-mode="layered"] .explorer-detail-kicker{
+  margin:10px 0 8px;
+}
+.news-explorer[data-mode="layered"] .explorer-detail-actions{
+  margin:10px 0;
+}
+@media(min-width:960px){
+  .news-explorer[data-mode="layered"]{
+    display:grid;
+    grid-template-columns:minmax(0,1.04fr) minmax(385px,.96fr);
+    grid-template-rows:auto minmax(375px,1fr) auto;
+    align-items:start;
+    column-gap:12px;
+  }
+  .news-explorer[data-mode="layered"] .explorer-heading{
+    grid-column:1;
+    grid-row:1;
+    padding:23px 6px 0 clamp(20px,3vw,35px);
+  }
+  .news-explorer[data-mode="layered"] .explorer-heading>p{
+    margin:9px 0 0;
+  }
+  .news-explorer[data-mode="layered"] .explorer-utility{
+    margin-top:12px;
+  }
+  /* Only the Layered stage becomes grid-transparent. Gallery remains a
+     regular stage so its existing grid and focused overlay are untouched. */
+  .news-explorer[data-mode="layered"] .explorer-stage{
+    display:contents;
+  }
+  .news-explorer[data-mode="layered"] .explorer-canvas{
+    grid-column:1;
+    grid-row:2;
+    align-self:center;
+    width:100%;
+    margin:0;
+    min-height:0;
+  }
+  .news-explorer[data-mode="layered"] .explorer-detail{
+    grid-column:2;
+    grid-row:1 / span 2;
+    width:auto;
+    min-width:0;
+    margin:16px clamp(15px,2vw,25px) 10px 0;
+    padding:18px 19px;
+    justify-self:stretch;
+  }
+  .news-explorer[data-mode="layered"] .explorer-bottom{
+    grid-column:1 / -1;
+    grid-row:3;
+    margin:8px 18px 15px;
+  }
+}
+@media(max-width:959px){
+  /* On narrower screens keep one natural page scroll; don't create a tiny
+     right-hand column or nested editorial scrollbar. */
+  .news-explorer[data-mode="layered"] .explorer-stage{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    min-height:0;
+    padding:0 12px 10px;
+    gap:5px;
+  }
+  .news-explorer[data-mode="layered"] .explorer-canvas{
+    width:100%;
+    flex:none;
+    height:clamp(245px,39vw,350px);
+  }
+  .news-explorer[data-mode="layered"] .explorer-detail{
+    width:auto;
+    margin:0 4px 8px;
+  }
+  body.news-focus-mode .news-explorer[data-mode="layered"] .explorer-stage{
+    min-height:0;
+  }
+  body.news-focus-mode .news-explorer[data-mode="layered"] .explorer-canvas{
+    height:clamp(245px,39vw,350px);
+  }
+}
+@media(max-width:490px){
+  .news-explorer[data-mode="layered"] .explorer-heading h2{
+    font-size:clamp(33px,9vw,42px);
+    letter-spacing:-1.6px;
+  }
+}
+[data-theme="dark"] .news-explorer[data-mode="layered"] .explorer-heading h2{
+  color:rgba(231,242,231,.88);
+}
+[data-theme="dark"] .news-explorer[data-mode="layered"] .explorer-heading h2 em{
+  color:rgba(231,242,231,.5);
+}
