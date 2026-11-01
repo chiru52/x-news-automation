@@ -3,6 +3,7 @@
 import argparse
 import json
 from datetime import datetime, timedelta, timezone
+from dataclasses import replace
 from pathlib import Path
 
 from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
@@ -41,6 +42,18 @@ def main() -> int:
                            summary="Synthetic test item") for n in range(1, 9)]
     else:
         sources = json.loads(Path(args.sources).read_text(encoding="utf-8"))
+        if args.preview:
+            # Only the unprivileged public preview adds supplemental sources.
+            # The ordinary editorial bot, its publishing quotas and config
+            # remain unchanged. Never accept arbitrary visitor-supplied URLs.
+            extras = json.loads(Path("config/extra-news-sources.json").read_text(encoding="utf-8"))
+            if (not isinstance(extras, list) or len(extras) > 4 or
+                    any(entry.get("region") != "india" or
+                        entry.get("category") not in ("factcheck", "policy", "world") or
+                        not str(entry.get("url", "")).startswith("https://")
+                        for entry in extras)):
+                parser.error("Invalid preview-only supplemental source configuration")
+            sources = sources + extras
         earliest = now - timedelta(hours=int(settings["lookback_hours"]))
         for source in sources:
             stat = {"source": source["name"], "category": source.get("category", "technology"),
@@ -49,6 +62,10 @@ def main() -> int:
                 data = fetch_feed(source["url"], timeout=int(settings["request_timeout_seconds"]),
                                   max_bytes=int(settings["maximum_feed_bytes"]))
                 items = parse_feed(data, source["name"], source.get("category", "technology"))
+                if source.get("disable_images") is True:
+                    # Attribution rights for third-party fact-check images
+                    # may be different from the publisher's original prose.
+                    items = [replace(item, image_url="") for item in items]
                 stat["parsed_articles"] = len(items)
                 stat["recent_articles"] = sum(
                     earliest <= datetime.fromisoformat(item.published_at) <= now + timedelta(minutes=10)
