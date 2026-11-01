@@ -317,7 +317,7 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
                       "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
                       "category_verified": False, "relevance": assessment})
     india_queue = []
-    for item in (india_articles or [])[:15]:
+    for item in (india_articles or [])[:50]:
         suggestion = suggest_post(item)
         india_queue.append({**asdict(item), "suggested_post": suggestion["text"],
                             "trend": {}, "status": "NEEDS_HUMAN_REVIEW",
