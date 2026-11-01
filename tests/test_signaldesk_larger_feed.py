@@ -62,8 +62,9 @@ class LargerDashboardFeedTests(unittest.TestCase):
                                   cwd=ROOT, capture_output=True, text=True, timeout=10)
             self.assertEqual(good.returncode, 0, good.stderr)
             queue = json.loads((Path(directory) / "review_queue.json").read_text("utf-8"))
-            # One demo source is deliberately capped at four stories per build.
-            self.assertEqual(len(queue["articles"]), 4)
+            # One demo source is capped at seven items in the public preview.
+            # Original editorial publishing caps remain unchanged.
+            self.assertEqual(len(queue["articles"]), 7)
             self.assertFalse(queue["publishing_enabled"])
 
     def test_browser_only_checks_every_fifteen_minutes_and_has_safe_pagination(self):

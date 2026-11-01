@@ -9,7 +9,7 @@ from pathlib import Path
 from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
                    render_outputs, save_state, select_articles)
 from .trend_signals import signals_for_selected
-from .regions import select_india_preview_articles
+from .regions import select_india_preview_articles, global_preview_candidates
 
 
 def main() -> int:
@@ -79,12 +79,16 @@ def main() -> int:
     state = load_state(Path(args.state))
     selection_state = make_preview_state(state, now, settings["timezone"]) if args.preview else state
     public_limit = args.dashboard_limit if args.dashboard_limit is not None else int(settings["daily_draft_limit"])
-    selected = select_articles(stories, selection_state, now, daily_limit=public_limit,
+    # The public site has TWO independent regional capacities. Never allow
+    # India candidates to consume Global slots and then drop them on export.
+    # Keep the existing all-source editorial/X draft behavior unchanged.
+    global_pool = global_preview_candidates(stories, sources) if args.preview else stories
+    selected = select_articles(global_pool, selection_state, now, daily_limit=public_limit,
                                lookback_hours=int(settings["lookback_hours"]),
                                timezone_name=settings["timezone"],
                               category_order=tuple(settings.get("category_order", ("technology", "markets", "saas"))),
                               rank_by_relevance=settings.get("relevance_filter_enabled") is True,
-                              max_per_source_per_day=(4 if args.dashboard_limit else
+                              max_per_source_per_day=(7 if args.dashboard_limit else
                                                          int(settings.get("max_drafts_per_source_per_day", 2))),
                               max_saas_funding_per_day=(3 if args.dashboard_limit else
                                                          int(settings.get("max_saas_funding_drafts_per_day", 1))),
