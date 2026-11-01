@@ -12,6 +12,10 @@ import os
 import urllib.error
 import urllib.request
 
+from scripts.signaldesk_feed_integrity import inspect_feed_stories, parse_time
+
+EXPECTED_COLLECTOR_CONTRACT = "rss-v2-india72-exact-origin"
+
 ROOT = "https://signaldesk-news-feed.littlekingchess.workers.dev"
 PREVIEW = "https://signaldesk-preview.pages.dev"
 PRODUCTION = "https://news.littlekingchess.com"
@@ -67,16 +71,16 @@ def freshness_verdict(body: object, now: dt.datetime) -> tuple[str, str]:
     stamp = body.get("generated_at")
     if not isinstance(stamp, str):
         return "FAIL", "Snapshot missing timestamp"
-    try:
-        timestamp = dt.datetime.fromisoformat(stamp.replace("Z", "+00:00"))
-        if timestamp.tzinfo is None:
-            raise ValueError("naive")
-        age = (now - timestamp).total_seconds() / 60
-    except ValueError:
+    timestamp = parse_time(stamp)
+    if timestamp is None:
         return "FAIL", "Snapshot timestamp invalid"
+    age = (now - timestamp).total_seconds() / 60
     if age < -10 or age > 90:
         return "FAIL", f"Snapshot age outside the allowed range ({age:.0f} minutes)"
-    return "PASS", f"{len(stories)} Global / {len(india)} India records, snapshot age {age:.0f} minutes"
+    bad = inspect_feed_stories(body, timestamp)
+    if bad:
+        return "FAIL", bad
+    return "PASS", f"{len(stories)} Global / {len(india)} India verified headlines, snapshot age {age:.0f} minutes"
 
 
 def run(fetcher=read_public, now: dt.datetime | None = None):
@@ -104,9 +108,12 @@ def run(fetcher=read_public, now: dt.datetime | None = None):
             details = f"Feed {verdict}: {detail}"
         elif path == "/health" and code == 200:
             body = response.get("data")
-            details = "Read-only health confirmed" if isinstance(body, dict) and (
-                body.get("status") == "read_only" and body.get("x_posting_enabled") is False
-            ) else "Health JSON returned; safety flags not confirmed"
+            details = "Read-only collector contract verified" if isinstance(body, dict) and (
+                body.get("status") == "read_only" and
+                body.get("x_posting_enabled") is False and
+                body.get("ai_generation_enabled") is False and
+                body.get("collector_contract") == EXPECTED_COLLECTOR_CONTRACT
+            ) else "Health flags or deployed collector contract do not match current tested code"
         elif path.startswith("/archive") and code == 200:
             details = "Archive endpoint returned HTTP 200 (data completeness not verified)"
         elif code is not None and code != 200:
