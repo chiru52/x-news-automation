@@ -43,15 +43,20 @@ def global_preview_candidates(articles, sources):
     return [a for a in articles if not is_india_article(a, india_sources)]
 
 
+INDIA_PREVIEW_HOURS = 72  # Slightly wider weekend coverage; never claim these are all from today.
+INDIA_PREVIEW_SOURCE_CAP = 8  # Do not let one publisher fill all 50 slots.
+
+
 def select_india_preview_articles(articles, sources, now, *,
-                                  lookback_hours=36, max_articles=50,
+                                  lookback_hours=INDIA_PREVIEW_HOURS, max_articles=50,
                                   exclude_promotional=True):
     """Use the existing safe editorial selector, but on India candidates only.
 
     The India-specific evidence filter determines eligibility, not the narrow
     technology/markets/SaaS keyword list used by the original X draft bot.
-    This never changes publishing quotas or persisted history and does not pad
-    India results with unrelated international articles.
+    The 72-hour rolling window covers weekend news gaps without asserting that
+    older stories happened today. It never changes publishing quotas or persisted
+    history and never pads with unrelated international articles.
     """
     from .core import select_articles
     india_sources = explicit_india_sources(sources)
@@ -62,7 +67,7 @@ def select_india_preview_articles(articles, sources, now, *,
         daily_limit=max_articles, lookback_hours=lookback_hours,
         timezone_name="UTC", rank_by_relevance=False,
         category_order=("technology", "markets", "saas", "world", "policy", "factcheck"),
-        max_per_source_per_day=4, max_saas_funding_per_day=4,
+        max_per_source_per_day=INDIA_PREVIEW_SOURCE_CAP, max_saas_funding_per_day=4,
         exclude_promotional_headlines=exclude_promotional,
         max_us_index_futures_per_day=1,
     )
