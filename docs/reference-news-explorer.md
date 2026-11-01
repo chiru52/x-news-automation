@@ -63,3 +63,30 @@ RSS distribution alone does not establish image-republication rights.
 Verify source terms/licensing before commercial release and disable imagery
 from sources where embedding is not permitted. No image files are downloaded
 or stored by SignalDesk in this implementation.
+
+## More authentic RSS images — follow-up
+
+Static preview and the shared Worker now also recognize an image embedded in
+the *specific RSS item's* HTML description or `content:encoded`, along with
+`media:group`. These sources of metadata are used only if the story has no
+eligible structured media thumbnail or image enclosure. **No article web pages
+are visited**, no image downloads are stored, and no new paid services or
+scheduled jobs are added.
+
+Guards reject HTTP or private-network/credential-bearing URLs, encoded control
+characters, SVG/GIF, tiny tracking pixels, common logo/avatar placeholders,
+and malformed images. A real displayed image must also decode to at least
+160×90 pixels, or the browser retains its text-based category cover. The
+fallback cover now correctly distinguishes World, Policy and Fact-check stories
+from Technology, Markets and Business.
+
+The existing read-only preview diagnostic adds per-publisher **aggregate**
+story/image counts, with no headlines, article URLs or full feed content logged.
+This reveals where missing images are simply a publisher feed limitation.
+
+**Limitations:** some publishers provide no article image, block external image
+display, or restrict reuse; those stories keep their editorial cover. Obtaining
+a public RSS URL alone does not grant rights to republish a photo. Verify
+licensing for commercial release. The shared Cloudflare RSS Worker still
+requires a **separately approved deployment**; this PR alone changes the
+static preview after Cloudflare Pages completes its regular build.

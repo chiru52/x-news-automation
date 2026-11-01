@@ -156,7 +156,29 @@ def preview_deployment_report(fetcher=read_preview_file):
     data = json_data("/data.json")
     sources = json_data("/editorial-sources.json")
     js = parts["/news-explorer.mjs"].get("body", "")
+    # Source-level counts reveal where publisher RSS thumbnail coverage is
+    # missing, without outputting URLs, article text or remote image calls.
+    coverage = {}
+    if isinstance(data, dict):
+        for section in ("news", "india_news"):
+            articles = data.get(section, [])
+            if not isinstance(articles, list):
+                continue
+            for item in articles[:50]:
+                if not isinstance(item, dict):
+                    continue
+                publisher = item.get("publisher", "")
+                if not isinstance(publisher, str) or not 0 < len(publisher) <= 100:
+                    continue
+                counts = coverage.setdefault(publisher, [0, 0])
+                counts[0] += 1
+                counts[1] += bool(item.get("image_url"))
+    publisher_summary = [
+        {"publisher": pub, "stories": nums[0], "with_images": nums[1]}
+        for pub, nums in sorted(coverage.items(), key=lambda x: (-x[1][0], x[0]))[:15]
+    ]
     metrics = {
+        "publisher_photo_coverage": publisher_summary,
         "static_global_stories": len(data.get("news", [])) if isinstance(data,dict) and isinstance(data.get("news"),list) else None,
         "static_india_stories": len(data.get("india_news", [])) if isinstance(data,dict) and isinstance(data.get("india_news"),list) else None,
         "static_stories_with_images": sum(bool(x.get("image_url")) for kind in ("news","india_news") for x in data.get(kind,[]) if isinstance(x,dict)) if isinstance(data,dict) else None,

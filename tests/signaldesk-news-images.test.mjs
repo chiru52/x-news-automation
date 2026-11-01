@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
-import {safeNewsImage,imageFromRssEntry} from "../dashboard/news-image.mjs";
+import {safeNewsImage,imageFromRssEntry,imageFromEmbeddedHtml} from "../dashboard/news-image.mjs";
 import {parseFeed,publicItem} from "../news-collector/worker.mjs";
 
 const NOW=Date.parse("2026-10-30T12:00:00Z");
@@ -59,4 +59,33 @@ test("news explorer no longer generates music bars or fictional images",()=>{
   assert.match(js,/img.loading="lazy"/);
   assert.match(headers,/img-src https:;/);
   assert.doesNotMatch(js,/fetch\s*\(|XMLHttpRequest|api\.unsplash|source\.unsplash/);
+});
+
+test("RSS item embedded HTML thumbnails work with no webpage scraping",()=>{
+  const embed='<description><![CDATA[<p>Article summary</p><figure><img src="https://cdn.publisher.example/report.webp" width="960" height="540"/></figure>]]></description>';
+  assert.equal(parseFeed(wrap(embed),feed,NOW)[0].image_url,"https://cdn.publisher.example/report.webp");
+  const encoded='<content:encoded xmlns:content="http://purl.org/rss/1.0/modules/content/"><![CDATA[<img data-lazy-src="https://cdn.publisher.example/image.png" src="https://cdn.publisher.example/placeholder.png" />]]></content:encoded>';
+  assert.equal(parseFeed(wrap(encoded),feed,NOW)[0].image_url,"https://cdn.publisher.example/image.png");
+});
+test("a real publisher media photo wins over embedded HTML",()=>{
+  const media='<media:group><media:content url="https://cdn.publisher.example/photo.jpg" type="image/jpeg" /></media:group>';
+  const html='<description><![CDATA[<img src="https://cdn.publisher.example/secondary.jpg" />]]></description>';
+  assert.equal(parseFeed(wrap(media+html),feed,NOW)[0].image_url,"https://cdn.publisher.example/photo.jpg");
+});
+test("relevant srcset images are accepted but logos, trackers and tiny images are not",()=>{
+  const srcset='<img srcset="https://cdn.publisher.example/tiny.jpg 120w, https://cdn.publisher.example/large.jpg 900w">';
+  assert.equal(imageFromEmbeddedHtml(srcset),"https://cdn.publisher.example/large.jpg");
+  assert.equal(imageFromEmbeddedHtml('<img src="https://cdn.publisher.example/logo.jpg"/>'),"");
+  assert.equal(imageFromEmbeddedHtml('<img src="https://cdn.publisher.example/track.png" width="1" height="1"/>'),"");
+  assert.equal(imageFromEmbeddedHtml('<img src="http://cdn.publisher.example/photo.jpg" />'),"");
+  assert.equal(imageFromEmbeddedHtml('<img src="https://cdn.publisher.example/photo.svg"/>'),"");
+  assert.equal(imageFromEmbeddedHtml('<img src="https://cdn.publisher.example/large.webp" width="640" height="350"/>'),
+    "https://cdn.publisher.example/large.webp");
+  assert.equal(imageFromEmbeddedHtml("x".repeat(100_001)),"");
+});
+test("gallery category fallback labels match source classification",()=>{
+  const explorer=readFileSync(new URL("../dashboard/news-explorer.mjs",import.meta.url),"utf8");
+  for(const name of ["WORLD","POLICY","FACT CHECK","MARKETS","BUSINESS","TECHNOLOGY"])
+    assert.ok(explorer.includes('"'+name+'"'),name);
+  assert.match(explorer,/naturalWidth>=160/);
 });

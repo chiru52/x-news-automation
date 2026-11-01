@@ -52,6 +52,28 @@ class LiveNewsWorkerDiagnosticsTests(unittest.TestCase):
         self.assertEqual(metrics["catalogue_entries"],19)
         self.assertTrue(metrics["news_explorer_has_real_image_support"])
 
+    def test_image_health_counts_are_aggregated_without_articles_or_private_data(self):
+        import json
+        def fake_get(path):
+            if path=="/data.json":
+                return {"http_status":200,"body":json.dumps({
+                    "news":[
+                        {"publisher":"Publisher A","image_url":"https://img.example/a.jpg","title":"Private not logged"},
+                        {"publisher":"Publisher A","image_url":""},
+                        {"publisher":"Publisher B","image_url":""},
+                    ],"india_news":[{"publisher":"Publisher B","image_url":"https://img.example/b.jpg"}]
+                })}
+            if path=="/editorial-sources.json":
+                return {"http_status":200,"body":"[]"}
+            return {"http_status":200,"body":""}
+        coverage=preview_deployment_report(fake_get)["publisher_photo_coverage"]
+        self.assertEqual(coverage,[
+            {"publisher":"Publisher A","stories":2,"with_images":1},
+            {"publisher":"Publisher B","stories":2,"with_images":1}
+        ])
+        self.assertNotIn("title",str(coverage))
+        self.assertNotIn("img.example",str(coverage))
+
     def test_audit_is_get_only_and_never_fetches_unapproved_urls(self):
         seen = []
         now = dt.datetime(2026, 10, 31, 10, 0, tzinfo=dt.timezone.utc)

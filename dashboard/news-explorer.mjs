@@ -15,6 +15,7 @@ export function relativePosition(index, active, length) {
 export function appearanceFor(category) {
   return ["technology", "markets", "saas", "world", "policy", "factcheck"].includes(category) ? category : "technology";
 }
+const COVER_LABELS=Object.freeze({technology:"TECHNOLOGY",markets:"MARKETS",saas:"BUSINESS",world:"WORLD",policy:"POLICY",factcheck:"FACT CHECK"});
 export function canUseExplorer(view) {
   return ["all", "global", "india", "trending"].includes(view);
 }
@@ -67,7 +68,7 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
     // When the publisher RSS feed includes an article-specific image, use it;
     // do not invent photos for individual headlines or scrape article pages.
     const fallback=element("span", "explorer-art-label",
-      item.category==="markets"?"MARKETS":item.category==="saas"?"BUSINESS":"TECHNOLOGY");
+      COVER_LABELS[appearanceFor(item.category)]);
     artwork.append(fallback);
     const imageUrl=safeNewsImage(item.image_url);
     if(imageUrl) {
@@ -78,7 +79,7 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
       img.decoding="async";
       img.referrerPolicy="no-referrer";
       img.src=imageUrl;
-      img.addEventListener("load",()=>artwork.classList.add("has-publisher-image"));
+      img.addEventListener("load",()=>{if(img.naturalWidth>=160 && img.naturalHeight>=90) artwork.classList.add("has-publisher-image"); else img.remove();});
       img.addEventListener("error",()=>{
         artwork.classList.remove("has-publisher-image");
         img.remove();
