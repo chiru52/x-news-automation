@@ -1004,7 +1004,9 @@ function render() {
   setArchiveVisibility();
   const overview = selectedView === "overview";
   document.querySelector(".feed-section").hidden = overview;
-  $(".studio-view-switch").hidden = !canUseExplorer(selectedView);
+  // The view switch is a CSS class. The $ helper searches by element ID;
+  // using it for a class previously stopped every news-card render.
+  document.querySelector(".studio-view-switch").hidden = !canUseExplorer(selectedView);
   // Restore topic buttons when leaving a news slice. Archive counts require
   // fetching the actual archive, not assuming the current page is complete.
   if(overview || archiveMode())updateTopicAvailability();
@@ -1182,6 +1184,7 @@ async function initialize(background = false) {
   if (feedCheckInProgress) return;
   feedCheckInProgress = true;
   lastFeedCheckAt = Date.now();
+  let displayStarted=false;
   try {
     const {data,fromLive,dailyAdditions} = await readFeedData();
     if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts) ||
@@ -1239,8 +1242,16 @@ async function initialize(background = false) {
       coverageText+previewNote;
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
+    displayStarted=true;
     render();
-  } catch (_) {
+    displayStarted=false;
+  } catch (error) {
+    if (displayStarted) {
+      // A UI exception is not a feed outage: the snapshot was already read.
+      console.error("SignalDesk news rendering failed",error);
+      showNotice("News loaded, but the display encountered an error. Please reload this page.");
+      return;
+    }
     if (!records.length) {
       showNotice("The news feed could not be loaded. Please check the most recent GitHub dashboard build.");
       updateCounts();
