@@ -38,7 +38,7 @@ def is_india_article(article, india_sources: set[str]) -> bool:
 
 
 def select_india_preview_articles(articles, sources, now, *,
-                                  lookback_hours=36, max_articles=15,
+                                  lookback_hours=36, max_articles=50,
                                   exclude_promotional=True):
     """Use the existing safe editorial selector, but on India candidates only.
 
