@@ -51,14 +51,14 @@ class LargerDashboardFeedTests(unittest.TestCase):
     def test_cli_requires_preview_and_safe_cap(self):
         with tempfile.TemporaryDirectory() as directory:
             base = [sys.executable, "-m", "newsbot", "--demo", "--output", directory]
-            for value in ("8", "41", "10000"):
+            for value in ("8", "51", "10000"):
                 completed = subprocess.run(base + ["--preview", "--dashboard-limit", value],
                                            cwd=ROOT, capture_output=True, text=True, timeout=10)
                 self.assertNotEqual(completed.returncode, 0, value)
             not_preview = subprocess.run(base + ["--dashboard-limit", "30"],
                                          cwd=ROOT, capture_output=True, text=True, timeout=10)
             self.assertNotEqual(not_preview.returncode, 0)
-            good = subprocess.run(base + ["--preview", "--dashboard-limit", "30"],
+            good = subprocess.run(base + ["--preview", "--dashboard-limit", "50"],
                                   cwd=ROOT, capture_output=True, text=True, timeout=10)
             self.assertEqual(good.returncode, 0, good.stderr)
             queue = json.loads((Path(directory) / "review_queue.json").read_text("utf-8"))
