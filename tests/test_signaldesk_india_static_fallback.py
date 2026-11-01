@@ -88,8 +88,8 @@ class IndiaStaticFallbackTests(unittest.TestCase):
         self.assertIn('config/extra-news-sources.json',code)
         self.assertIn('source.get("disable_images") is True',code)
         extras=json.loads((ROOT/"config/extra-news-sources.json").read_text())
-        self.assertEqual(len(extras),3)
-        self.assertEqual(len([x for x in extras if x.get('source_type') == 'official_primary']),2)
+        self.assertEqual(len(extras),2)
+        self.assertEqual(len([x for x in extras if x.get('source_type') == 'official_primary']),1)
         self.assertTrue(extras[0]["disable_images"])
         self.assertEqual(extras[0]["category"],"factcheck")
 
