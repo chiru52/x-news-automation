@@ -6,6 +6,7 @@ on:
       - '.github/workflows/live-news-health-audit.yml'
       - 'scripts/check_live_news_worker.py'
       - 'tests/test_live_news_worker_diagnostics.py'
+      - 'scripts/diagnose_rss_sources.py'
   workflow_dispatch:
 
 permissions:
@@ -24,3 +25,5 @@ jobs:
         run: python -m unittest tests.test_live_news_worker_diagnostics -v
       - name: Read public Worker health and feed (no credentials, no writes)
         run: python scripts/check_live_news_worker.py
+      - name: Check only configured India RSS sources (one-off, no writes)
+        run: python -m scripts.diagnose_rss_sources
