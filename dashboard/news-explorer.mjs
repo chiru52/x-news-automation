@@ -19,6 +19,13 @@ const COVER_LABELS=Object.freeze({technology:"TECHNOLOGY",markets:"MARKETS",saas
 export function canUseExplorer(view) {
   return ["all", "global", "india", "trending"].includes(view);
 }
+/** The selected story opens its existing editor immediately in every mode.
+ * Gallery keeps it in a dismissible drawer; layered shows the right pane.
+ */
+export function detailPresentation(mode, drawerOpen, hasStory) {
+  const open=Boolean(hasStory) && (mode==="layered" || (mode==="gallery" && drawerOpen));
+  return {open,shade:open && mode==="gallery",tools:open};
+}
 function element(tag, className, text) {
   const node = document.createElement(tag);
   if (className) node.className = className;
@@ -120,10 +127,10 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   function showDetails() {
     const item = current.find(x => x.id === selectedId);
     if (!item) { detail.hidden = true; shade.hidden = true; renderedId = null; return; }
-    const show = mode === "layered" || drawerOpen;
-    detail.hidden = !show;
-    shade.hidden = !(mode === "gallery" && drawerOpen);
-    if (!show) return;
+    const presentation=detailPresentation(mode,drawerOpen,true);
+    detail.hidden = !presentation.open;
+    shade.hidden = !presentation.shade;
+    if (!presentation.open) return;
     title.textContent = item.title || "Untitled news";
     publisher.textContent = (item.publisher || "Publisher") +
       " · " + (typeof dateLabel === "function" ? dateLabel(item) : "") +
@@ -139,7 +146,7 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
       editorial.replaceChildren(buildFullCard(item));
       renderedId = item.id;
     }
-    tools.hidden = false;
+    tools.hidden = !presentation.tools;
     detail.dataset.open = String(mode === "layered" || drawerOpen);
     if (mode === "gallery" && drawerOpen) close.focus({preventScroll:true});
   }
