@@ -50,3 +50,9 @@ Feed candidates were discovered from publisher pages and dated RSS directories b
 4. Confirm 15-minute schedule, CPU usage, archive writes and cached fallback within free-plan quotas.
 5. Deploy collector separately from Cloudflare Pages; root Wrangler is for the *editorial inbox*, not the news collector. Do not touch production without approval.
 6. Confirm all categories, fact-check labels, dates, sources and page performance in the live preview.
+
+## 2026-11-01 India coverage: 72-hour live parity and PIB
+- Live collector code uses the same **72-hour India / 36-hour Global** date windows as the public preview; failed-feed recovery preserves only eligible dated stories. This is not a live Worker deployment; approval is required before deploying the Worker.
+- Added a clearly attributed **official primary source**, the Press Information Bureau (PIB) press-release RSS listed at https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1. PIB's copyright policy https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx?lang=1&reg=1 allows reproduction of its material with clear attribution but excludes third-party materials. The dashboard uses headline and link only, **never feed summaries or photos**. These are government statements, not independent reporting.
+- Direct RSS retrieval in the Cloudflare Worker runtime has **not** yet been verified. A failed fetch cannot generate invented stories. The India per-source cap is eight and regional max is 50; no guarantee of 50 qualifying stories on a weekend.
+- No X publishing, extra Cron invocation, paid API, or extra KV writes were added. Production deployment and verified live counts are separate tasks.

@@ -206,3 +206,20 @@ test("headline-only official RBI source never redistributes RSS summaries or pho
   assert.equal(data[0].image_url,"");
   assert.equal(data[0].region,"india");
 });
+
+test("India live RSS accepts 36–72h dated stories without loosening Global recency",()=>{
+  const fiftyHours=new Date(NOW-50*3600000).toUTCString();
+  const seventyThreeHours=new Date(NOW-73*3600000).toUTCString();
+  const pib=additionalFeeds.find(feed=>feed.name.startsWith("Press Information Bureau"));
+  assert.ok(pib && pib.region==="india" && pib.headline_only===true && pib.disable_images===true);
+  const official=parseFeed(rss("India government announces new banking technology policy",fiftyHours),pib,NOW);
+  assert.equal(official.length,1);
+  assert.equal(official[0].region,"india");
+  assert.equal(official[0].source_preview,"");
+  assert.equal(official[0].image_url,"");
+  assert.equal(parseFeed(rss("India government announces new banking technology policy",seventyThreeHours),pib,NOW).length,0);
+  assert.equal(parseFeed(rss("Global software firm announces major technology launch",fiftyHours),source,NOW).length,0);
+  const crossBorder=parseFeed(rss("India startup launches new AI enterprise technology",fiftyHours),source,NOW);
+  assert.equal(crossBorder.length,1);
+  assert.equal(crossBorder[0].region,"india");
+});

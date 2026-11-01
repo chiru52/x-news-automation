@@ -53,5 +53,17 @@
     "rights": "official_rss_headline_links_only_rights_review",
     "policy_url": "https://www.rbi.org.in/Scripts/CommunicationPolicy.aspx",
     "headline_only": true
+  },
+  {
+    "name": "Press Information Bureau (official India press releases)",
+    "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
+    "category": "policy",
+    "region": "india",
+    "disable_images": true,
+    "headline_only": true,
+    "attribution": "Official Press Information Bureau, Government of India; cite PIB. Original government announcements, not independent reporting.",
+    "source_type": "official_primary",
+    "rights": "pib_reuse_with_attribution_except_third_party",
+    "policy_url": "https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx?lang=1&reg=1"
   }
 ]

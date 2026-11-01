@@ -58,11 +58,17 @@ def main() -> int:
                     ("india", "markets", "Reserve Bank of India (official notifications)"),
                 "https://www.rbi.org.in/speeches_rss.xml":
                     ("india", "markets", "Reserve Bank of India (official speeches)"),
+                "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1":
+                    ("india", "policy", "Press Information Bureau (official India press releases)"),
             }
             def allowed_preview_source(entry):
                 if not isinstance(entry, dict) or entry.get("disable_images") is not True:
                     return False
                 if entry.get("source_type") == "official_primary":
+                    # India central bank and PIB feeds are headline-and-link only.
+                    if (entry.get("url", "").startswith("https://www.rbi.org.in/") or
+                            entry.get("url", "").startswith("https://pib.gov.in/")) and entry.get("headline_only") is not True:
+                        return False
                     return (entry.get("region"), entry.get("category"), entry.get("name")) == (
                         approved_primary_feeds.get(entry.get("url")))
                 return (entry.get("name") == "Alt News Fact Checks" and
