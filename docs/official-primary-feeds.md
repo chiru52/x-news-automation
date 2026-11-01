@@ -1,17 +1,20 @@
-# Official primary-source coverage (preview only)
+# Official Global financial-policy source (preview only)
 
-## Why these two feeds
-The original publisher shortlist remains unchanged: 8 requested Global entries, 11 India entries. This extension adds **two clearly labelled primary sources** to the separate supplemental news-feed registry, never to the original X publishing-bot sources:
+The user-requested publisher catalogue still contains the original **eight Global and eleven India source entries**. We added one supplementary, clearly identified primary source:
 
-- **Government of India — Press Information Bureau (PIB)**: official government press releases. Its [RSS directory](https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1) advertises the English press-releases feed. Its [copyright policy](https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx?lang=1&reg=1) permits reuse without prior approval when source credit is prominent, content is accurate and not misleading, and **does not extend this right to third-party material**.
-- **U.S. Federal Reserve Board**: official bank policy/regulatory releases. Its [RSS directory](https://www.federalreserve.gov/feeds/feeds.htm) advertises the all-press-releases feed. The [Board disclaimer](https://www.federalreserve.gov/disclaimer.htm) says Board website information is generally public domain unless indicated; any third-party content may have separate rights, and the Board should be cited.
+- **U.S. Federal Reserve Board** (official news, not independent journalism). Its [RSS listing](https://www.federalreserve.gov/feeds/feeds.htm) provides `press_all.xml`. Its [published disclaimer](https://www.federalreserve.gov/disclaimer.htm) says Board information is generally in the public domain unless otherwise indicated, and should be credited. Third-party photos are excluded (`disable_images=true`).
 
-These are **official viewpoints**, not independent journalistic verification. Do not present press releases as unbiased or independently fact-checked reporting. Both entries set `disable_images=true`, so SignalDesk does not redistribute potentially third-party press photos or use official seals as promotional art.
+**Verification:** A bounded, read-only GitHub Actions preflight fetched its RSS successfully on 2026-11-01. The feed contained **20 parsed entries** but **zero published in the past 36 hours**. It is a reliable *occasional* policy source, not a daily volume source.
 
-## Limits and safeguards
-- These entries are added only to `config/extra-news-sources.json`; `config/sources.json` and publishing quota are unchanged. The preview reader only accepts three explicit feed identities and URLs, with images disabled.
-- The static preview already has distinct maximum 50 Global / 50 India articles. Adding two official RSS feeds may improve coverage, but is **not a guarantee of hitting 50**.
-- The read-only Worker import also uses this supplementary config, but is **not deployed by GitHub merge**. Live Worker rollout requires independent permission.
-- This change does not create additional GitHub schedules, third-party data APIs, X posts, secret access or extra services. If a particular source feed returns invalid/empty data, don't invent stories or bypass date and duplicate limits.
-- The preflight script sends one GET per fixed, documented official feed, with bounded response/time and no article fetch, image download or data writes. Check its output before claiming the source is operational.
-- For published policy stories, source attribution should be obvious in the publisher label; verify facts against more than one source when appropriate. Official announcements are not a replacement for your requested independent Indian and world publishers.
+## Indian primary-source candidate deliberately not activated
+
+India's [Press Information Bureau RSS](https://www.pib.gov.in/ViewRss.aspx?lang=1&reg=1) is listed as public, and [PIB's reuse policy](https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx?lang=1&reg=1) permits accurately attributed material with third-party exceptions. However, the feed variants were inspected in the same bounded preflight: the main variant contained zero entries; alternate regional variants contained 20 entries **without individual publication dates**. The news pipeline must not assume that the feed collection time is the story publication time or invent freshness. **PIB therefore remains inactive** until we can verify a dated official feed.
+
+### Scope and safety
+
+- Only the supplemental, read-only RSS list is changed. The original editorial-bot source file, daily X quota and disabled publishing flags remain unchanged.
+- Both active supplemental feeds (Alt News and the Federal Reserve) set `disable_images=true`: third-party rights to photographs are not presumed.
+- Supplementary feed URLs are explicitly pinned in the preview reader, not user-controlled.
+- No extra GitHub schedules, APIs, AI charges or Cloudflare deployments. The live Worker needs a separate deployment and remains untouched.
+- Global maximum remains 50 **qualified recent** stories; India maximum remains 50. This change does **not** guarantee an increase in either count on a given day.
+- Do not mix official press releases with independent newsroom reporting without visibly distinguishing the publisher.
