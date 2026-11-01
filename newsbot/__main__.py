@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
                    render_outputs, save_state, select_articles)
+from .preview_ranking import rank_preview_stories
 from .trend_signals import signals_for_selected
 from .regions import select_india_preview_articles, global_preview_candidates, INDIA_PREVIEW_HOURS
 
@@ -105,6 +106,15 @@ def main() -> int:
                                                          int(settings.get("max_saas_funding_drafts_per_day", 1))),
                               exclude_promotional_headlines=settings.get("exclude_promotional_headlines") is True,
                               max_us_index_futures_per_day=int(settings.get("max_us_index_futures_drafts_per_day", 1)))
+    if args.preview and args.dashboard_limit is not None and not args.demo:
+        # Preview-only editorial Top 50 ranks the COMPLETE eligible RSS pool.
+        # The original X draft selector above and non-preview history remain
+        # unchanged; this override neither writes state nor sends anything.
+        selected = rank_preview_stories(
+            global_pool, now, lookback_hours=int(settings["lookback_hours"]),
+            limit=public_limit, max_per_source=7, max_saas_funding=3,
+            max_us_futures=int(settings.get("max_us_index_futures_drafts_per_day",1)),
+            exclude_promotional=settings.get("exclude_promotional_headlines") is True)
     india_selected = select_india_preview_articles(
         stories, sources, now, lookback_hours=INDIA_PREVIEW_HOURS,
         exclude_promotional=settings.get("exclude_promotional_headlines") is True,
