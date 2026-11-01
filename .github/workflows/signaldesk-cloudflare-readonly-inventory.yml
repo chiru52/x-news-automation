@@ -1,0 +1,45 @@
+name: SignalDesk Cloudflare Worker inventory — READ ONLY
+
+# Manual, independent preparation step. Never deploys or changes any settings.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inventory:
+    if: github.repository == 'chiru52/x-news-automation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Prove read-only GET and fail-closed metadata validation offline
+        run: python -m unittest tests.test_signaldesk_cloudflare_readonly -v
+      - name: Read exact Worker KV binding, Cron, public route and existing rollback version
+        env:
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          SIGNALDESK_CLOUDFLARE_READ_TOKEN: ${{ secrets.SIGNALDESK_CLOUDFLARE_READ_TOKEN }}
+          SIGNALDESK_INVENTORY_ARTIFACT: dist/signaldesk-worker-inventory.json
+        run: |
+          mkdir -p dist
+          python scripts/signaldesk_cloudflare_readonly.py
+      - name: Retain sanitized rollout baseline for human review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: signaldesk-worker-baseline-${{ github.run_id }}
+          path: dist/signaldesk-worker-inventory.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Safety summary
+        if: always()
+        run: |
+          echo "Exact Worker metadata requested using GET only. No Cloudflare writes, Pages deploy, RSS collection, secrets output or X posting." >> "$GITHUB_STEP_SUMMARY"
+          echo "Inventory PASS verifies metadata and rollback candidate ONLY; it does not prove live feed health or authorize deployment." >> "$GITHUB_STEP_SUMMARY"
+          echo "An explicit separate approval is still required before any production change." >> "$GITHUB_STEP_SUMMARY"
