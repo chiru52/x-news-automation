@@ -1,6 +1,7 @@
 import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
 import {isIndiaArticle, eligibleNews, topNews, newsInSection, orderPublicNews} from "./news-sections.mjs";
+import {supplementLiveNews} from "./news-snapshot.mjs";
 import {createNewsExplorer, canUseExplorer} from "./news-explorer.mjs";
 import {safeNewsImage} from "./news-image.mjs";
 import {initializeSourceCatalogue} from "./editorial-sources.mjs";
@@ -19,7 +20,7 @@ const CATEGORIES = {
   policy: {label: "Policy & governance", cls: "policy"},
   factcheck: {label: "Fact-check / analysis", cls: "factcheck"}
 };
-let feedFromLive=false, feedCoverage=null;
+let feedFromLive=false, feedCoverage=null, feedDailyIndiaCount=0;
 let records = [], selectedView = "all", selectedCategory = "all", selectedStage = "all", query = "";
 let reviewOpen=false,reviewLeftId="",reviewRightId="";
 let topicWriterOpen=false;
@@ -225,14 +226,16 @@ async function readFeedData() {
         dynamicDate>Date.now()+10*60*1000) return {data:staticData,fromLive:false};
     // Source diagnostics can be newer than the static build even when news is not.
     if (!(dynamicDate>staticDate)) return {data:staticData,fromLive:false};
+    // A newer live feed need not be fuller than the ranked daily preview.
+    const {data:combined,dailyAdditions}=supplementLiveNews(staticData,dynamic);
     return {data:{
       schema_version:1,generated_at:dynamic.generated_at,
-      news:dynamic.news,
-      india_news:Array.isArray(dynamic.india_news) && dynamic.india_news.length <= 50 ? dynamic.india_news : [],
+      news:combined.news,
+      india_news:combined.india_news,
       drafts:staticData.drafts,
       coverage:boundedFeedCoverage(dynamic.coverage),
       warnings:[...(staticData.warnings||[]),...(dynamic.warnings||[])],
-    },fromLive:true};
+    },fromLive:true,dailyAdditions};
   } catch (_) {
     return {data:staticData,fromLive:false};
   }
@@ -991,7 +994,7 @@ function render() {
     const copiedIndia=records.filter(item=>item.kind==="news"&&isIndiaNews(item)&&workflowStage(item)==="copied");
     $("india-coverage-text").textContent=describeIndiaCoverage({
       items:indiaItems,copiedItems:copiedIndia,fromLive:feedFromLive,
-      coverage:feedCoverage,filtered:selectedCategory!=="all"||Boolean(query)
+      coverage:feedCoverage,supplemented:feedDailyIndiaCount>0,filtered:selectedCategory!=="all"||Boolean(query)
     });
   }
   const inTopic=selectedView==="workflow"&&topicWriterOpen;
@@ -1141,7 +1144,7 @@ async function initialize(background = false) {
   feedCheckInProgress = true;
   lastFeedCheckAt = Date.now();
   try {
-    const {data,fromLive} = await readFeedData();
+    const {data,fromLive,dailyAdditions} = await readFeedData();
     if (data.schema_version !== 1 || !Array.isArray(data.news) || !Array.isArray(data.drafts) ||
         typeof data.generated_at !== "string" || Number.isNaN(new Date(data.generated_at).getTime()))
       throw new Error("Unsupported feed format");
@@ -1179,6 +1182,7 @@ async function initialize(background = false) {
     const coverage=fromLive?boundedFeedCoverage(data.coverage):null;
     feedFromLive=fromLive;
     feedCoverage=coverage;
+    feedDailyIndiaCount=fromLive ? (dailyAdditions?.india || 0) : 0;
     const coverageText=coverage
       ? " · "+coverage.sources_with_recent_stories+"/"+coverage.sources_checked+
         " feeds supplied recent stories"+
@@ -1186,10 +1190,14 @@ async function initialize(background = false) {
         (coverage.retained_news||coverage.retained_india
           ?" · recent headlines retained during outages":"")
       : "";
+    const extraGlobal=fromLive ? (dailyAdditions?.global || 0) : 0;
+    const previewNote=(extraGlobal || feedDailyIndiaCount)
+      ? " · Includes "+extraGlobal+" additional Global and "+feedDailyIndiaCount+" India daily-preview stories absent from the live snapshot (Global 36h, India 72h; original dates retained)."
+      : "";
     $("refresh-note").textContent = (fromLive
       ? "News is collected approximately every 15 minutes. Last refreshed shows the news generation time."
       : "Showing the daily fallback snapshot; the 15-minute live feed is not currently being used. India results reflect available eligible sources, not all India news.")+
-      coverageText;
+      coverageText+previewNote;
     if (data.warnings?.length) showNotice("Feed note: Some sources were unavailable in the latest refresh.");
     updateCounts();
     render();
