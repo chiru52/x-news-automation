@@ -26,5 +26,3 @@ jobs:
         run: python -m unittest tests.test_live_news_worker_diagnostics -v
       - name: Read public Worker health and feed (no credentials, no writes)
         run: python scripts/check_live_news_worker.py
-      - name: One-off official RBI feed read-only preflight
-        run: python -m scripts.probe_official_rss
