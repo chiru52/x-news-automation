@@ -76,6 +76,10 @@
               <button data-filter="saas" class="filter" aria-pressed="false">SaaS</button>
               <button data-filter="markets" class="filter" aria-pressed="false">Markets</button>
             </div>
+            <div class="studio-view-switch explorer-switch" role="group" aria-label="News display mode">
+              <button type="button" class="active" data-explorer-mode="layered" aria-label="Layered view" title="Layered view" aria-pressed="true"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="4" y="5" width="15" height="11" rx="2"/><path d="M2 9v8a3 3 0 0 0 3 3h13"/><path d="M8 2h10a3 3 0 0 1 3 3v9"/></svg></button>
+              <button type="button" data-explorer-mode="gallery" aria-label="Gallery view" title="Gallery view" aria-pressed="false"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.2"/><rect x="14" y="3" width="7" height="7" rx="1.2"/><rect x="3" y="14" width="7" height="7" rx="1.2"/><rect x="14" y="14" width="7" height="7" rx="1.2"/></svg></button>
+            </div>
           </div>
           <section id="workspace-transfer" class="workspace-transfer" aria-label="Local workspace transfer" hidden>
             <div class="workspace-transfer-text"><strong>Keep your editorial work when changing websites</strong>
@@ -191,11 +195,7 @@
             <div><strong>About these India results</strong><p id="india-coverage-text"></p></div>
             <button type="button" id="india-archive-link" class="secondary-action">Explore News Archive</button>
           </section>
-          <details id="source-directory" class="source-directory">
-            <summary>Explore our requested Global &amp; India publishers <span>19 source entries · availability varies</span></summary>
-            <p>These are source requests, not a claim that all outlets are connected. Some publishers require explicit permission before their RSS content can be used publicly.</p>
-            <div id="source-directory-list" class="source-directory-list">Loading source directory…</div>
-          </details>
+
           <p id="feed-disclaimer" class="feed-disclaimer" hidden>Trending is an editorial ranking of the current RSS feed, not X popularity, verified facts, or independent source confirmation.</p>
           <div id="alert" role="status" class="notice" hidden></div>
           <div id="copy-undo" class="copy-undo" role="status" hidden><span id="copy-undo-message"></span><div class="copy-undo-actions"><button id="view-copied" type="button">View copied articles</button><button id="undo-copy" type="button">Undo</button></div></div>
@@ -231,16 +231,17 @@
             </div>
             <div class="explorer-bottom">
               <div class="explorer-arrows" role="group" aria-label="Move between stories"><button class="explorer-prev" type="button" aria-label="Previous story">←</button><button class="explorer-next" type="button" aria-label="Next story">→</button></div>
-              <div class="explorer-switch" role="group" aria-label="News display mode">
-                <button type="button" class="active" data-explorer-mode="layered" aria-pressed="true">Layered</button>
-                <button type="button" data-explorer-mode="gallery" aria-pressed="false">Gallery</button>
-              </div>
             </div>
             <button type="button" class="explorer-shade" aria-label="Close gallery story details" hidden></button>
           </section>
           <div id="cards" class="cards" aria-live="polite" aria-busy="true"></div>
           <div id="more-container" class="more-container" hidden><button id="load-more" type="button" class="load-more">Show more stories</button><span id="more-counter" class="more-counter"></span></div>
           <div id="empty" class="empty" hidden><span class="empty-symbol">⌕</span><h3 id="empty-title">Nothing to show yet</h3><p id="empty-text">Your news feed will appear here when data is available.</p><div class="empty-actions"><button type="button" id="clear-filters" class="secondary-action" hidden>Clear filters</button><button type="button" id="empty-view-copied" class="secondary-action" hidden>View copied articles</button></div></div>
+          <details id="source-directory" class="source-directory">
+            <summary>News sources &amp; coverage <span>Publisher directory · availability varies</span></summary>
+            <p>These are source requests, not a claim that all outlets are connected. Some publishers require explicit permission before their RSS content can be used publicly.</p>
+            <div id="source-directory-list" class="source-directory-list">Loading source directory…</div>
+          </details>
         </section>
         <footer class="footer"><span>SignalDesk — Built for thoughtful sharing</span><span>Suggested posts are unverified. Check sources before copying. No X integration.</span></footer>
       </main>
