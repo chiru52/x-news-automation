@@ -21,7 +21,7 @@ from newsbot.dashboard_export import validate_public_bundle
 root = Path("dist/signaldesk")
 data = json.loads((root / "data.json").read_text(encoding="utf-8"))
 validate_public_bundle(data)
-for file in ("index.html", "app.js", "perspective.mjs", "feed-config.json", "editorial-sources.json", "news-image.mjs", "_headers"):
+for file in ("index.html", "app.js", "perspective.mjs", "feed-config.json", "editorial-sources.json", "news-image.mjs", "news-snapshot.mjs", "_headers"):
     if not (root / file).is_file():
         raise RuntimeError(f"Missing required file: {file}")
 if "topic-writer-toggle" not in (root / "index.html").read_text(encoding="utf-8"):
