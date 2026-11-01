@@ -80,6 +80,10 @@ def main() -> int:
                     # Attribution rights for third-party fact-check images
                     # may be different from the publisher's original prose.
                     items = [replace(item, image_url="") for item in items]
+                if source.get("headline_only") is True:
+                    # Minimal reuse: official headline and outbound source link,
+                    # never reprint the article text or feed summary.
+                    items = [replace(item, summary="") for item in items]
                 stat["parsed_articles"] = len(items)
                 stat["recent_articles"] = sum(
                     earliest <= datetime.fromisoformat(item.published_at) <= now + timedelta(minutes=10)
