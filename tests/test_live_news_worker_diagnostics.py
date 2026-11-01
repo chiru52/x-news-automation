@@ -19,7 +19,7 @@ class LiveNewsWorkerDiagnosticsTests(unittest.TestCase):
 
     def test_freshness_does_not_accept_stale_or_invalid_news(self):
         now = dt.datetime(2026, 10, 31, 10, 0, tzinfo=dt.timezone.utc)
-        good = {"schema_version": 1, "news": [{}] * 5,
+        good = {"schema_version": 1, "news": [{}] * 5, "india_news": [],
                 "generated_at": "2026-10-31T09:45:00Z"}
         self.assertEqual(freshness_verdict(good, now)[0], "PASS")
         self.assertEqual(freshness_verdict(
@@ -30,6 +30,19 @@ class LiveNewsWorkerDiagnosticsTests(unittest.TestCase):
             {**good, "news": []}, now)[0], "FAIL")
         self.assertEqual(freshness_verdict(
             {**good, "generated_at": "not a date"}, now)[0], "FAIL")
+
+    def test_live_snapshot_supports_two_independent_50_story_regions(self):
+        now = dt.datetime(2026, 10, 31, 10, tzinfo=dt.timezone.utc)
+        good = {"schema_version": 1, "news": [{}]*50,
+                "india_news": [{"region":"india"}]*50,
+                "generated_at": "2026-10-31T09:45:00Z"}
+        verdict, details = freshness_verdict(good, now)
+        self.assertEqual(verdict, "PASS")
+        self.assertIn("50 Global / 50 India", details)
+        self.assertEqual(freshness_verdict({**good, "news":[{}]*51}, now)[0], "FAIL")
+        self.assertEqual(freshness_verdict({**good, "india_news":None}, now)[0], "FAIL")
+        self.assertEqual(freshness_verdict({
+            **good, "india_news":[{"region":"global"}]}, now)[0], "FAIL")
 
     def test_public_preview_inspection_uses_only_fixed_static_assets(self):
         import json
@@ -82,7 +95,7 @@ class LiveNewsWorkerDiagnosticsTests(unittest.TestCase):
             seen.append((path, origin))
             body = {"status": "read_only", "x_posting_enabled": False}
             if path == "/feed":
-                body = {"schema_version": 1, "news": [{}] * 6,
+                body = {"schema_version": 1, "news": [{}] * 6, "india_news": [],
                         "generated_at": "2026-10-31T09:50:00Z"}
             return {"status": 200, "headers": {
                 "Access-Control-Allow-Origin": origin

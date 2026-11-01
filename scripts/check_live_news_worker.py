@@ -16,7 +16,7 @@ ROOT = "https://signaldesk-news-feed.littlekingchess.workers.dev"
 PREVIEW = "https://signaldesk-preview.pages.dev"
 PRODUCTION = "https://news.littlekingchess.com"
 UNTRUSTED = "https://unapproved.example"
-MAX_BYTES = 120_000
+MAX_BYTES = 300_000  # Room for up to 50 per region; bounded public GET
 TIMEOUT_SECONDS = 12
 
 
@@ -57,8 +57,13 @@ def freshness_verdict(body: object, now: dt.datetime) -> tuple[str, str]:
     if not isinstance(body, dict) or body.get("schema_version") != 1:
         return "UNKNOWN", "No schema-v1 JSON snapshot returned"
     stories = body.get("news")
-    if not isinstance(stories, list) or not 5 <= len(stories) <= 40:
-        return "FAIL", "Snapshot has fewer than 5 or more than 40 news stories"
+    if not isinstance(stories, list) or not 5 <= len(stories) <= 50:
+        return "FAIL", "Snapshot has fewer than 5 or more than 50 Global stories"
+    india = body.get("india_news")
+    if not isinstance(india, list) or len(india) > 50 or any(
+        not isinstance(item, dict) or item.get("region") != "india" for item in india
+    ):
+        return "FAIL", "Separate India feed missing or malformed"
     stamp = body.get("generated_at")
     if not isinstance(stamp, str):
         return "FAIL", "Snapshot missing timestamp"
@@ -71,7 +76,7 @@ def freshness_verdict(body: object, now: dt.datetime) -> tuple[str, str]:
         return "FAIL", "Snapshot timestamp invalid"
     if age < -10 or age > 90:
         return "FAIL", f"Snapshot age outside the allowed range ({age:.0f} minutes)"
-    return "PASS", f"{len(stories)} records, snapshot age {age:.0f} minutes"
+    return "PASS", f"{len(stories)} Global / {len(india)} India records, snapshot age {age:.0f} minutes"
 
 
 def run(fetcher=read_public, now: dt.datetime | None = None):
