@@ -8,17 +8,6 @@
     "attribution": "CC BY 3.0; verify third-party exceptions"
   },
   {
-    "name": "Government of India — PIB (official releases)",
-    "url": "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
-    "category": "policy",
-    "region": "india",
-    "disable_images": true,
-    "attribution": "Official Press Information Bureau release; cite PIB. PIB copyright policy permits reproduction with credit except third-party content.",
-    "source_type": "official_primary",
-    "rights": "pib_reuse_with_credit",
-    "policy_url": "https://www.pib.gov.in/content/132_2_Copyright-Policy.aspx?lang=1&reg=1"
-  },
-  {
     "name": "US Federal Reserve (official releases)",
     "url": "https://www.federalreserve.gov/feeds/press_all.xml",
     "category": "markets",
