@@ -144,8 +144,7 @@ def article_image(item):
     # HTML within the article's own RSS summary or content, never the feed logo.
     for path in ("description", f"{CONTENT_NS}encoded",
                  f"{ATOM_NS}summary", f"{ATOM_NS}content"):
-        node = item.find(path)
-        if node is not None:
+        for node in item.findall(path):
             url = image_from_embedded_html(node.text)
             if url:
                 return url
