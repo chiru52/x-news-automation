@@ -1,6 +1,6 @@
 import {postStarters, researchGuide, draftFromNotes, threadOutline, reviewThread, approximateXCharacters as studioXCharacters} from "./studio.mjs";
 import {nextFeedCheckAt, shouldCheckAfterReturn} from "./refresh-clock.mjs";
-import {isIndiaArticle, eligibleNews, topNews, newsInSection, orderPublicNews} from "./news-sections.mjs";
+import {isIndiaArticle, eligibleNews, topNews, newsInSection, orderPublicNews, topicAvailability} from "./news-sections.mjs";
 import {supplementLiveNews} from "./news-snapshot.mjs";
 import {createNewsExplorer, canUseExplorer} from "./news-explorer.mjs";
 import {safeNewsImage} from "./news-image.mjs";
@@ -621,6 +621,7 @@ function setView(view) {
 // Archive is server-paginated: do not infer category availability from one page.
 function updateTopicAvailability(items=null){
   const rows=Array.isArray(items) ? items : null;
+  const counts=rows ? topicAvailability(rows) : null;
   for(const button of document.querySelectorAll(".filters [data-filter]")){
     const category=button.dataset.filter;
     if(!rows){
@@ -630,8 +631,7 @@ function updateTopicAvailability(items=null){
       button.removeAttribute("aria-label");
       continue;
     }
-    const count=category==="all" ? rows.length :
-      rows.filter(item=>item.category===category).length;
+    const count=counts[category]??0;
     button.dataset.topicCount=String(count);
     const name=button.textContent.trim();
     button.setAttribute("aria-label",name+" ("+count+" available)");
