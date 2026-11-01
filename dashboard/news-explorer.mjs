@@ -56,7 +56,8 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   const shade = root.querySelector(".explorer-shade");
   const prev = root.querySelector(".explorer-prev");
   const next = root.querySelector(".explorer-next");
-  const modes = [...root.querySelectorAll("[data-explorer-mode]")];
+  // View controls live in the sticky top toolbar, outside the Explorer node.
+  const modes = [...document.querySelectorAll("[data-explorer-mode]")];
   let mode = "layered", current = [], selectedId = null, drawerOpen = false, paused = false;
   let manualPause = false, renderedId = null;
   let touchStart = null;
@@ -119,7 +120,10 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
       tile.style.zIndex = mode === "layered" ? String(12 - Math.abs(d)) : "";
     }
     const total = current.length;
-    count.textContent = total + " " + (total === 1 ? "story" : "stories") +
+    const matchingBeforeTopic=Number(root.dataset.topicTotal)||total;
+    count.textContent = (matchingBeforeTopic>total
+      ? total+" of "+matchingBeforeTopic+" stories"
+      : total+" "+(total===1 ? "story" : "stories")) +
       (root.dataset.scope === "india" ? " · PAST 72 HOURS" : "");
     selectedCount.textContent = total ? (index + 1) + " / " + total : "0 / 0";
     prev.disabled = next.disabled = total < 2;
@@ -167,6 +171,7 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
   }
   function paintView() {
     root.dataset.mode = mode;
+    document.body.dataset.newsLayout = mode; // Gallery-only sticky toolbar.
     modes.forEach(button => {
       const chosen = button.dataset.explorerMode === mode;
       button.classList.toggle("active",chosen);
