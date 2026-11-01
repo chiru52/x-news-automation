@@ -9,7 +9,7 @@ from pathlib import Path
 from .core import (Article, fetch_feed, load_state, make_preview_state, parse_feed,
                    render_outputs, save_state, select_articles)
 from .trend_signals import signals_for_selected
-from .regions import select_india_preview_articles, explicit_india_sources, is_india_article
+from .regions import select_india_preview_articles, global_preview_candidates
 
 
 def main() -> int:
@@ -82,9 +82,7 @@ def main() -> int:
     # The public site has TWO independent regional capacities. Never allow
     # India candidates to consume Global slots and then drop them on export.
     # Keep the existing all-source editorial/X draft behavior unchanged.
-    global_pool = ([article for article in stories
-                    if not is_india_article(article, explicit_india_sources(sources))]
-                   if args.preview else stories)
+    global_pool = global_preview_candidates(stories, sources) if args.preview else stories
     selected = select_articles(global_pool, selection_state, now, daily_limit=public_limit,
                                lookback_hours=int(settings["lookback_hours"]),
                                timezone_name=settings["timezone"],
