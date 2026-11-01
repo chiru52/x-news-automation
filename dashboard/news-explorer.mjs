@@ -112,7 +112,8 @@ export function createNewsExplorer(root, { buildFullCard, dateLabel, onModeChang
       tile.style.zIndex = mode === "layered" ? String(12 - Math.abs(d)) : "";
     }
     const total = current.length;
-    count.textContent = total + " " + (total === 1 ? "story" : "stories");
+    count.textContent = total + " " + (total === 1 ? "story" : "stories") +
+      (root.dataset.scope === "india" ? " · PAST 72 HOURS" : "");
     selectedCount.textContent = total ? (index + 1) + " / " + total : "0 / 0";
     prev.disabled = next.disabled = total < 2;
   }
