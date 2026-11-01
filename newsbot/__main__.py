@@ -47,11 +47,22 @@ def main() -> int:
             # The ordinary editorial bot, its publishing quotas and config
             # remain unchanged. Never accept arbitrary visitor-supplied URLs.
             extras = json.loads(Path("config/extra-news-sources.json").read_text(encoding="utf-8"))
+            approved_primary_feeds = {
+                "https://www.federalreserve.gov/feeds/press_all.xml":
+                    ("global", "markets", "US Federal Reserve (official releases)"),
+            }
+            def allowed_preview_source(entry):
+                if not isinstance(entry, dict) or entry.get("disable_images") is not True:
+                    return False
+                if entry.get("source_type") == "official_primary":
+                    return (entry.get("region"), entry.get("category"), entry.get("name")) == (
+                        approved_primary_feeds.get(entry.get("url")))
+                return (entry.get("name") == "Alt News Fact Checks" and
+                        entry.get("url") == "https://www.altnews.in/feed/" and
+                        entry.get("region") == "india" and entry.get("category") == "factcheck")
             if (not isinstance(extras, list) or len(extras) > 4 or
-                    any(entry.get("region") != "india" or
-                        entry.get("category") not in ("factcheck", "policy", "world") or
-                        not str(entry.get("url", "")).startswith("https://")
-                        for entry in extras)):
+                    len({entry.get("url") for entry in extras if isinstance(entry, dict)}) != len(extras) or
+                    any(not allowed_preview_source(entry) for entry in extras)):
                 parser.error("Invalid preview-only supplemental source configuration")
             sources = sources + extras
         earliest = now - timedelta(hours=int(settings["lookback_hours"]))

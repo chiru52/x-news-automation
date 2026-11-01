@@ -6,6 +6,8 @@ on:
       - '.github/workflows/live-news-health-audit.yml'
       - 'scripts/check_live_news_worker.py'
       - 'tests/test_live_news_worker_diagnostics.py'
+      - 'scripts/probe_official_rss.py'
+      - 'config/extra-news-sources.json'
   workflow_dispatch:
 
 permissions:

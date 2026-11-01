@@ -6,5 +6,16 @@
     "region": "india",
     "disable_images": true,
     "attribution": "CC BY 3.0; verify third-party exceptions"
+  },
+  {
+    "name": "US Federal Reserve (official releases)",
+    "url": "https://www.federalreserve.gov/feeds/press_all.xml",
+    "category": "markets",
+    "region": "global",
+    "disable_images": true,
+    "attribution": "Official U.S. Federal Reserve Board release; cite the Board. Not independent reporting.",
+    "source_type": "official_primary",
+    "rights": "fed_public_domain_except_third_party",
+    "policy_url": "https://www.federalreserve.gov/disclaimer.htm"
   }
 ]
