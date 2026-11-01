@@ -116,7 +116,8 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
     result.push({
       title, source_url:link, publisher:feed.name, feed_url:feed.url,
       category:feed.category, published_at:new Date(date).toISOString(),
-      source_preview:preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
+      source_preview:feed.headline_only ? "" :
+        preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
       image_url:feed.disable_images ? "" : image_url,
       region:feed.region === "india" || INDIA_MARKERS.test(title) ||
         INDIA_PREVIEW_CONTEXT.test(preview) || INDIA_LOCAL_CONTEXT.test(preview) ? "india" : "global",
