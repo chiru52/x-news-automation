@@ -85,7 +85,7 @@ test("draft editor is preserved on same story and user interactions stop automat
 });
 
 test("Layered uses the empty header-side space for a full editorial panel",()=>{
-  const section=css.split("/* Layered editorial layout:",2)[1]||"";
+  const section=(css.split("/* Layered editorial layout:",2)[1]||"").split("/* Discovery toolbar:",1)[0];
   assert.ok(section,"Layered-only layout override is present");
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-stage\s*\{\s*display:contents;/);
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-detail\s*\{\s*grid-column:2;\s*grid-row:1 \/ span 2;/);
@@ -94,7 +94,7 @@ test("Layered uses the empty header-side space for a full editorial panel",()=>{
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-bottom\s*\{\s*grid-column:1 \/ -1;\s*grid-row:3;/);
 });
 test("Layered removes the small internal scroller, compacts heading and preserves responsive layout",()=>{
-  const section=css.split("/* Layered editorial layout:",2)[1]||"";
+  const section=(css.split("/* Layered editorial layout:",2)[1]||"").split("/* Discovery toolbar:",1)[0];
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-detail\s*\{\s*max-height:none;\s*overflow:visible;/);
   assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-heading h2\s*\{\s*font-size:clamp\(35px,3\.65vw,50px\)/);
   assert.match(section,/@media\(min-width:960px\)/);
