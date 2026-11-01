@@ -7,7 +7,7 @@ if [[ "${SIGNALDESK_PREVIEW_BUILD:-}" != "true" ]]; then
   exit 1
 fi
 export PUBLISH_ENABLED=false
-python3 -m newsbot --preview --dashboard-limit 30 --output output/dashboard-news
+python3 -m newsbot --preview --dashboard-limit 50 --output output/dashboard-news
 printf '[]\n' > output/dashboard-news/empty-issues.json
 python3 -m newsbot.dashboard_export \
   --queue output/dashboard-news/review_queue.json \
@@ -21,7 +21,7 @@ from newsbot.dashboard_export import validate_public_bundle
 root = Path("dist/signaldesk")
 data = json.loads((root / "data.json").read_text(encoding="utf-8"))
 validate_public_bundle(data)
-for file in ("index.html", "app.js", "perspective.mjs", "feed-config.json", "_headers"):
+for file in ("index.html", "app.js", "perspective.mjs", "feed-config.json", "editorial-sources.json", "news-image.mjs", "_headers"):
     if not (root / file).is_file():
         raise RuntimeError(f"Missing required file: {file}")
 if "topic-writer-toggle" not in (root / "index.html").read_text(encoding="utf-8"):
