@@ -1066,7 +1066,8 @@ body.news-focus-mode .footer{margin-top:15px}
   }
   body.news-focus-mode .news-explorer{min-height:0}
   /* The editor should not shrink below readable width with a 242px sidebar. */
-  @media(max-width:1190px){
+}
+@media(min-width:851px) and (max-width:1190px){
     body:not(.sidebar-collapsed) .news-explorer[data-mode="layered"]{display:block}
     body:not(.sidebar-collapsed) .news-explorer[data-mode="layered"] .explorer-stage{
       display:flex;flex-direction:column;align-items:stretch;padding:0 12px 10px;gap:6px;
@@ -1078,7 +1079,6 @@ body.news-focus-mode .footer{margin-top:15px}
       width:auto;margin:0 4px 8px;
     }
     body:not(.sidebar-collapsed) .news-explorer[data-mode="layered"] .explorer-bottom{margin:8px 18px 15px}
-  }
 }
 @media(max-width:850px){
   /* Keep the existing one-row mobile header and its menu button, but turn
