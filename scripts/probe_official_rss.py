@@ -7,6 +7,7 @@ does not respond should be disabled before any production release.
 import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from xml.etree import ElementTree as ET
 from newsbot.core import fetch_feed, parse_feed
 from newsbot.regions import is_india_article, explicit_india_sources
 
@@ -19,12 +20,23 @@ def probe():
     extras=json.loads((ROOT/"config/extra-news-sources.json").read_text(encoding="utf-8"))
     targets=[s for s in extras if s.get("source_type")=="official_primary" and s.get("url") in ALLOWED]
     now=datetime.now(timezone.utc)
+    # Official PIB regions are alternate RSS listings; diagnose, don't silently
+    # insert a new feed until a valid parser-compatible endpoint is confirmed.
+    pib={"name":"PIB alternate RSS diagnostic","region":"india","category":"policy"}
+    targets += [
+        {**pib,"url":"https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3"},
+        {**pib,"url":"https://www.pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=3&reg=48"},
+    ]
     results=[]
     for source in targets:
         result={"publisher":source["name"],"status":"unverified",
                 "items":0,"recent_36h":0,"images":0,"region":source["region"]}
         try:
             raw=fetch_feed(source["url"],timeout=9,max_bytes=500_000)
+            xml=ET.fromstring(raw)
+            result["xml_root"]=xml.tag[:85]
+            result["xml_items"]=len(xml.findall("./channel/item"))
+            result["xml_bytes"]=len(raw)
             items=parse_feed(raw,source["name"],source["category"])
             recent=[x for x in items
                     if now-timedelta(hours=36)<=datetime.fromisoformat(x.published_at)
