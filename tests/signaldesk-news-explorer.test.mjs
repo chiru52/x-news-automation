@@ -83,3 +83,27 @@ test("draft editor is preserved on same story and user interactions stop automat
   assert.match(app,/const currentDraft = \(\) => edits\.has\(item\.id\) \? edits\.get\(item\.id\) : suggestion/);
   assert.doesNotMatch(module,/publishToX|sendPost|twitter\.com\/intent/);
 });
+
+test("Layered uses the empty header-side space for a full editorial panel",()=>{
+  const section=css.split("/* Layered editorial layout:",2)[1]||"";
+  assert.ok(section,"Layered-only layout override is present");
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-stage\s*\{\s*display:contents;/);
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-detail\s*\{\s*grid-column:2;\s*grid-row:1 \/ span 2;/);
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-heading\s*\{\s*grid-column:1;\s*grid-row:1;/);
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-canvas\s*\{\s*grid-column:1;\s*grid-row:2;/);
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-bottom\s*\{\s*grid-column:1 \/ -1;\s*grid-row:3;/);
+});
+test("Layered removes the small internal scroller, compacts heading and preserves responsive layout",()=>{
+  const section=css.split("/* Layered editorial layout:",2)[1]||"";
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-detail\s*\{\s*max-height:none;\s*overflow:visible;/);
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-heading h2\s*\{\s*font-size:clamp\(35px,3\.65vw,50px\)/);
+  assert.match(section,/@media\(min-width:960px\)/);
+  assert.match(section,/@media\(max-width:959px\)/);
+  assert.match(section,/\.news-explorer\[data-mode="layered"\] \.explorer-stage\s*\{\s*display:flex;\s*flex-direction:column;/);
+  assert.doesNotMatch(section,/\.news-explorer\[data-mode="gallery"\]/);
+  assert.match(css,/\.news-explorer\[data-mode="gallery"\] \.explorer-detail:not\(\[hidden\]\)/);
+  // Preserve existing editor and workflow controls; no duplicate click required.
+  assert.match(html,/class="explorer-tools" id="explorer-tools"/);
+  assert.doesNotMatch(html,/Open all editorial tools/);
+  assert.doesNotMatch(section,/url\(['"]?https?:\/\//);
+});
