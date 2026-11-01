@@ -10,7 +10,8 @@ from .core import (Article, fetch_feed, load_state, make_preview_state, parse_fe
                    render_outputs, save_state, select_articles)
 from .preview_ranking import rank_preview_stories
 from .trend_signals import signals_for_selected
-from .regions import select_india_preview_articles, global_preview_candidates, INDIA_PREVIEW_HOURS
+from .regions import (select_india_preview_articles, global_preview_candidates,
+                      explicit_india_sources, is_india_article, INDIA_PREVIEW_HOURS)
 
 
 def main() -> int:
@@ -53,6 +54,10 @@ def main() -> int:
                     ("global", "markets", "US Federal Reserve (official releases)"),
                 "https://www.rbi.org.in/pressreleases_rss.xml":
                     ("india", "markets", "Reserve Bank of India (official press releases)"),
+                "https://www.rbi.org.in/notifications_rss.xml":
+                    ("india", "markets", "Reserve Bank of India (official notifications)"),
+                "https://www.rbi.org.in/speeches_rss.xml":
+                    ("india", "markets", "Reserve Bank of India (official speeches)"),
             }
             def allowed_preview_source(entry):
                 if not isinstance(entry, dict) or entry.get("disable_images") is not True:
@@ -63,15 +68,19 @@ def main() -> int:
                 return (entry.get("name") == "Alt News Fact Checks" and
                         entry.get("url") == "https://www.altnews.in/feed/" and
                         entry.get("region") == "india" and entry.get("category") == "factcheck")
-            if (not isinstance(extras, list) or len(extras) > 4 or
+            if (not isinstance(extras, list) or len(extras) > 6 or
                     len({entry.get("url") for entry in extras if isinstance(entry, dict)}) != len(extras) or
                     any(not allowed_preview_source(entry) for entry in extras)):
                 parser.error("Invalid preview-only supplemental source configuration")
             sources = sources + extras
         earliest = now - timedelta(hours=int(settings["lookback_hours"]))
+        # India preview allows valid articles from the preceding 72h.
+        india_cutoff = now - timedelta(hours=INDIA_PREVIEW_HOURS)
+        india_sources = explicit_india_sources(sources) if args.preview else set()
         for source in sources:
             stat = {"source": source["name"], "category": source.get("category", "technology"),
-                    "parsed_articles": 0, "recent_articles": 0, "status": "error"}
+                    "parsed_articles": 0, "recent_articles": 0,
+                    "recent_global": 0, "recent_india": 0, "status": "error"}
             try:
                 data = fetch_feed(source["url"], timeout=int(settings["request_timeout_seconds"]),
                                   max_bytes=int(settings["maximum_feed_bytes"]))
@@ -85,9 +94,17 @@ def main() -> int:
                     # never reprint the article text or feed summary.
                     items = [replace(item, summary="") for item in items]
                 stat["parsed_articles"] = len(items)
-                stat["recent_articles"] = sum(
+                recent_global = sum(
                     earliest <= datetime.fromisoformat(item.published_at) <= now + timedelta(minutes=10)
+                    and (not args.preview or not is_india_article(item, india_sources))
                     for item in items)
+                recent_india = sum(
+                    india_cutoff <= datetime.fromisoformat(item.published_at) <= now + timedelta(minutes=10)
+                    and is_india_article(item, india_sources)
+                    for item in items) if args.preview else 0
+                stat["recent_global"] = recent_global
+                stat["recent_india"] = recent_india
+                stat["recent_articles"] = recent_global + recent_india
                 stat["status"] = ("ok" if stat["recent_articles"] else
                                   "no_recent_items" if items else "empty_or_unparseable")
                 stories.extend(items)
@@ -135,7 +152,8 @@ def main() -> int:
     print(f"Collected {len(stories)} articles, drafted {len(selected)}, feed errors {len(errors)}")
     for item in diagnostics:
         print(f"FEED {item['source']}: {item['parsed_articles']} parsed, "
-              f"{item['recent_articles']} recent, status={item['status']}")
+              f"{item['recent_articles']} recent (Global 36h: {item['recent_global']}, "
+              f"India 72h: {item['recent_india']}), status={item['status']}")
     print("SAFETY: no AI or publishing API called; no X posts sent.")
     if args.preview:
         print("PREVIEW: daily draft quota and persisted history were not changed.")
