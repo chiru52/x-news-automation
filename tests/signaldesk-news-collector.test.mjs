@@ -133,7 +133,7 @@ test("cron is the only thing fetching RSS; visitors only read cache",async()=>{
   assert.ok(network>0 && network<=24);
   const r=await handleRequest(new Request("https://feed.example/feed"),{NEWS_CACHE:kv});
   assert.equal(r.status,503);
-  assert.equal(network,20);
+  assert.equal(network,21);
 });
 test("collector stores one safe shared snapshot and reader never starts collection",async()=>{
   const cache=new Map();const calls=[];
@@ -163,7 +163,7 @@ test("collector stores one safe shared snapshot and reader never starts collecti
   assert.ok(data.india_news.length<=50);
   assert.equal(data.news.length,out.count);
   assert.equal(calls.filter(x=>x==="get").length,2); // archive merge read and visitor live feed read
-  assert.equal(counter,20); // One Cron fetch per configured publisher; visitors never do.
+  assert.equal(counter,21); // One Cron fetch per configured publisher; visitors never do.
   assert.equal((await handleRequest(new Request("https://feed.example/health"),{NEWS_CACHE:kv})).status,200);
   assert.equal((await handleRequest(new Request("https://feed.example/feed",{method:"POST"}),{NEWS_CACHE:kv})).status,405);
 });
@@ -185,4 +185,21 @@ test("India-specific RBI regulatory context in RSS summary qualifies but generic
   assert.equal(parseFeed(india,source,NOW)[0].region,"india");
   const generic=rss("AI software company updates enterprise product");
   assert.equal(parseFeed(generic,source,NOW)[0].region,"global");
+});
+
+test("headline-only official RBI source never redistributes RSS summaries or photos",()=>{
+  const xml='<?xml version="1.0"?><rss><channel><item>'+
+    '<title>Reserve Bank announces new banking policy in India</title>'+
+    '<link>https://www.rbi.org.in/test-official-announcement</link>'+
+    '<pubDate>'+new Date(NOW-3*60*60000).toUTCString()+'</pubDate>'+
+    '<description>Publisher summary content that must not be redistributed</description>'+
+    '</item></channel></rss>';
+  const feed={name:"Reserve Bank of India (official press releases)",
+    url:"https://www.rbi.org.in/pressreleases_rss.xml",
+    category:"markets",region:"india",disable_images:true,headline_only:true};
+  const data=parseFeed(xml,feed,NOW);
+  assert.equal(data.length,1);
+  assert.equal(data[0].source_preview,"");
+  assert.equal(data[0].image_url,"");
+  assert.equal(data[0].region,"india");
 });

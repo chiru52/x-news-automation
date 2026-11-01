@@ -17,5 +17,17 @@
     "source_type": "official_primary",
     "rights": "fed_public_domain_except_third_party",
     "policy_url": "https://www.federalreserve.gov/disclaimer.htm"
+  },
+  {
+    "name": "Reserve Bank of India (official press releases)",
+    "url": "https://www.rbi.org.in/pressreleases_rss.xml",
+    "category": "markets",
+    "region": "india",
+    "disable_images": true,
+    "attribution": "Official Reserve Bank of India announcement; cite RBI and link to the original. Not independent reporting.",
+    "source_type": "official_primary",
+    "rights": "official_rss_headline_links_only_rights_review",
+    "policy_url": "https://www.rbi.org.in/Scripts/CommunicationPolicy.aspx",
+    "headline_only": true
   }
 ]

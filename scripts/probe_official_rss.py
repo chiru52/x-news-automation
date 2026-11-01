@@ -9,12 +9,13 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from xml.etree import ElementTree as ET
 from newsbot.core import fetch_feed, parse_feed
-from newsbot.regions import is_india_article, explicit_india_sources
+from newsbot.regions import is_india_article, explicit_india_sources, select_india_preview_articles
 
 ROOT=Path(__file__).resolve().parents[1]
 ALLOWED={
   "https://pib.gov.in/RssMain.aspx?ModId=6&Lang=1&Regid=1",
   "https://www.federalreserve.gov/feeds/press_all.xml",
+  "https://www.rbi.org.in/pressreleases_rss.xml",
 }
 def probe():
     extras=json.loads((ROOT/"config/extra-news-sources.json").read_text(encoding="utf-8"))
@@ -30,7 +31,7 @@ def probe():
     results=[]
     for source in targets:
         result={"publisher":source["name"],"status":"unverified",
-                "items":0,"recent_36h":0,"images":0,"region":source["region"]}
+                "items":0,"recent_36h":0,"recent_72h":0,"images":0,"region":source["region"]}
         try:
             raw=fetch_feed(source["url"],timeout=9,max_bytes=500_000)
             xml=ET.fromstring(raw)
@@ -51,9 +52,13 @@ def probe():
             recent=[x for x in items
                     if now-timedelta(hours=36)<=datetime.fromisoformat(x.published_at)
                     <=now+timedelta(minutes=10)]
-            result.update(status="rss_ok" if items else "empty",items=len(items),
+            india_window=[x for x in items if now-timedelta(hours=72)<=datetime.fromisoformat(x.published_at)<=now+timedelta(minutes=10)]
+            result.update(recent_72h=len(india_window),status="rss_ok" if items else "empty",items=len(items),
                           recent_36h=len(recent),images=sum(bool(x.image_url) for x in recent))
             region=explicit_india_sources(extras)
+            if source["region"]=="india":
+                result["eligible_india_top50"] = len(select_india_preview_articles(
+                    items, extras, now))
             result["recent_in_expected_region"]=sum(
                 is_india_article(item,region)==(source["region"]=="india")
                 for item in recent)
