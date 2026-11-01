@@ -616,6 +616,30 @@ function setView(view) {
   render();
   if(view === "archive") loadHistory(0);
 }
+// Counts come from the current regional/workflow slice *before* applying a
+// topic chip. Unavailable topics cannot open a misleading empty gallery.
+// Archive is server-paginated: do not infer category availability from one page.
+function updateTopicAvailability(items=null){
+  const rows=Array.isArray(items) ? items : null;
+  for(const button of document.querySelectorAll(".filters [data-filter]")){
+    const category=button.dataset.filter;
+    if(!rows){
+      button.disabled=false;
+      button.removeAttribute("data-topic-count");
+      button.removeAttribute("title");
+      button.removeAttribute("aria-label");
+      continue;
+    }
+    const count=category==="all" ? rows.length :
+      rows.filter(item=>item.category===category).length;
+    button.dataset.topicCount=String(count);
+    const name=button.textContent.trim();
+    button.setAttribute("aria-label",name+" ("+count+" available)");
+    button.title=count ? count+" matching "+(count===1?"item":"items") :
+      "No "+name+" stories in the current selection";
+    button.disabled=category!=="all" && count===0 && category!==selectedCategory;
+  }
+}
 function setCategory(category) {
   selectedCategory = category;
   visibleCount = 12;
@@ -980,6 +1004,10 @@ function render() {
   setArchiveVisibility();
   const overview = selectedView === "overview";
   document.querySelector(".feed-section").hidden = overview;
+  $(".studio-view-switch").hidden = !canUseExplorer(selectedView);
+  // Restore topic buttons when leaving a news slice. Archive counts require
+  // fetching the actual archive, not assuming the current page is complete.
+  if(overview || archiveMode())updateTopicAvailability();
   if (overview) {
     applyExplorerFocus(false);
     newsExplorer.hide();
@@ -1008,6 +1036,7 @@ function render() {
   $("review-desk-toggle").setAttribute("aria-expanded",String(inReview));
   document.querySelector(".toolbar").classList.toggle("review-mode",inReview||inTopic);
   if(inTopic||inReview){
+    updateTopicAvailability();
     applyExplorerFocus(false);
     newsExplorer.hide();
     $("more-container").hidden=true;
@@ -1052,7 +1081,6 @@ function render() {
     if (selectedView === "workflow" && selectedStage !== "drafts" &&
         selectedStage !== "all" && workflowStage(item) !== selectedStage) return false;
     if (selectedView === "saved" && !saved.has(item.id)) return false;
-    if (selectedCategory !== "all" && item.category !== selectedCategory) return false;
     if (query && ![item.title, item.description, item.publisher, item.post]
       .some(t => clean(t).toLocaleLowerCase().includes(query))) return false;
     return true;
@@ -1071,12 +1099,20 @@ function render() {
       return true;
     });
   }
+  // Compute topic counts from genuine, deduplicated candidate stories.
+  // A selected category stays enabled if a user search temporarily has zero
+  // matches, so Clear filters can recover without losing their selection.
+  updateTopicAvailability(list);
+  const totalBeforeTopic=list.length;
+  if(selectedCategory!=="all")list=list.filter(item=>item.category===selectedCategory);
   const noun = ["all","trending","global","india"].includes(selectedView) ? "story" : "item";
-  $("result-count").textContent = list.length + " " + noun + (list.length === 1 ? "" : "s");
+  $("result-count").textContent = list.length + (selectedCategory!=="all" ? " of "+totalBeforeTopic : "") +
+    " " + noun + (list.length === 1 ? "" : "s");
   const target = $("cards");
   const useExplorer=canUseExplorer(selectedView) && list.length>0;
   applyExplorerFocus(useExplorer);
   if(useExplorer){
+    $("news-explorer").dataset.topicTotal=String(totalBeforeTopic);
     $("news-explorer").dataset.scope=selectedView;
     target.hidden=true;
     target.replaceChildren();
@@ -1101,16 +1137,20 @@ function render() {
   $("empty-view-copied").textContent = "View copied articles (" + copiedIndiaCount + ")";
   $("empty-title").textContent = !records.length
     ? "Your workspace is ready"
-    : selectedView === "india"
-      ? (filtersActive ? "No India stories match these filters" : "No available India stories")
-      : "No matching stories";
+    : selectedCategory!=="all"
+      ? "No "+(document.querySelector('.filters [data-filter="'+selectedCategory+'"]')?.textContent.trim()||"matching")+" stories in this selection"
+      : selectedView === "india"
+        ? (filtersActive ? "No India stories match these filters" : "No available India stories")
+        : "No matching stories";
   $("empty-text").textContent = !records.length
     ? "Build the news dashboard data in GitHub Actions to display collected news and drafts here."
     : selectedView === "india"
       ? (copiedIndiaCount
         ? "Your copied India articles are safe in Copied Articles. New India stories will appear when available."
         : "India-focused reporting appears as the shared collector finds eligible stories. Check again after the next news update.")
-      : "Try another topic or search term.";
+      : selectedCategory!=="all"
+        ? "This topic has no matching articles with your current search. Clear filters to see available news."
+        : "Try another topic or search term.";
 }
 function parseItem(item, kind, index) {
   if (!item || typeof item !== "object" || Array.isArray(item)) return null;
