@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
+import {runInNewContext} from "node:vm";
 import {relativePosition, appearanceFor, canUseExplorer, detailPresentation} from "../dashboard/news-explorer.mjs";
 
 const html=readFileSync(new URL("../dashboard/index.html",import.meta.url),"utf8");
@@ -160,7 +161,7 @@ test("one top toolbar retains search, every topic and accessible layout icon swi
   assert.match(html,/aria-label="Layered view" title="Layered view"/);
   assert.match(html,/aria-label="Gallery view" title="Gallery view"/);
   assert.match(html,/class="studio-view-switch explorer-switch"/);
-  assert.match(app,/\.studio-view-switch"\)\.hidden = !canUseExplorer\(selectedView\)/);
+  assert.match(app,/document\.querySelector\("\.studio-view-switch"\)\.hidden = !canUseExplorer\(selectedView\)/);
   const explorer=readFileSync(new URL("../dashboard/news-explorer.mjs",import.meta.url),"utf8");
   assert.match(explorer,/document\.querySelectorAll\("\[data-explorer-mode\]"\)/);
   assert.match(explorer,/document\.body\.dataset\.newsLayout = mode/);
@@ -191,4 +192,32 @@ test("topic chips show true availability and cannot lead to a dead-end empty sta
   assert.match(css,/\.toolbar \.filter:disabled/);
   assert.match(css,/\.toolbar \.filter\[data-topic-count\]::after/);
   assert.match(app,/updateTopicAvailability\(\)/); // archive/overview retain usable controls
+});
+
+test("regression: toolbar class selector cannot crash the 75-story feed render",()=>{
+  // Exercise the exact statement executed at the top of render(), not merely
+  // the presence of the toolbar in HTML. The former $(class) lookup uses
+  // getElementById and caused a TypeError after records were already loaded.
+  const statement=app.match(/^  document\.querySelector\("\.studio-view-switch"\)\.hidden = !canUseExplorer\(selectedView\);$/m)?.[0];
+  assert.ok(statement,"View switch is queried by CSS class, not ID");
+  assert.doesNotMatch(app,/\$\(["']\.[^"']+["']\)/);
+  const toggle={hidden:null};
+  const document={
+    getElementById:()=>{throw Error("A class name must not be passed as an ID");},
+    querySelector:(selector)=>{
+      assert.equal(selector,".studio-view-switch");
+      return toggle;
+    }
+  };
+  runInNewContext(statement,{document,canUseExplorer:(view)=>view==="all",selectedView:"all"});
+  assert.equal(toggle.hidden,false,"Explorer switch stays visible in All stories");
+  runInNewContext(statement,{document,canUseExplorer:(view)=>view==="all",selectedView:"workflow"});
+  assert.equal(toggle.hidden,true,"Explorer switch hides in personal workflow");
+});
+test("UI render exceptions are not falsely reported as live feed failures",()=>{
+  assert.match(app,/let displayStarted=false;/);
+  assert.match(app,/displayStarted=true;\s*render\(\);\s*displayStarted=false;/);
+  assert.match(app,/if \(displayStarted\) \{[\s\S]*?SignalDesk news rendering failed/);
+  assert.match(app,/News loaded, but the display encountered an error/);
+  assert.match(app,/The latest feed check failed\. Existing news remains available/);
 });
