@@ -15,6 +15,7 @@ import {imageFromRssEntry, safeNewsImage} from "../dashboard/news-image.mjs";
 
 export const CRON = "*/15 * * * *";
 const MAX_AGE_MS = 36 * 60 * 60 * 1000;
+const INDIA_MAX_AGE_MS = 72 * 60 * 60 * 1000; // Match India daily preview, including weekends.
 const MAX_FUTURE_MS = 10 * 60 * 1000;
 const MAX_FEED_BYTES = 400_000;
 const MAX_ITEMS_PER_FEED = 75;
@@ -108,10 +109,15 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
     const title=plain(entry.title,260);
     const link=validUrl(entry.link && !root?.feed ? plain(entry.link,2000) : atomLink(entry));
     const date=new Date(plain(entry.pubDate ?? entry.published ?? entry.updated ?? entry.date,65)).getTime();
-    if (!title || !link || !Number.isFinite(date) ||
-        date < nowMs - MAX_AGE_MS || date > nowMs + MAX_FUTURE_MS ||
-        SPAM.test(title) || !WORDS.test(title)) continue;
     const preview=plain(entry.description ?? entry.summary ?? "",170);
+    const region=feed.region === "india" || INDIA_MARKERS.test(title) ||
+      INDIA_PREVIEW_CONTEXT.test(preview) || INDIA_LOCAL_CONTEXT.test(preview) ? "india" : "global";
+    // Country attribution precedes freshness filtering: 36–72h India articles
+    // are legitimate weekend coverage, not stale Global stories.
+    if (!title || !link || !Number.isFinite(date) ||
+        date < nowMs - (region==="india" ? INDIA_MAX_AGE_MS : MAX_AGE_MS) ||
+        date > nowMs + MAX_FUTURE_MS ||
+        SPAM.test(title) || !WORDS.test(title)) continue;
     const image_url=imageFromRssEntry(entry);
     result.push({
       title, source_url:link, publisher:feed.name, feed_url:feed.url,
@@ -119,8 +125,7 @@ export function parseFeed(xml, feed, nowMs=Date.now()) {
       source_preview:feed.headline_only ? "" :
         preview.length>=35 && preview.toLowerCase()!==title.toLowerCase() ? preview : "",
       image_url:feed.disable_images ? "" : image_url,
-      region:feed.region === "india" || INDIA_MARKERS.test(title) ||
-        INDIA_PREVIEW_CONTEXT.test(preview) || INDIA_LOCAL_CONTEXT.test(preview) ? "india" : "global",
+      region,
     });
   }
   return result;
