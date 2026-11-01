@@ -12,7 +12,12 @@ import os
 import urllib.error
 import urllib.request
 
-from scripts.signaldesk_feed_integrity import inspect_feed_stories, parse_time
+# Support both the checked-in GitHub Actions script entrypoint and package
+# import during offline unit tests; neither path makes network requests.
+if __package__:
+    from scripts.signaldesk_feed_integrity import inspect_feed_stories, parse_time
+else:
+    from signaldesk_feed_integrity import inspect_feed_stories, parse_time
 
 EXPECTED_COLLECTOR_CONTRACT = "rss-v2-india72-exact-origin"
 
