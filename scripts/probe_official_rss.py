@@ -36,6 +36,16 @@ def probe():
             xml=ET.fromstring(raw)
             result["xml_root"]=xml.tag[:85]
             result["xml_items"]=len(xml.findall("./channel/item"))
+            first=xml.find("./channel/item")
+            if first is not None:
+                result["rss_fields"]=sorted({x.tag.split("}")[-1] for x in first})[:16]
+                result["has_title"]=bool(first.findtext("title"))
+                result["has_pub_date"]=bool(first.findtext("pubDate"))
+                result["has_link"]=bool(first.findtext("link"))
+                from newsbot.core import parse_date
+                result["pub_date_parses"]=parse_date(first.findtext("pubDate")) is not None
+                result["link_scheme"]=(first.findtext("link") or "").split(":",1)[0][:9]
+
             result["xml_bytes"]=len(raw)
             items=parse_feed(raw,source["name"],source["category"])
             recent=[x for x in items
