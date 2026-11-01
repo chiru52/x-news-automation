@@ -31,12 +31,16 @@ test("all 8 Global and 11 India requested publishers appear exactly once, with w
 });
 test("public collector does not silently fetch denied sources",()=>{
   assert.equal(feeds.length,18);
-  assert.equal(extra.length,5);
-  assert.equal(extra.filter(x=>x.source_type==="official_primary").length,4);
+  assert.equal(extra.length,6);
+  assert.equal(extra.filter(x=>x.source_type==="official_primary").length,5);
   assert.ok(extra.some(x=>x.name==="Alt News Fact Checks"&&x.region==="india"&&
     x.category==="factcheck"&&x.disable_images===true));
   const official=extra.filter(x=>x.source_type==="official_primary");
-  assert.deepEqual(official.map(x=>x.region).sort(),["global","india","india","india"]);
+  assert.deepEqual(official.map(x=>x.region).sort(),["global","india","india","india","india"]);
+  const pib=official.find(x=>x.name.startsWith("Press Information Bureau"));
+  assert.ok(pib && pib.region==="india" && pib.category==="policy");
+  assert.equal(pib.headline_only,true);
+  assert.equal(pib.disable_images,true);
   const rbi = official.find(x=>x.name==="Reserve Bank of India (official press releases)");
   assert.equal(rbi?.headline_only,true);
   assert.equal(rbi?.disable_images,true);
