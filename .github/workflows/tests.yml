@@ -54,6 +54,10 @@ jobs:
           node --test tests/signaldesk-news-explorer.test.mjs
       - name: Test Global/India/Trending news sections offline
         run: node --test tests/signaldesk-news-sections.test.mjs
+      - name: Test bounded live and daily preview regional news union
+        run: |
+          node --check dashboard/news-snapshot.mjs
+          node --test tests/signaldesk-news-snapshot.test.mjs
       - name: Test independent publisher coverage and conservative deduplication
         run: |
           node --check news-collector/intelligence.mjs

@@ -287,7 +287,7 @@ def build_bundle(queue: dict, issues: list[dict], dest: Path, *, generated_at=No
     }
     validate_public_bundle(result)
     dest.mkdir(parents=True, exist_ok=True)
-    for filename in ("index.html", "account.html", "account.mjs", "auth-config.json", "styles.css", "account-visual.css", "app.js", "studio.mjs", "perspective.mjs", "cloud-sync.mjs", "workspace-transfer.mjs", "review-desk.mjs", "refresh-clock.mjs", "news-sections.mjs", "coverage-note.mjs", "news-image.mjs", "news-explorer.mjs", "editorial-sources.mjs", "archive-client.mjs", "feed-config.json", "_headers"):
+    for filename in ("index.html", "account.html", "account.mjs", "auth-config.json", "styles.css", "account-visual.css", "app.js", "studio.mjs", "perspective.mjs", "cloud-sync.mjs", "workspace-transfer.mjs", "review-desk.mjs", "refresh-clock.mjs", "news-sections.mjs", "news-snapshot.mjs", "coverage-note.mjs", "news-image.mjs", "news-explorer.mjs", "editorial-sources.mjs", "archive-client.mjs", "feed-config.json", "_headers"):
         shutil.copyfile(ASSETS / filename, dest / filename)
     shutil.copyfile(ROOT / "config" / "editorial-sources.json", dest / "editorial-sources.json")
     (dest / "data.json").write_text(
