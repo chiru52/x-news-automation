@@ -122,5 +122,63 @@ def run(fetcher=read_public, now: dt.datetime | None = None):
     return results
 
 
+
+
+PREVIEW_BASE = "https://signaldesk-preview.pages.dev"
+PREVIEW_FILES = ("/data.json", "/editorial-sources.json", "/news-explorer.mjs")
+
+def read_preview_file(path: str):
+    """Strict, capped GETs to exactly three publicly deployed preview assets."""
+    if path not in PREVIEW_FILES:
+        raise ValueError("Unknown public preview asset")
+    request = urllib.request.Request(
+        PREVIEW_BASE + path,
+        headers={"Accept": "application/json,text/plain", "User-Agent": "SignalDeskReadOnlyHealthAudit/1.0"},
+        method="GET",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+            raw = response.read(300_001)
+            if len(raw) > 300_000:
+                return {"http_status": response.status, "error": "response_too_large"}
+            return {"http_status": response.status, "body": raw.decode("utf-8")}
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError, UnicodeError) as exc:
+        return {"http_status": getattr(exc, "code", None), "error": type(exc).__name__}
+
+def preview_deployment_report(fetcher=read_preview_file):
+    """Report public counts and feature availability, never individual articles."""
+    parts = {path: fetcher(path) for path in PREVIEW_FILES}
+    def json_data(path):
+        try:
+            return json.loads(parts[path].get("body",""))
+        except (ValueError, TypeError):
+            return None
+    data = json_data("/data.json")
+    sources = json_data("/editorial-sources.json")
+    js = parts["/news-explorer.mjs"].get("body", "")
+    metrics = {
+        "static_global_stories": len(data.get("news", [])) if isinstance(data,dict) and isinstance(data.get("news"),list) else None,
+        "static_india_stories": len(data.get("india_news", [])) if isinstance(data,dict) and isinstance(data.get("india_news"),list) else None,
+        "static_stories_with_images": sum(bool(x.get("image_url")) for kind in ("news","india_news") for x in data.get(kind,[]) if isinstance(x,dict)) if isinstance(data,dict) else None,
+        "catalogue_entries":len(sources) if isinstance(sources,list) else None,
+        "news_explorer_has_real_image_support": "safeNewsImage(item.image_url)" in js,
+        "static_generated_at":data.get("generated_at") if isinstance(data,dict) else None,
+    }
+    print("\n# Public SignalDesk Preview deployment check (read only)\n")
+    for path in PREVIEW_FILES:
+        print(f"{path}: HTTP {parts[path].get('http_status')}"+(f" ({parts[path]['error']})" if parts[path].get("error") else ""))
+    for name,value in metrics.items():
+        print(f"{name}: {value}")
+    summary = os.getenv("GITHUB_STEP_SUMMARY")
+    if summary:
+        with open(summary,"a",encoding="utf-8") as fp:
+            fp.write("\n## Public preview files\n\n")
+            for path in PREVIEW_FILES:
+                fp.write(f"- {path}: HTTP {parts[path].get('http_status')}\n")
+            for name,value in metrics.items():
+                fp.write(f"- {name}: {value}\n")
+    return metrics
+
 if __name__ == "__main__":
     run()
+    preview_deployment_report()
