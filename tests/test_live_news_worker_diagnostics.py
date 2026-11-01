@@ -2,7 +2,7 @@ import datetime as dt
 import unittest
 
 from scripts.check_live_news_worker import (
-    PREVIEW, PRODUCTION, UNTRUSTED, cors_verdict, freshness_verdict, run
+    PREVIEW, PRODUCTION, UNTRUSTED, cors_verdict, freshness_verdict, run, preview_deployment_report, read_preview_file
 )
 
 
@@ -30,6 +30,27 @@ class LiveNewsWorkerDiagnosticsTests(unittest.TestCase):
             {**good, "news": []}, now)[0], "FAIL")
         self.assertEqual(freshness_verdict(
             {**good, "generated_at": "not a date"}, now)[0], "FAIL")
+
+    def test_public_preview_inspection_uses_only_fixed_static_assets(self):
+        import json
+        self.assertRaises(ValueError,read_preview_file,"/admin")
+        seen=[]
+        def fake_get(path):
+            seen.append(path)
+            body=(
+                json.dumps({"generated_at":"2026-10-31T23:55:00Z",
+                            "news":[{"image_url":""}]*30,"india_news":[]})
+                if path=="/data.json" else
+                json.dumps([{"name":"A"}]*19) if path=="/editorial-sources.json" else
+                "const picture=safeNewsImage(item.image_url);"
+            )
+            return {"http_status":200,"body":body}
+        metrics=preview_deployment_report(fake_get)
+        self.assertEqual(seen,["/data.json","/editorial-sources.json","/news-explorer.mjs"])
+        self.assertEqual(metrics["static_global_stories"],30)
+        self.assertEqual(metrics["static_india_stories"],0)
+        self.assertEqual(metrics["catalogue_entries"],19)
+        self.assertTrue(metrics["news_explorer_has_real_image_support"])
 
     def test_audit_is_get_only_and_never_fetches_unapproved_urls(self):
         seen = []

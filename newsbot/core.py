@@ -16,6 +16,7 @@ from urllib.request import Request, urlopen
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
+from .rss_images import article_image
 from .relevance import (assess_story, is_saas_funding_headline,
                         is_promotional_headline, is_us_index_futures_headline)
 from .writing import suggest_post
@@ -34,6 +35,7 @@ class Article:
     published_at: str
     summary: str = ""
     category: str = "technology"
+    image_url: str = ""
 
     @property
     def identity(self) -> str:
@@ -94,7 +96,7 @@ def parse_feed(data: bytes, source: str, category: str = "technology") -> list[A
             continue
         articles.append(Article(title=title[:400], link=link, source=source,
                                 published_at=published.isoformat(), summary=clean_text(summary)[:600],
-                                category=category))
+                                category=category, image_url=article_image(item)))
     return articles
 
 
@@ -317,7 +319,7 @@ def render_outputs(articles: list[Article], outdir: Path, now: datetime, errors:
                       "status": "NEEDS_HUMAN_REVIEW", "publishable": False,
                       "category_verified": False, "relevance": assessment})
     india_queue = []
-    for item in (india_articles or [])[:15]:
+    for item in (india_articles or [])[:50]:
         suggestion = suggest_post(item)
         india_queue.append({**asdict(item), "suggested_post": suggestion["text"],
                             "trend": {}, "status": "NEEDS_HUMAN_REVIEW",
