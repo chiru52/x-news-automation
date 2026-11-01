@@ -53,6 +53,10 @@ def main() -> int:
                     ("global", "markets", "US Federal Reserve (official releases)"),
                 "https://www.rbi.org.in/pressreleases_rss.xml":
                     ("india", "markets", "Reserve Bank of India (official press releases)"),
+                "https://www.rbi.org.in/notifications_rss.xml":
+                    ("india", "markets", "Reserve Bank of India (official notifications)"),
+                "https://www.rbi.org.in/speeches_rss.xml":
+                    ("india", "markets", "Reserve Bank of India (official speeches)"),
             }
             def allowed_preview_source(entry):
                 if not isinstance(entry, dict) or entry.get("disable_images") is not True:
@@ -63,7 +67,7 @@ def main() -> int:
                 return (entry.get("name") == "Alt News Fact Checks" and
                         entry.get("url") == "https://www.altnews.in/feed/" and
                         entry.get("region") == "india" and entry.get("category") == "factcheck")
-            if (not isinstance(extras, list) or len(extras) > 4 or
+            if (not isinstance(extras, list) or len(extras) > 6 or
                     len({entry.get("url") for entry in extras if isinstance(entry, dict)}) != len(extras) or
                     any(not allowed_preview_source(entry) for entry in extras)):
                 parser.error("Invalid preview-only supplemental source configuration")
