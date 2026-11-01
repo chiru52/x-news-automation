@@ -37,6 +37,12 @@ def is_india_article(article, india_sources: set[str]) -> bool:
             bool(INDIA_DESCRIPTION.search(summary or "")))
 
 
+def global_preview_candidates(articles, sources):
+    """Only non-India stories are eligible for the separate Global 50 capacity."""
+    india_sources = explicit_india_sources(sources)
+    return [a for a in articles if not is_india_article(a, india_sources)]
+
+
 def select_india_preview_articles(articles, sources, now, *,
                                   lookback_hours=36, max_articles=50,
                                   exclude_promotional=True):
