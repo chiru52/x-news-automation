@@ -107,3 +107,45 @@ test("Layered removes the small internal scroller, compacts heading and preserve
   assert.doesNotMatch(html,/Open all editorial tools/);
   assert.doesNotMatch(section,/url\(['"]?https?:\/\//);
 });
+
+test("News Explorer is the default studio instead of a separate back-to-workspace mode",()=>{
+  assert.doesNotMatch(html,/id="explorer-focus"|Back to workspace/);
+  assert.doesNotMatch(html,/data-explorer-section=/);
+  assert.match(app,/function applyExplorerFocus\(show\)\s*\{\s*document\.body\.classList\.toggle\("news-focus-mode",Boolean\(show\)\)/);
+  assert.doesNotMatch(app,/explorerFocusEnabled|signaldesk:explorer-focus:v1/);
+  assert.match(app,/let records = \[\], selectedView = "all"/);
+  assert.match(app,/const useExplorer=canUseExplorer\(selectedView\) && list\.length>0/);
+  assert.match(app,/newsExplorer\.render\(list\)/);
+});
+test("sidebar reuses every existing destination and keeps Overview optional",()=>{
+  for(const view of ["all","trending","global","india","overview","workflow","copied","saved","archive"]){
+    assert.equal((html.match(new RegExp('data-view="'+view+'"',"g"))||[]).length,1,view);
+  }
+  assert.match(html,/id="sidebar-toggle"[^>]+aria-expanded="false"[^>]+aria-label="Expand sidebar"/);
+  assert.match(html,/id="sidebar-settings"/);
+  assert.match(html,/class="sidebar-section-label sidebar-section-work">MY WORKSPACE/);
+  assert.match(app,/SIDEBAR_KEY="signaldesk:sidebar-collapsed:v1"/);
+  assert.match(app,/function setSidebarCollapsed\(collapsed\)/);
+  assert.match(app,/localStorage\.setItem\(SIDEBAR_KEY,String\(sidebarCollapsed\)\)/);
+  assert.match(app,/document\.body\.classList\.toggle\("sidebar-collapsed",sidebarCollapsed\)/);
+  assert.match(app,/document\.querySelector\("\.feed-section"\)\.hidden = overview/);
+  assert.match(app,/if \(overview\) \{\s*applyExplorerFocus\(false\);\s*newsExplorer\.hide\(\);\s*return;/);
+  assert.match(app,/\$\("dashboard-metrics"\)\.hidden = selectedView !== "overview"/);
+  assert.match(app,/\$\("dashboard-intro"\)\.hidden = selectedView !== "overview"/);
+});
+test("studio rail remains available in focus, with accessible mobile slideout and dark mode",()=>{
+  const section=css.split("/* SignalDesk Studio shell:",2)[1]||"";
+  assert.ok(section);
+  assert.match(section,/body\.news-focus-mode \.sidebar\{\s*display:flex/);
+  assert.match(section,/body\.sidebar-collapsed\.news-focus-mode \.shell\{\s*grid-template-columns:72px/);
+  assert.match(section,/grid-template-columns:242px minmax\(0,1fr\)/);
+  assert.match(section,/\.sidebar-top\{display:none\}/);
+  assert.match(section,/\.sidebar \.nav-items\{\s*position:fixed;z-index:80/);
+  assert.match(section,/transform:translateX\(-105%\)/);
+  assert.match(section,/\.sidebar\.mobile-nav-open \.nav-items\{transform:translateX\(0\)/);
+  assert.match(section,/\[data-theme="dark"\] \.sidebar-toggle/);
+  assert.match(section,/@media\(prefers-reduced-motion:reduce\)/);
+  assert.match(app,/setMobileMenuOpen\(false\)/);
+  assert.match(app,/\$\("sidebar-settings"\)\.addEventListener\("click"/);
+  assert.doesNotMatch(section,/api\.x\.com|cloudflare\/workers|@import|url\(['"]?https?:\/\//);
+});
