@@ -1,6 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {parseFeed,selectStories,selectIndiaStories,publicItem,collect,handleRequest,CRON} from "../news-collector/worker.mjs";
+import configuredFeeds from "../config/sources.json" with {type:"json"};
+import additionalFeeds from "../config/extra-news-sources.json" with {type:"json"};
+const SOURCE_COUNT=configuredFeeds.length+additionalFeeds.length;
 
 const NOW=new Date("2026-10-30T12:00:00Z").getTime();
 const source={name:"Example Technology",category:"technology",url:"https://publisher.example/feed"};
@@ -133,7 +136,7 @@ test("cron is the only thing fetching RSS; visitors only read cache",async()=>{
   assert.ok(network>0 && network<=24);
   const r=await handleRequest(new Request("https://feed.example/feed"),{NEWS_CACHE:kv});
   assert.equal(r.status,503);
-  assert.equal(network,21);
+  assert.equal(network,SOURCE_COUNT);
 });
 test("collector stores one safe shared snapshot and reader never starts collection",async()=>{
   const cache=new Map();const calls=[];
@@ -163,7 +166,7 @@ test("collector stores one safe shared snapshot and reader never starts collecti
   assert.ok(data.india_news.length<=50);
   assert.equal(data.news.length,out.count);
   assert.equal(calls.filter(x=>x==="get").length,2); // archive merge read and visitor live feed read
-  assert.equal(counter,21); // One Cron fetch per configured publisher; visitors never do.
+  assert.equal(counter,SOURCE_COUNT); // One Cron fetch per configured publisher; visitors never do.
   assert.equal((await handleRequest(new Request("https://feed.example/health"),{NEWS_CACHE:kv})).status,200);
   assert.equal((await handleRequest(new Request("https://feed.example/feed",{method:"POST"}),{NEWS_CACHE:kv})).status,405);
 });
