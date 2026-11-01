@@ -29,5 +29,29 @@
     "rights": "official_rss_headline_links_only_rights_review",
     "policy_url": "https://www.rbi.org.in/Scripts/CommunicationPolicy.aspx",
     "headline_only": true
+  },
+  {
+    "name": "Reserve Bank of India (official notifications)",
+    "url": "https://www.rbi.org.in/notifications_rss.xml",
+    "category": "markets",
+    "region": "india",
+    "disable_images": true,
+    "attribution": "Official Reserve Bank of India publication; primary-source announcement, not independent news reporting.",
+    "source_type": "official_primary",
+    "rights": "official_rss_headline_links_only_rights_review",
+    "policy_url": "https://www.rbi.org.in/Scripts/CommunicationPolicy.aspx",
+    "headline_only": true
+  },
+  {
+    "name": "Reserve Bank of India (official speeches)",
+    "url": "https://www.rbi.org.in/speeches_rss.xml",
+    "category": "markets",
+    "region": "india",
+    "disable_images": true,
+    "attribution": "Official Reserve Bank of India publication; primary-source announcement, not independent news reporting.",
+    "source_type": "official_primary",
+    "rights": "official_rss_headline_links_only_rights_review",
+    "policy_url": "https://www.rbi.org.in/Scripts/CommunicationPolicy.aspx",
+    "headline_only": true
   }
 ]
