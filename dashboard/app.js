@@ -977,6 +977,7 @@ function applyExplorerFocus(show) {
 }
 function render() {
   updateCounts();
+  setArchiveVisibility();
   const overview = selectedView === "overview";
   document.querySelector(".feed-section").hidden = overview;
   if (overview) {
@@ -1815,6 +1816,15 @@ mobileMenuMedia.addEventListener("change",()=>setMobileMenuOpen(false));
 $("profile-account-link").addEventListener("click",event=>{event.preventDefault();openAccountWorkspace()});
 document.querySelectorAll(".nav-items [data-view]").forEach(button=>button.addEventListener("click",closeAccountWorkspace));
 updateOptionalAccountProfile();
+$("sidebar-settings").addEventListener("click",event=>{
+  event.stopPropagation();
+  // Reuse the existing account/preferences menu rather than opening a
+  // competing settings system. The mobile drawer closes first.
+  setMobileMenuOpen(false);
+  window.scrollTo({top:0,behavior:"smooth"});
+  setProfileOpen(true);
+  profileToggle.focus({preventScroll:true});
+});
 profileToggle.addEventListener("click",()=>{
   if(mobileMenuToggle.getAttribute("aria-expanded")==="true")setMobileMenuOpen(false);
   setProfileOpen(profileMenu.hidden);
