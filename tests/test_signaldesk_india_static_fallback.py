@@ -56,6 +56,42 @@ class IndiaStaticFallbackTests(unittest.TestCase):
         self.assertTrue(all(item.source == "Inc42 India Startups" for item in picked))
         self.assertEqual(select_india_preview_articles(global_stories, SOURCES, NOW), [])
 
+    def test_india_headlines_not_lost_to_technology_only_keyword_filter(self):
+        from newsbot.core import Article
+        local = Article(
+            title="India national policy update affecting small businesses",
+            link="https://publisher.example/india-policy-1",
+            source="Independent World", published_at=NOW.isoformat(),
+            category="policy")
+        fact = Article(
+            title="Fact check: Viral claim about India found to be misleading",
+            link="https://publisher.example/india-fact-check",
+            source="Alt News Fact Checks", published_at=NOW.isoformat(),
+            category="factcheck", image_url="")
+        unrelated = Article(
+            title="Major international summit takes place in another region",
+            link="https://publisher.example/international-1",
+            source="Independent World", published_at=NOW.isoformat(),
+            category="world")
+        extras = [{"name":"Alt News Fact Checks","region":"india"}]
+        chosen = select_india_preview_articles([local, fact, unrelated],
+                    SOURCES+extras, NOW)
+        self.assertEqual({a.link for a in chosen},
+                         {local.link, fact.link})
+        self.assertTrue(all(is_india_article(a,
+            explicit_india_sources(SOURCES+extras)) for a in chosen))
+
+    def test_only_preview_adds_supplemental_sources_to_static_reader(self):
+        from pathlib import Path
+        code=(ROOT/"newsbot/__main__.py").read_text()
+        self.assertIn("if args.preview:",code)
+        self.assertIn('config/extra-news-sources.json',code)
+        self.assertIn('source.get("disable_images") is True',code)
+        extras=json.loads((ROOT/"config/extra-news-sources.json").read_text())
+        self.assertEqual(len(extras),1)
+        self.assertTrue(extras[0]["disable_images"])
+        self.assertEqual(extras[0]["category"],"factcheck")
+
     def test_daily_bundle_carries_india_feed_and_deduplicates_in_browser_by_id(self):
         external = article("global-1", "BBC Technology",
                            "Global enterprise software and AI cloud developer product")
