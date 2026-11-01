@@ -22,7 +22,10 @@ from .regions import explicit_india_sources, is_india_article
 REPO = "varadachiru/x-news-automation"
 ROOT = Path(__file__).resolve().parents[1]
 ASSETS = ROOT / "dashboard"
-INDIA_SOURCES = explicit_india_sources(json.loads((ROOT / "config/sources.json").read_text(encoding="utf-8")))
+INDIA_SOURCES = explicit_india_sources(
+    json.loads((ROOT / "config/sources.json").read_text(encoding="utf-8")) +
+    json.loads((ROOT / "config/extra-news-sources.json").read_text(encoding="utf-8"))
+)
 CATEGORIES = frozenset(("technology", "saas", "markets", "world", "policy", "factcheck"))
 MAX_ISSUES = 200
 MAX_ITEMS = 200
